@@ -1,69 +1,174 @@
-import Image from "next/image";
+const FLOW = [
+  "Agreement",
+  "Payment",
+  "Conditions",
+  "Evidence",
+  "Verification",
+  "Deterministic decision",
+  "Release / Refund / Dispute",
+] as const;
+
+const PROBLEMS = [
+  "The buyer pays before receiving the promised work.",
+  "The seller delivers work without knowing whether payment will happen.",
+  "Requirements are buried inside informal messages.",
+  "Disagreements arise over whether a condition was satisfied.",
+  "There is little structured evidence to point at.",
+  "Users do not understand why a payment decision was made.",
+] as const;
+
+const AI_MAY = [
+  "Interpret a natural-language agreement",
+  "Propose structured, reviewable conditions",
+  "Analyse submitted evidence against those conditions",
+  "Summarise a dispute and its supporting evidence",
+  "Generate a recommendation with stated reasoning",
+] as const;
+
+const AI_MAY_NOT = [
+  "Release or refund a payment",
+  "Authorise a payment",
+  "Modify payment state",
+  "Bypass authentication or authorisation",
+  "Override the rules engine",
+  "Invent a successful payment",
+] as const;
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="mx-auto w-full max-w-5xl px-6">
+      {/* Hero */}
+      <section className="py-16 sm:py-24">
+        <p className="text-sm font-medium uppercase tracking-widest text-slate-500 dark:text-slate-400">
+          FairHold
+        </p>
+        <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-slate-900 dark:text-slate-50 sm:text-5xl">
+          AI-assisted conditional payments for buyer-seller transactions.
+        </h1>
+        <p className="mt-6 max-w-2xl text-xl font-medium text-slate-800 dark:text-slate-200">
+          AI proposes. Rules decide.
+        </p>
+        <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-400">
+          FairHold helps structure agreements, payment conditions, evidence, and
+          decision-making around a transaction. AI can help interpret
+          agreements and analyse evidence. Deterministic application rules
+          remain responsible for final decisions.
+        </p>
+      </section>
+
+      {/* The problem */}
+      <section className="border-t border-slate-200 py-14 dark:border-slate-800">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+          The problem
+        </h2>
+        <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 dark:text-slate-400">
+          Many online transactions rely on trust between a buyer and a seller.
+          That trust is usually unstructured.
+        </p>
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+          {PROBLEMS.map((problem) => (
+            <li
+              key={problem}
+              className="rounded-lg border border-slate-200 p-4 text-sm leading-6 text-slate-700 dark:border-slate-800 dark:text-slate-300"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+              {problem}
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      {/* How it is designed to work */}
+      <section className="border-t border-slate-200 py-14 dark:border-slate-800">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+          How FairHold is designed to work
+        </h2>
+        <ol className="mt-6 flex flex-wrap items-center gap-2">
+          {FLOW.map((step, index) => (
+            <li key={step} className="flex items-center gap-2">
+              <span className="rounded-md bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                {step}
+              </span>
+              {index < FLOW.length - 1 ? (
+                <span aria-hidden className="text-slate-400">
+                  &rarr;
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+          This is the intended flow. It is not implemented yet.
+        </p>
+      </section>
+
+      {/* Separation of responsibilities */}
+      <section className="border-t border-slate-200 py-14 dark:border-slate-800">
+        <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+          Separation of responsibilities
+        </h2>
+        <div className="mt-6 grid gap-6 md:grid-cols-2">
+          <div className="rounded-lg border border-slate-200 p-5 dark:border-slate-800">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+              AI may
+            </h3>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-700 dark:text-slate-300">
+              {AI_MAY.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-lg border border-slate-200 p-5 dark:border-slate-800">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+              AI may never
+            </h3>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm leading-6 text-slate-700 dark:text-slate-300">
+              {AI_MAY_NOT.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div className="mt-6 rounded-lg border border-slate-200 p-5 dark:border-slate-800">
+          <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+            Deterministic rules decide
+          </h3>
+          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+            A rules engine, not a model, evaluates agreed conditions against
+            verified payment state and returns a decision —{" "}
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-800">
+              WAITING
+            </code>
+            ,{" "}
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-800">
+              RELEASE
+            </code>
+            ,{" "}
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-800">
+              REFUND
+            </code>
+            , or{" "}
+            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-800">
+              DISPUTE
+            </code>
+            . Every decision records the reasons behind it.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* PayPal note */}
+      <section className="border-t border-slate-200 py-14 dark:border-slate-800">
+        <div className="rounded-lg border border-slate-300 p-5 dark:border-slate-700">
+          <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+            About PayPal in FairHold
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-300">
+            PayPal is used as the payment infrastructure. FairHold does not
+            claim that PayPal provides native escrow for this application.
+            Where a hold is shown, it reflects the PayPal capability actually
+            being used, described in those terms.
+          </p>
         </div>
-      </main>
+      </section>
     </div>
   );
 }
