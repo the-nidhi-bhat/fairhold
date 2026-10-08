@@ -1,8 +1,9 @@
 # FairHold
 
-> **Status: under active development.** This repository contains an early
-> skeleton only. Nothing here is functional yet, and no features are
-> implemented. Expect breaking changes and empty directories.
+> **Status: under active development.** Phase 1 (application scaffold) is
+> complete: a runnable Next.js application shell exists. No FairHold feature
+> — agreements, payments, AI, database, rules, evidence, disputes — is
+> implemented yet.
 
 FairHold is an **AI-assisted conditional payment platform** built around PayPal,
 where:
@@ -34,20 +35,29 @@ PayPal authorization and capture primitives under PayPal's own terms. Any
 user-facing wording must describe the mechanism accurately rather than calling
 it "escrow".
 
-## Planned architecture (not yet built)
+## Architecture
 
-| Layer | Intent |
-| --- | --- |
-| Web app | Next.js + TypeScript |
-| Data | PostgreSQL |
-| Payments | PayPal APIs, server-side only |
-| Intelligence | AI recommendations feeding a rules engine |
-
-Nothing in the table above is implemented at this stage.
+| Layer | Intent | Status |
+| --- | --- | --- |
+| Web app | Next.js + TypeScript | Scaffolded — app shell only |
+| Data | PostgreSQL | Not implemented |
+| Payments | PayPal APIs, server-side only | Not implemented |
+| Intelligence | AI recommendations feeding a rules engine | Not implemented |
 
 ## Getting started
 
-No runnable setup yet. See [`docs/`](docs/) for design notes as they appear.
+Requires Node.js 24 and npm.
+
+```bash
+npm install
+npm run dev        # http://localhost:3000
+npm run lint
+npm run typecheck
+npm run build
+```
+
+`npm run typecheck` runs `next typegen` first, because `PageProps` /
+`LayoutProps` are globals generated into `.next/types`.
 
 ## Security
 
