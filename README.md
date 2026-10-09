@@ -1,9 +1,12 @@
 # FairHold
 
-> **Status: under active development.** Phase 1 (application scaffold) is
-> complete: a runnable Next.js application shell exists. No FairHold feature
-> — agreements, payments, AI, database, rules, evidence, disputes — is
-> implemented yet.
+> **Status: under active development.** The Deal & Milestone foundation is in
+> place: you can create a deal, add milestones with amounts and acceptance
+> criteria, move through workflow states, and see an activity timeline. Deals
+> use **development-only JSON storage** (no database yet). Payments are
+> **simulated** by a demo provider — no real PayPal call is made by the app.
+> AI analysis, evidence, the rules engine, authentication, and disputes are
+> not implemented yet.
 
 FairHold is an **AI-assisted conditional payment platform** built around PayPal,
 where:
@@ -39,9 +42,9 @@ it "escrow".
 
 | Layer | Intent | Status |
 | --- | --- | --- |
-| Web app | Next.js + TypeScript | Scaffolded — app shell only |
-| Data | PostgreSQL | Not implemented |
-| Payments | PayPal APIs, server-side only | Not implemented |
+| Web app | Next.js + TypeScript | Deals, milestones, dashboard, workflow states |
+| Data | PostgreSQL | Not implemented — dev JSON file (`.data/`, git-ignored) for now |
+| Payments | PayPal APIs, server-side only | Interface + simulated demo provider; no live call from the app |
 | Intelligence | AI recommendations feeding a rules engine | Not implemented |
 
 ## Getting started
@@ -53,6 +56,7 @@ npm install
 npm run dev        # http://localhost:3000
 npm run lint
 npm run typecheck
+npm test
 npm run build
 ```
 
