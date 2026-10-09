@@ -37,9 +37,26 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             >
               FairHold
             </Link>
-            <span className="rounded-full border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-700 dark:text-amber-400">
-              Under development
-            </span>
+            <nav
+              className="flex items-center gap-3 text-sm sm:gap-4"
+              aria-label="Primary"
+            >
+              <Link
+                href="/dashboard"
+                className="font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/deals/new"
+                className="rounded-md bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-500"
+              >
+                New deal
+              </Link>
+              <span className="hidden rounded-full border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-700 dark:text-amber-400 sm:inline-block">
+                Under development
+              </span>
+            </nav>
           </div>
         </header>
 
@@ -48,8 +65,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <footer className="border-t border-slate-200 dark:border-slate-800">
           <div className="mx-auto w-full max-w-5xl space-y-2 px-6 py-6 text-sm text-slate-600 dark:text-slate-400">
             <p>
-              FairHold is under active development. No payment, AI, or
-              agreement features are functional yet.
+              FairHold is under active development. Deals and milestones use
+              development-only storage; authentication, AI analysis, and real
+              PayPal payments are not implemented yet.
             </p>
             <p>
               PayPal is used as the payment infrastructure. FairHold does not
