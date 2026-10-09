@@ -1,0 +1,86 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  allowedManualDealTransitions,
+  canTransitionDeal,
+  canTransitionMilestone,
+  computeProgress,
+  paymentStatusFor,
+} from "./status.ts";
+import type { Milestone } from "./types.ts";
+
+function milestone(
+  partial: Partial<Milestone> & Pick<Milestone, "amountCents" | "status">,
+): Milestone {
+  return {
+    id: `m-${Math.random().toString(36).slice(2)}`,
+    title: "Milestone",
+    description: "",
+    dueDate: null,
+    acceptanceCriteria: "Done.",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+    ...partial,
+  };
+}
+
+test("deal transitions: only legal moves are allowed", () => {
+  assert.equal(canTransitionDeal("Draft", "Awaiting Agreement"), true);
+  assert.equal(canTransitionDeal("Draft", "Completed"), false);
+  assert.equal(canTransitionDeal("Cancelled", "Draft"), false);
+});
+
+test("deal transitions: Authorized is never a manual transition", () => {
+  assert.equal(
+    allowedManualDealTransitions("Ready for Authorization").includes(
+      "Authorized",
+    ),
+    false,
+  );
+});
+
+test("milestone transitions: only legal moves are allowed", () => {
+  assert.equal(canTransitionMilestone("In Progress", "Awaiting Review"), true);
+  assert.equal(canTransitionMilestone("Draft", "Completed"), false);
+});
+
+test("computeProgress: counts completed milestones and sums cents", () => {
+  const progress = computeProgress({
+    milestones: [
+      milestone({ amountCents: 1000, status: "Completed" }),
+      milestone({ amountCents: 2000, status: "Draft" }),
+    ],
+  });
+  assert.deepEqual(progress, {
+    total: 2,
+    completed: 1,
+    percent: 50,
+    totalCents: 3000,
+    completedCents: 1000,
+  });
+});
+
+test("computeProgress: empty deal is 0%", () => {
+  const progress = computeProgress({ milestones: [] });
+  assert.equal(progress.total, 0);
+  assert.equal(progress.percent, 0);
+});
+
+test("paymentStatusFor: pre-authorization deals are not authorized", () => {
+  assert.equal(paymentStatusFor({ status: "Draft" }).key, "not_authorized");
+  assert.equal(
+    paymentStatusFor({ status: "Ready for Authorization" }).key,
+    "not_authorized",
+  );
+});
+
+test("paymentStatusFor: post-authorization states are labelled simulated", () => {
+  const info = paymentStatusFor({ status: "Authorized" });
+  assert.equal(info.key, "authorization_simulated");
+  assert.equal(info.tone, "warning");
+  assert.match(info.label, /simulated/i);
+});
+
+test("paymentStatusFor: cancelled deals show no payment", () => {
+  assert.equal(paymentStatusFor({ status: "Cancelled" }).key, "no_payment");
+});
