@@ -66,8 +66,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <div className="mx-auto w-full max-w-5xl space-y-2 px-6 py-6 text-sm text-slate-600 dark:text-slate-400">
             <p>
               FairHold is under active development. Deals and milestones use
-              development-only storage; authentication, AI analysis, and real
-              PayPal payments are not implemented yet.
+              development-only storage; authentication and AI analysis are not
+              implemented yet. Payment runs against a simulated demo adapter
+              unless PayPal sandbox credentials are configured.
             </p>
             <p>
               PayPal is used as the payment infrastructure. FairHold does not
