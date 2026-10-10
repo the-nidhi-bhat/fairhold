@@ -10,22 +10,31 @@
  * yet, so all actions run as the "system" actor and this is recorded honestly
  * in the audit trail.
  */
+import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
+  addEvidence,
   addMilestone,
   createDeal,
   getDeal,
   markDealAuthorized,
+  recordMilestoneApproval,
+  reviewEvidence,
   setDealStatus,
   setMilestoneStatus,
   updateMilestone,
 } from "@/lib/data/deals";
+import { writeEvidenceFile } from "@/lib/data/store";
+import { isApprovalDecision, planApproval } from "@/lib/domain/approval";
+import { validateEvidenceInput } from "@/lib/domain/evidence";
+import { recommendMilestone } from "@/lib/domain/rules";
 import { canTransitionDeal, canTransitionMilestone } from "@/lib/domain/status";
 import {
   DEAL_STATUSES,
   MILESTONE_STATUSES,
   type DealStatus,
+  type MilestoneApproval,
   type MilestoneStatus,
 } from "@/lib/domain/types";
 import {
@@ -170,9 +179,195 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
       providerName: authorization.providerName,
       providerReference: authorization.providerReference,
       simulated: authorization.simulated,
+      amountCents,
     },
     "system",
   );
   revalidatePath(`/deals/${dealId}`);
   revalidatePath("/dashboard");
+}
+
+export async function submitEvidenceAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const dealId = field(formData, "dealId");
+  const milestoneId = field(formData, "milestoneId");
+
+  const deal = await getDeal(dealId);
+  if (!deal) return { ok: false, errors: { _form: "Deal not found." } };
+  const milestone = deal.milestones.find((m) => m.id === milestoneId);
+  if (!milestone) {
+    return { ok: false, errors: { _form: "Milestone not found in this deal." } };
+  }
+
+  const rawFile = formData.get("file");
+  let fileInput = null;
+  if (rawFile instanceof File && rawFile.size > 0) {
+    const bytes = new Uint8Array(await rawFile.arrayBuffer());
+    fileInput = { name: rawFile.name, size: rawFile.size, bytes };
+  }
+
+  const result = validateEvidenceInput({
+    note: field(formData, "note"),
+    url: field(formData, "url"),
+    file: fileInput,
+  });
+  if (!result.ok) return { ok: false, errors: result.errors };
+
+  let storedPath: string | null = null;
+  if (result.value.file) {
+    storedPath = await writeEvidenceFile(
+      result.value.file.name,
+      result.value.file.bytes,
+    );
+  }
+
+  const response = await addEvidence(
+    dealId,
+    milestoneId,
+    {
+      note: result.value.note,
+      url: result.value.url,
+      file: result.value.file
+        ? {
+            name: result.value.file.name,
+            size: result.value.file.size,
+            type: result.value.file.type,
+            storedPath: storedPath as string,
+          }
+        : null,
+    },
+    "system",
+  );
+  if (!response.ok) return { ok: false, errors: { _form: response.error } };
+
+  revalidatePath(`/deals/${dealId}`);
+  return { ok: true, errors: {} };
+}
+
+export async function reviewEvidenceAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const dealId = field(formData, "dealId");
+  const submissionId = field(formData, "submissionId");
+  const decision = field(formData, "decision");
+  if (decision !== "accepted" && decision !== "rejected") {
+    return { ok: false, errors: { _form: "Choose to accept or reject." } };
+  }
+  const note = field(formData, "reviewNote").trim();
+  const reviewNote = note === "" ? null : note.slice(0, 1000);
+
+  const response = await reviewEvidence(
+    dealId,
+    submissionId,
+    decision,
+    reviewNote,
+    "system",
+  );
+  if (!response.ok) return { ok: false, errors: { _form: response.error } };
+
+  revalidatePath(`/deals/${dealId}`);
+  return { ok: true, errors: {} };
+}
+
+/**
+ * Records a human decision. The recommendation is always recomputed from the
+ * current stored state (never trusted from the client), the decision is gated
+ * by the pure approval rules, and only an allowed decision may invoke the
+ * payment provider. Reviewer identity is fixed to "system" until auth exists.
+ */
+export async function recordApprovalAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const dealId = field(formData, "dealId");
+  const milestoneId = field(formData, "milestoneId");
+  const decision = field(formData, "decision");
+  const note = field(formData, "note").trim();
+
+  if (!isApprovalDecision(decision)) {
+    return { ok: false, errors: { _form: "Choose to approve or reject." } };
+  }
+
+  const deal = await getDeal(dealId);
+  if (!deal) return { ok: false, errors: { _form: "Deal not found." } };
+  const milestone = deal.milestones.find((m) => m.id === milestoneId);
+  if (!milestone) {
+    return { ok: false, errors: { _form: "Milestone not found in this deal." } };
+  }
+
+  const evidence = deal.evidence.filter((e) => e.milestoneId === milestoneId);
+  const recommendation = recommendMilestone({
+    deal,
+    milestone,
+    evidence,
+    now: new Date(),
+  });
+
+  const plan = planApproval(recommendation, decision);
+  if (!plan.allowed) {
+    return {
+      ok: false,
+      errors: { _form: plan.error ?? "This decision is not allowed." },
+    };
+  }
+
+  const provider = getPaymentProvider();
+  let providerReference: string | null = null;
+  let providerName: string | null = null;
+  let simulated = false;
+
+  if (plan.action === "CAPTURE") {
+    const result = await provider.captureAuthorization({
+      dealId,
+      milestoneId,
+      amountCents: milestone.amountCents,
+      currency: deal.currency,
+      authorizationReference: deal.authorization?.providerReference ?? null,
+    });
+    if (!result.ok) return { ok: false, errors: { _form: result.message } };
+    providerReference = result.providerReference;
+    providerName = result.providerName;
+    simulated = result.simulated;
+  } else if (plan.action === "VOID") {
+    const result = await provider.voidAuthorization({
+      dealId,
+      milestoneId,
+      authorizationReference: deal.authorization?.providerReference ?? null,
+    });
+    if (!result.ok) return { ok: false, errors: { _form: result.message } };
+    providerReference = result.providerReference;
+    providerName = result.providerName;
+    simulated = result.simulated;
+  }
+
+  const approval: MilestoneApproval = {
+    id: randomUUID(),
+    decision,
+    action: plan.action,
+    reasonCodes: recommendation.reasonCodes,
+    explanation: recommendation.explanation,
+    evidenceFingerprint: recommendation.evidenceFingerprint,
+    evidenceReviewedCount: recommendation.evidenceReviewedCount,
+    reviewedBy: "system",
+    reviewedAt: new Date().toISOString(),
+    providerReference,
+    providerName,
+    simulated,
+    note: note === "" ? null : note.slice(0, 1000),
+  };
+
+  const response = await recordMilestoneApproval(
+    dealId,
+    milestoneId,
+    approval,
+    "system",
+  );
+  if (!response.ok) return { ok: false, errors: { _form: response.error } };
+
+  revalidatePath(`/deals/${dealId}`);
+  revalidatePath("/dashboard");
+  return { ok: true, errors: {} };
 }

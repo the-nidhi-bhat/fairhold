@@ -4,18 +4,26 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { getDeal } from "@/lib/data/deals";
 import { formatCents } from "@/lib/domain/format";
+import { approvalIsStale, recommendMilestone } from "@/lib/domain/rules";
 import {
   allowedManualDealTransitions,
   allowedMilestoneTransitions,
   computeProgress,
   paymentStatusFor,
 } from "@/lib/domain/status";
-import type { DealEvent } from "@/lib/domain/types";
+import type {
+  Deal,
+  DealEvent,
+  EvidenceDecision,
+  Milestone,
+  RecommendationAction,
+} from "@/lib/domain/types";
 import { ProgressBar } from "@/components/progress-bar";
 import {
   StatusBadge,
   dealStatusTone,
   milestoneStatusTone,
+  type BadgeTone,
 } from "@/components/status-badge";
 import {
   authorizeDealAction,
@@ -23,6 +31,11 @@ import {
   changeMilestoneStatusAction,
 } from "../actions";
 import { AddMilestoneForm, EditMilestoneForm } from "./milestone-forms";
+import {
+  AddEvidenceForm,
+  ApprovalPanel,
+  ReviewEvidenceForm,
+} from "./evidence-forms";
 
 export const metadata = { title: "Deal" };
 
@@ -270,6 +283,8 @@ async function DealDetail({ id }: { id: string }) {
                     </p>
                   </div>
 
+                  <MilestoneEvidence deal={deal} milestone={milestone} />
+
                   {transitions.length > 0 ? (
                     <form
                       action={changeMilestoneStatusAction}
@@ -349,6 +364,158 @@ async function DealDetail({ id }: { id: string }) {
       </section>
     </>
   );
+}
+
+const RECOMMENDATION_TONES: Record<RecommendationAction, BadgeTone> = {
+  CAPTURE: "success",
+  HOLD: "warning",
+  VOID: "neutral",
+  DISPUTE: "danger",
+};
+
+const EVIDENCE_TONES: Record<EvidenceDecision, BadgeTone> = {
+  pending: "info",
+  accepted: "success",
+  rejected: "danger",
+};
+
+function MilestoneEvidence({
+  deal,
+  milestone,
+}: {
+  deal: Deal;
+  milestone: Milestone;
+}) {
+  const evidence = deal.evidence
+    .filter((e) => e.milestoneId === milestone.id)
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+  const recommendation = recommendMilestone({
+    deal,
+    milestone,
+    evidence,
+    now: new Date(),
+  });
+  const stale = milestone.approval
+    ? approvalIsStale(milestone.approval, evidence)
+    : false;
+  const canSubmit =
+    milestone.status !== "Completed" && milestone.status !== "Cancelled";
+
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+            Evidence &amp; recommendation
+          </h4>
+          <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+            {recommendation.explanation}
+          </p>
+        </div>
+        <StatusBadge
+          label={recommendation.action}
+          tone={RECOMMENDATION_TONES[recommendation.action]}
+        />
+      </div>
+
+      <ul className="mt-2 flex flex-wrap gap-1.5">
+        {recommendation.reasonCodes.map((code) => (
+          <li
+            key={code}
+            className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+          >
+            {code}
+          </li>
+        ))}
+      </ul>
+
+      {recommendation.requiresHumanReview ? (
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          A human decision is required before any payment action. Code does not
+          verify free-text acceptance criteria.
+        </p>
+      ) : null}
+
+      <ApprovalPanel
+        dealId={deal.id}
+        milestoneId={milestone.id}
+        recommendation={recommendation}
+        approval={milestone.approval}
+        stale={stale}
+      />
+
+      <div className="mt-4">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          Evidence history ({evidence.length})
+        </h4>
+        {evidence.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            No evidence submitted yet.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-3">
+            {evidence.map((sub) => (
+              <li
+                key={sub.id}
+                className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    {formatDateTime(sub.submittedAt)} · {sub.submittedBy}
+                  </span>
+                  <StatusBadge
+                    label={sub.decision}
+                    tone={EVIDENCE_TONES[sub.decision]}
+                  />
+                </div>
+                {sub.note ? (
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                    {sub.note}
+                  </p>
+                ) : null}
+                {sub.url ? (
+                  <p className="mt-1 truncate text-sm">
+                    <a
+                      href={sub.url}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="text-indigo-600 underline dark:text-indigo-400"
+                    >
+                      {sub.url}
+                    </a>
+                  </p>
+                ) : null}
+                {sub.file ? (
+                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                    File: {sub.file.name} ({sub.file.type},{" "}
+                    {formatBytes(sub.file.size)})
+                  </p>
+                ) : null}
+                {sub.reviewNote ? (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Review: {sub.reviewNote}
+                  </p>
+                ) : null}
+                {sub.decision === "pending" && canSubmit ? (
+                  <ReviewEvidenceForm dealId={deal.id} submissionId={sub.id} />
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {canSubmit ? (
+        <AddEvidenceForm dealId={deal.id} milestoneId={milestone.id} />
+      ) : null}
+    </div>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function TimelineItem({ event }: { event: DealEvent }) {
