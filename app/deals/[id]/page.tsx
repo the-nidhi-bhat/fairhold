@@ -29,7 +29,9 @@ import {
   authorizeDealAction,
   changeDealStatusAction,
   changeMilestoneStatusAction,
+  confirmAuthorizationAction,
 } from "../actions";
+import { getPaymentProvider } from "@/lib/payments";
 import { AddMilestoneForm, EditMilestoneForm } from "./milestone-forms";
 import {
   AddEvidenceForm,
@@ -64,6 +66,7 @@ async function DealDetail({ id }: { id: string }) {
 
   const progress = computeProgress(deal);
   const payment = paymentStatusFor(deal);
+  const sandboxConfigured = getPaymentProvider().mode === "sandbox";
   const dealTransitions = allowedManualDealTransitions(deal.status);
   const canAddMilestones =
     deal.status !== "Completed" && deal.status !== "Cancelled";
@@ -149,19 +152,64 @@ async function DealDetail({ id }: { id: string }) {
           <StatusBadge label={payment.label} tone={payment.tone} />
         </div>
 
-        {deal.status === "Ready for Authorization" ? (
+        {deal.pendingAuthorization ? (
+          <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
+            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+              Waiting for buyer approval in PayPal
+            </p>
+            <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
+              A PayPal sandbox order was created via{" "}
+              {deal.pendingAuthorization.providerName}. No authorization exists
+              yet — approve the order in PayPal, then confirm below.
+            </p>
+            {deal.pendingAuthorization.approvalUrl ? (
+              <a
+                href={deal.pendingAuthorization.approvalUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-block rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500"
+              >
+                Open PayPal sandbox approval
+              </a>
+            ) : (
+              <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
+                PayPal did not return an approval URL; approve the order from the
+                sandbox dashboard.
+              </p>
+            )}
+            <form action={confirmAuthorizationAction} className="mt-3">
+              <input type="hidden" name="dealId" value={deal.id} />
+              <button
+                type="submit"
+                className="rounded-md border border-amber-600 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:text-amber-200 dark:hover:bg-amber-900/40"
+              >
+                I approved it — confirm authorization
+              </button>
+            </form>
+          </div>
+        ) : deal.status === "Ready for Authorization" ? (
           <form action={authorizeDealAction} className="mt-4">
             <input type="hidden" name="dealId" value={deal.id} />
             <button
               type="submit"
               className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500"
             >
-              Simulate authorization hold
+              {sandboxConfigured
+                ? "Create PayPal sandbox authorization"
+                : "Simulate authorization hold"}
             </button>
-            <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
-              Demo only: this records a simulated hold. No PayPal request is
-              made, and no money moves.
-            </p>
+            {sandboxConfigured ? (
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                Creates a real order in the PayPal sandbox (no live money). The
+                buyer must approve it, then confirm; this is an authorization
+                hold, not a capture or settlement.
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+                Demo only: this records a simulated hold. No PayPal request is
+                made, and no money moves.
+              </p>
+            )}
           </form>
         ) : null}
       </section>

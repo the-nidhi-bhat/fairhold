@@ -23,6 +23,7 @@ import {
   reviewEvidence,
   setDealStatus,
   setMilestoneStatus,
+  setPendingAuthorization,
   updateMilestone,
 } from "@/lib/data/deals";
 import { writeEvidenceFile } from "@/lib/data/store";
@@ -41,7 +42,7 @@ import {
   validateDealInput,
   validateMilestoneInput,
 } from "@/lib/domain/validation";
-import { getPaymentProvider } from "@/lib/payments/demo";
+import { getPaymentProvider } from "@/lib/payments";
 
 export interface FormState {
   ok: boolean;
@@ -159,6 +160,13 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
   revalidatePath("/dashboard");
 }
 
+/**
+ * Requests an authorization hold. With the demo provider this completes in one
+ * step (simulated). With the PayPal sandbox it creates an order and stops,
+ * recording a pending authorization the buyer must approve in PayPal; a second
+ * action then confirms it. A failed real request is never downgraded to a
+ * simulated success — the deal simply stays unauthorized.
+ */
 export async function authorizeDealAction(formData: FormData): Promise<void> {
   const dealId = field(formData, "dealId");
   const deal = await getDeal(dealId);
@@ -173,13 +181,66 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
   });
   if (!authorization.ok) return;
 
+  if (provider.mode === "sandbox" && authorization.orderId) {
+    await setPendingAuthorization(
+      dealId,
+      {
+        providerName: authorization.providerName,
+        mode: provider.mode,
+        providerOrderId: authorization.orderId,
+        approvalUrl: authorization.approvalUrl,
+        amountCents,
+        currency: deal.currency,
+      },
+      "system",
+    );
+  } else {
+    await markDealAuthorized(
+      dealId,
+      {
+        providerName: authorization.providerName,
+        providerReference: authorization.providerReference,
+        simulated: authorization.simulated,
+        amountCents,
+      },
+      "system",
+    );
+  }
+  revalidatePath(`/deals/${dealId}`);
+  revalidatePath("/dashboard");
+}
+
+/**
+ * Confirms a PayPal sandbox order after the buyer approved it in PayPal. Only
+ * runs when a pending order exists; the resulting authorization id is recorded
+ * as a real (non-simulated) hold. The signed result, not the pending record, is
+ * what marks the deal authorized.
+ */
+export async function confirmAuthorizationAction(formData: FormData): Promise<void> {
+  const dealId = field(formData, "dealId");
+  const deal = await getDeal(dealId);
+  if (!deal || deal.status !== "Ready for Authorization") return;
+  const pending = deal.pendingAuthorization;
+  if (!pending) return;
+
+  const provider = getPaymentProvider();
+  if (provider.mode !== "sandbox") return;
+
+  const result = await provider.authorizeOrder({
+    dealId,
+    orderId: pending.providerOrderId,
+    requestId: `fairhold-confirm-${dealId}`,
+  });
+  if (!result.ok || !result.providerReference) return;
+
   await markDealAuthorized(
     dealId,
     {
-      providerName: authorization.providerName,
-      providerReference: authorization.providerReference,
-      simulated: authorization.simulated,
-      amountCents,
+      providerName: result.providerName,
+      providerReference: result.providerReference,
+      providerOrderId: pending.providerOrderId,
+      simulated: result.simulated,
+      amountCents: pending.amountCents,
     },
     "system",
   );
