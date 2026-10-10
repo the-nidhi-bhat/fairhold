@@ -1,6 +1,6 @@
 # Development status
 
-Last updated: Phase 4 (PostgreSQL persistence + migration).
+Last updated: Phase 5 (PayPal webhook endpoint + durable reconciliation).
 
 ## What exists
 
@@ -60,6 +60,33 @@ Last updated: Phase 4 (PostgreSQL persistence + migration).
     when `PAYPAL_ENV=sandbox` **and** real-looking credentials are present;
     placeholder values are ignored and the app stays on the demo provider. A
     started real operation is never downgraded to simulated.
+- **PayPal webhook endpoint + durable reconciliation** (`app/api/paypal/webhook`,
+  `lib/payments/webhook-endpoint.ts`, `lib/data/postgres/webhooks.ts`,
+  `migrations/0002_authorization_status.sql`): a fail-closed Route Handler that
+  requires sandbox config (including `PAYPAL_WEBHOOK_ID`) and the PostgreSQL
+  backend (`503` otherwise), reads PayPal's five `paypal-transmission-*`
+  headers, caps the body at 1 MB, and verifies the event signature through the
+  provider boundary's postback call to PayPal's
+  `/v1/notifications/verify-webhook-signature`. Verification failures are `400`
+  (permanent, no retry); verification infrastructure outages are `500` (PayPal
+  retries). Verified events are processed in **one transaction**: inserted into
+  `webhook_events` with a unique `(provider, event_id)` key, claimed
+  (`received`/`failed` → `processing`, attempts incremented), reconciled against
+  the payment tables with `FOR UPDATE` guards, then marked `processed` (or
+  `failed` with a sanitized reason when quarantined). Duplicate and concurrent
+  deliveries are applied exactly once; a transient database failure rolls back
+  the whole delivery so PayPal redelivers safely; a quarantined (`failed`) row
+  can be re-claimed on redelivery after corrective state. Reconciliation
+  semantics: `PAYMENT.AUTHORIZATION.CREATED` either confirms an existing
+  authorization or resolves a pending order into an authorized deal (amount and
+  currency must match), `PAYMENT.AUTHORIZATION.VOIDED` marks the authorization
+  `VOIDED` (never regressing deal/milestone state), `PAYMENT.CAPTURE.COMPLETED`
+  is recorded **only** when a matching human approval with `CAPTURE` action
+  already exists (event is evidence, never permission — it cannot approve,
+  capture, or complete anything by itself), and `PAYMENT.CAPTURE.PENDING` is
+  quarantined because FairHold treats captures as synchronous. Audit events stay
+  append-only. Unknown/unsupported event types are acknowledged and recorded as
+  processed with a note.
 - **Server actions** (`app/deals/actions.ts`): create deal, add/update milestone,
   change deal/milestone status, **two-step sandbox authorization** (create order
   → store pending order + approval URL → confirm after buyer approval) or
@@ -87,11 +114,22 @@ Last updated: Phase 4 (PostgreSQL persistence + migration).
   malformed responses, approval URLs, confirmed refusals, ambiguous timeouts
   (`PENDING`), local validation, idempotency headers on every mutating call,
   token caching, webhook event mapping, and webhook signature verification
-  (fails closed). **PostgreSQL integration tests** (roundtrip, atomic approval,
-  duplicate/concurrent rejection, rollback integrity, webhook idempotency key)
-  run only when `FAIRHOLD_TEST_DATABASE_URL` is set to an isolated database;
-  otherwise they skip with a clear reason, so unit and integration coverage are
-  never conflated.
+  (fails closed; infrastructure failures throw `WebhookVerificationError` so the
+  endpoint can distinguish retryable `500` from permanent `400`). **PostgreSQL
+  integration tests** (roundtrip, atomic approval, duplicate/concurrent
+  rejection, rollback integrity, webhook idempotency key, and webhook
+  reconciliation: pending-order resolution, duplicate/concurrent delivery,
+  unknown-order and amount/currency-mismatch quarantines, void reconciliation,
+  capture-without-approval quarantine, capture confirmation against an existing
+  approval, retry-after-failure, and full-transaction rollback on transient
+  failure) run only when `FAIRHOLD_TEST_DATABASE_URL` is set to an isolated
+  database; otherwise they skip with a clear reason, so unit and integration
+  coverage are never conflated. **Endpoint unit tests** cover the fail-closed
+  matrix: unconfigured → 503, JSON backend → 503, missing headers → 400,
+  oversized body → 413, malformed JSON / missing event id → 400, rejected
+  signature → 400, verification outage → 500, processing failure → 500, and
+  acknowledgement (200) for processed / duplicate / quarantined / unsupported
+  outcomes.
 - A separate PayPal **sandbox kill-test harness** under `scripts/` (a development
   probe; not part of the app runtime).
 - Verification scripts: `npm run lint`, `npm run typecheck`, `npm run build`,
@@ -117,13 +155,16 @@ Last updated: Phase 4 (PostgreSQL persistence + migration).
   on local disk without malware scanning.
 - Dispute case management (there are `Disputed` states and reason codes, but no
   dispute workflow, messaging, or resolution process).
-- The PayPal webhook **HTTP endpoint** and payment-state reconciliation: webhook
-  **signature verification** and **event mapping** are implemented and
-  unit-tested, and the database now has a webhook inbox (`webhook_events`) whose
-  `UNIQUE (provider, event_id)` constraint is the deduplication key, but the
-  endpoint itself and its handler (verify signature → insert-or-ignore → apply
-  atomically → mark processed/failed) are still deferred. The migration header
-  documents that handler contract.
+- A live PayPal webhook **delivery** end to end: the endpoint, signature
+  verification, and reconciliation are implemented and verified against a
+  disposable PostgreSQL (including a genuine signature-verification postback
+  contract test with mocked transport), but no genuine Sandbox webhook event has
+  been received from PayPal and reconciled against the live sandbox. That
+  requires real developer.paypal.com credentials, a public/tunneled HTTPS
+  listener URL (PayPal delivers only to HTTPS 443), and a real Sandbox buyer
+  event — so live webhook verification is **not** claimed to work yet. The
+  documented retry/quarantine behavior is implemented; real delivery cadence
+  (up to 25 retries over 3 days) is PayPal's to honor.
 - CI or deployment configuration.
 
 ## Rules of evidence
