@@ -35,6 +35,7 @@ function normalizeDeal(deal: Deal): Deal {
   return {
     ...deal,
     authorization: deal.authorization ?? null,
+    pendingAuthorization: deal.pendingAuthorization ?? null,
     evidence: Array.isArray(deal.evidence) ? deal.evidence : [],
     milestones: (deal.milestones ?? []).map((m) => ({
       ...m,

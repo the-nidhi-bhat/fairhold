@@ -53,6 +53,8 @@ export type DealEventType =
   | "deal.created"
   | "deal.status_changed"
   | "deal.authorization_simulated"
+  | "deal.authorization_sandbox"
+  | "deal.authorization_pending"
   | "milestone.created"
   | "milestone.updated"
   | "milestone.status_changed"
@@ -81,8 +83,13 @@ export interface Deal {
   /** ISO 4217 code. Only "USD" is supported in the current build. */
   currency: string;
   status: DealStatus;
-  /** Record of the (currently simulated) authorization hold, or null. */
+  /** Record of the authorization hold, or null. */
   authorization: DealAuthorization | null;
+  /**
+   * A real (sandbox) order awaiting buyer approval, or null. Present only
+   * between creating a PayPal order and authorizing it.
+   */
+  pendingAuthorization: PendingAuthorization | null;
   /** Append-only evidence submissions across all milestones of this deal. */
   evidence: EvidenceSubmission[];
   milestones: Milestone[];
@@ -201,7 +208,24 @@ export interface MilestoneApproval {
 export interface DealAuthorization {
   providerName: string;
   providerReference: string | null;
+  /** Provider order id the authorization belongs to, when known. */
+  providerOrderId?: string | null;
   simulated: boolean;
   amountCents: number;
+  createdAt: string;
+}
+
+/**
+ * A provider order that has been created but not yet authorized. For the PayPal
+ * sandbox this is the step between creating the order and the buyer approving
+ * it in PayPal. It is not an authorization and moves no money.
+ */
+export interface PendingAuthorization {
+  providerName: string;
+  mode: "demo" | "sandbox" | "live";
+  providerOrderId: string;
+  approvalUrl: string | null;
+  amountCents: number;
+  currency: string;
   createdAt: string;
 }

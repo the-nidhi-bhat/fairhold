@@ -81,7 +81,9 @@ export function computeProgress(
 
 export type PaymentStatusKey =
   | "not_authorized"
+  | "authorization_pending"
   | "authorization_simulated"
+  | "authorization_sandbox"
   | "no_payment";
 
 export interface PaymentStatusInfo {
@@ -92,15 +94,35 @@ export interface PaymentStatusInfo {
 }
 
 /**
- * Payment status is derived from the deal state. The only way a deal reaches
- * `Authorized` in this build is the demo adapter, so post-authorization states
- * are labelled as simulated and never presented as a real PayPal authorization.
+ * Payment status is derived from the deal state. A simulated authorization (the
+ * demo adapter) is labelled as simulated; a real PayPal *sandbox* authorization
+ * is labelled as such and never presented as captured or settled money. An
+ * order awaiting buyer approval is shown as pending, not authorized.
  */
-export function paymentStatusFor(deal: Pick<Deal, "status">): PaymentStatusInfo {
+export function paymentStatusFor(
+  deal: Pick<Deal, "status" | "authorization" | "pendingAuthorization">,
+): PaymentStatusInfo {
+  const real = deal.authorization && !deal.authorization.simulated;
+
   switch (deal.status) {
     case "Draft":
     case "Awaiting Agreement":
+      return {
+        key: "not_authorized",
+        label: "Not authorized",
+        tone: "neutral",
+        detail: "No payment authorization has been requested.",
+      };
     case "Ready for Authorization":
+      if (deal.pendingAuthorization) {
+        return {
+          key: "authorization_pending",
+          label: "Buyer approval pending (PayPal sandbox)",
+          tone: "warning",
+          detail:
+            "A PayPal sandbox order was created. Complete buyer approval in PayPal, then confirm the authorization. No authorization exists yet.",
+        };
+      }
       return {
         key: "not_authorized",
         label: "Not authorized",
@@ -116,19 +138,25 @@ export function paymentStatusFor(deal: Pick<Deal, "status">): PaymentStatusInfo 
       };
     case "Disputed":
       return {
-        key: "authorization_simulated",
-        label: "Authorization: simulated · Disputed",
+        key: real ? "authorization_sandbox" : "authorization_simulated",
+        label: real
+          ? "Authorization: PayPal sandbox · Disputed"
+          : "Authorization: simulated · Disputed",
         tone: "danger",
-        detail:
-          "Recorded by the demo payment adapter. No PayPal request was made.",
+        detail: real
+          ? "Recorded via the PayPal sandbox adapter. This is a hold, not a capture or settlement."
+          : "Recorded by the demo payment adapter. No PayPal request was made.",
       };
     default:
       return {
-        key: "authorization_simulated",
-        label: "Authorization: simulated (demo)",
-        tone: "warning",
-        detail:
-          "Recorded by the demo payment adapter. No PayPal request was made.",
+        key: real ? "authorization_sandbox" : "authorization_simulated",
+        label: real
+          ? "Authorization: PayPal sandbox"
+          : "Authorization: simulated (demo)",
+        tone: real ? "success" : "warning",
+        detail: real
+          ? "Recorded via the PayPal sandbox adapter. This is an authorization hold, not a capture or settlement."
+          : "Recorded by the demo payment adapter. No PayPal request was made.",
       };
   }
 }

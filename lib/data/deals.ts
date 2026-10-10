@@ -80,6 +80,7 @@ export async function createDeal(
       currency: input.currency,
       status: "Draft",
       authorization: null,
+      pendingAuthorization: null,
       evidence: [],
       milestones: [],
       events: [],
@@ -240,6 +241,7 @@ export async function markDealAuthorized(
   authorization: {
     providerName: string;
     providerReference: string | null;
+    providerOrderId?: string | null;
     simulated: boolean;
     amountCents: number;
   },
@@ -259,17 +261,66 @@ export async function markDealAuthorized(
     deal.authorization = {
       providerName: authorization.providerName,
       providerReference: authorization.providerReference,
+      providerOrderId: authorization.providerOrderId ?? null,
       simulated: authorization.simulated,
       amountCents: authorization.amountCents,
+      createdAt: now(),
+    };
+    deal.pendingAuthorization = null;
+    deal.updatedAt = now();
+    deal.events.push(
+      makeEvent(
+        authorization.simulated
+          ? "deal.authorization_simulated"
+          : "deal.authorization_sandbox",
+        authorization.simulated
+          ? `Authorization recorded via ${authorization.providerName} (SIMULATED — no PayPal request was made).`
+          : `Authorization recorded via ${authorization.providerName} (PayPal sandbox). This is an authorization hold, not a capture.`,
+        actor,
+      ),
+    );
+    await writeDatabase(db);
+    return { ok: true, deal };
+  });
+}
+
+/**
+ * Records a provider order that was created but not yet authorized (the PayPal
+ * sandbox buyer-approval step). Does not change deal status and moves no money.
+ */
+export async function setPendingAuthorization(
+  dealId: string,
+  pending: {
+    providerName: string;
+    mode: "demo" | "sandbox" | "live";
+    providerOrderId: string;
+    approvalUrl: string | null;
+    amountCents: number;
+    currency: string;
+  },
+  actor = "system",
+): Promise<DealMutationResult> {
+  return withWriteLock(async () => {
+    const db = await readDatabase();
+    const deal = db.deals.find((d) => d.id === dealId);
+    if (!deal) return { ok: false, error: "Deal not found." };
+    if (deal.status !== "Ready for Authorization") {
+      return { ok: false, error: "Deal is not ready for authorization." };
+    }
+    deal.pendingAuthorization = {
+      providerName: pending.providerName,
+      mode: pending.mode,
+      providerOrderId: pending.providerOrderId,
+      approvalUrl: pending.approvalUrl,
+      amountCents: pending.amountCents,
+      currency: pending.currency,
       createdAt: now(),
     };
     deal.updatedAt = now();
     deal.events.push(
       makeEvent(
-        "deal.authorization_simulated",
-        authorization.simulated
-          ? `Authorization recorded via ${authorization.providerName} (SIMULATED — no PayPal request was made).`
-          : `Authorization recorded via ${authorization.providerName}.`,
+        "deal.authorization_pending",
+        `Authorization order created via ${pending.providerName}; waiting for buyer approval.`,
         actor,
       ),
     );
