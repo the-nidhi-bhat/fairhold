@@ -2,11 +2,13 @@
 
 > **Status: under active development.** The Deal & Milestone foundation is in
 > place: you can create a deal, add milestones with amounts and acceptance
-> criteria, move through workflow states, and see an activity timeline. Deals
-> use **development-only JSON storage** (no database yet). Payments are
+> criteria, move through workflow states, and see an activity timeline. You can
+> also submit **evidence**, get a deterministic **rules recommendation**
+> (`CAPTURE` / `HOLD` / `VOID` / `DISPUTE` with reason codes), review the
+> evidence, and record a **human approval** decision. Deals use
+> **development-only JSON storage** (no database yet). Payments are
 > **simulated** by a demo provider — no real PayPal call is made by the app.
-> AI analysis, evidence, the rules engine, authentication, and disputes are
-> not implemented yet.
+> AI analysis, authentication, and dispute handling are not implemented yet.
 
 FairHold is an **AI-assisted conditional payment platform** built around PayPal,
 where:
@@ -44,8 +46,8 @@ it "escrow".
 | --- | --- | --- |
 | Web app | Next.js + TypeScript | Deals, milestones, dashboard, workflow states |
 | Data | PostgreSQL | Not implemented — dev JSON file (`.data/`, git-ignored) for now |
-| Payments | PayPal APIs, server-side only | Interface + simulated demo provider; no live call from the app |
-| Intelligence | AI recommendations feeding a rules engine | Not implemented |
+| Payments | PayPal APIs, server-side only | Interface + simulated demo provider (authorize/capture/void); no live call from the app |
+| Intelligence | AI recommendations feeding a rules engine | Deterministic rules engine implemented; AI model not implemented |
 
 ## Getting started
 
