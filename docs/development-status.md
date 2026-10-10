@@ -1,6 +1,6 @@
 # Development status
 
-Last updated: Phase 3A (PayPal sandbox provider boundary).
+Last updated: Phase 4 (PostgreSQL persistence + migration).
 
 ## What exists
 
@@ -17,10 +17,30 @@ Last updated: Phase 3A (PayPal sandbox provider boundary).
   sniffing by magic bytes, filename sanitization) and a **pure deterministic
   rules engine** that returns a `CAPTURE` / `HOLD` / `VOID` / `DISPUTE`
   recommendation with structured reason codes. Pure and unit-tested.
-- **Development-only persistence** (`lib/data`): deals are stored as a JSON file
-  at `.data/fairhold.json` and submitted evidence files are written under
-  `.data/evidence/` (both git-ignored). This is demo storage, not a database. It
-  is single-instance and guarded only by an in-process write lock.
+- **Development persistence** (`lib/data`): with no `DATABASE_URL` configured the
+  app runs in explicit dev mode — deals are stored as a JSON file at
+  `.data/fairhold.json` and submitted evidence files under `.data/evidence/` (both
+  git-ignored). This is demo storage, not a database: single-instance, guarded
+  only by an in-process write lock.
+- **PostgreSQL persistence** (`lib/data/postgres`, `migrations/`): a real schema
+  (`0001_initial.sql`) covering deals, milestones, evidence with decisions and
+  metadata, one human approval per milestone (with evidence fingerprint), an
+  append-only audit trail, and payment records (orders / authorizations /
+  captures) with integer-cent amounts, status `CHECK` constraints, foreign keys,
+  and unique constraints that enforce at most one pending order and one
+  authorization per deal. A hand-rolled transactional migration runner applies
+  pending `*.sql` files idempotently (`npm run db:migrate`). The data-access
+  layer (`lib/data/index.ts`) selects the backend at startup: PostgreSQL when
+  `DATABASE_URL` is set, otherwise the JSON dev store. **There is no silent
+  fallback** — a configured but unreachable database fails loudly. Every
+  mutation runs in a transaction with `SELECT ... FOR UPDATE` on the deal row
+  (concurrency-safe: exactly one concurrent authorization wins) and
+  parameterized queries; driver errors are never surfaced to callers. Evidence
+  file bytes are stored on disk, not in PostgreSQL (a storage abstraction with a
+  documented object-storage requirement for production). A validating,
+  idempotent import command (`npm run db:import`) loads the JSON dev store into
+  PostgreSQL, rejects payment-inconsistent records, and never deletes or
+  modifies the source JSON.
 - **Payment provider boundary** (`lib/payments`): a server-side adapter interface
   with `createAuthorizationHold`, `authorizeOrder`, `captureAuthorization`, and
   `voidAuthorization`, plus two implementations:
@@ -59,12 +79,19 @@ Last updated: Phase 3A (PayPal sandbox provider boundary).
   is labeled explicitly: simulated authorizations are labeled simulated, sandbox
   authorizations are labeled as PayPal sandbox holds, and an order awaiting buyer
   approval is shown as pending (never as authorized).
-- **Tests**: `npm test` runs `node --test` over `lib/**/*.test.ts` — 71 tests.
-  The PayPal adapter is tested against a mocked transport: OAuth success/failure,
+- **Tests**: `npm test` runs `node --test` over `lib/**/*.test.ts`. Unit tests
+  cover backend selection (JSON default / PostgreSQL opt-in, no-silent-fallback),
+  import validation (payment-state consistency), and a schema contract guard that
+  fails if a required table/constraint disappears from the migration SQL. The
+  PayPal adapter is tested against a mocked transport: OAuth success/failure,
   malformed responses, approval URLs, confirmed refusals, ambiguous timeouts
   (`PENDING`), local validation, idempotency headers on every mutating call,
   token caching, webhook event mapping, and webhook signature verification
-  (fails closed).
+  (fails closed). **PostgreSQL integration tests** (roundtrip, atomic approval,
+  duplicate/concurrent rejection, rollback integrity, webhook idempotency key)
+  run only when `FAIRHOLD_TEST_DATABASE_URL` is set to an isolated database;
+  otherwise they skip with a clear reason, so unit and integration coverage are
+  never conflated.
 - A separate PayPal **sandbox kill-test harness** under `scripts/` (a development
   probe; not part of the app runtime).
 - Verification scripts: `npm run lint`, `npm run typecheck`, `npm run build`,
@@ -79,17 +106,24 @@ Last updated: Phase 3A (PayPal sandbox provider boundary).
   No authorization, capture, settlement, or refund has occurred through the app.
 - AI/model integration. The recommendation is produced by deterministic rules
   alone; no LLM judges whether work is complete.
-- PostgreSQL schema, migrations, or production data access.
+- PostgreSQL is implemented and verified against a disposable container, but the
+  integration suite still requires `FAIRHOLD_TEST_DATABASE_URL`; the default
+  local flow keeps using the JSON dev store until `DATABASE_URL` is set. There is
+  no hosted database, no replication, no backup strategy, and no production
+  deployment.
 - Authentication, sessions, or authorization. Server actions run as a `system`
   actor, so the app has **no access control** and is development-only. Submitted
   evidence is **not authenticated to a real user**, and uploaded files are stored
   on local disk without malware scanning.
 - Dispute case management (there are `Disputed` states and reason codes, but no
   dispute workflow, messaging, or resolution process).
-- PayPal webhooks and payment-state reconciliation: webhook **signature
-  verification** and **event mapping** are implemented and unit-tested, but the
-  webhook HTTP endpoint and persisted event-id deduplication are deferred until
-  the database exists.
+- The PayPal webhook **HTTP endpoint** and payment-state reconciliation: webhook
+  **signature verification** and **event mapping** are implemented and
+  unit-tested, and the database now has a webhook inbox (`webhook_events`) whose
+  `UNIQUE (provider, event_id)` constraint is the deduplication key, but the
+  endpoint itself and its handler (verify signature → insert-or-ignore → apply
+  atomically → mark processed/failed) are still deferred. The migration header
+  documents that handler contract.
 - CI or deployment configuration.
 
 ## Rules of evidence
