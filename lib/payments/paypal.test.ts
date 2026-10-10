@@ -4,6 +4,7 @@ import {
   PayPalSandboxProvider,
   mapWebhookEvent,
   verifyWebhookSignature,
+  WebhookVerificationError,
 } from "./paypal.ts";
 import { readPayPalConfig } from "./config.ts";
 import { getPaymentProvider } from "./index.ts";
@@ -425,6 +426,76 @@ test("verifyWebhookSignature: true only on SUCCESS", async () => {
     ),
     false,
   );
+});
+
+test("verifyWebhookSignature: throws WebhookVerificationError on infra failures", async () => {
+  const input = {
+    authAlgo: "SHA256withRSA",
+    certUrl: "https://example.test/cert",
+    transmissionId: "tid",
+    transmissionSig: "sig",
+    transmissionTime: "2026-01-01T00:00:00Z",
+    event: { event_type: "PAYMENT.AUTHORIZATION.CREATED", resource: {} },
+  };
+
+  // Token request transport failure → infra error.
+  await assert.rejects(
+    verifyWebhookSignature(
+      config,
+      input,
+      api(() => {
+        throw new TransportTimeoutError();
+      }).transport,
+    ),
+    WebhookVerificationError,
+  );
+
+  // Token endpoint returns a non-2xx → infra error.
+  await assert.rejects(
+    verifyWebhookSignature(
+      config,
+      input,
+      api(() => json(500, { message: "boom" })).transport,
+    ),
+    WebhookVerificationError,
+  );
+
+  // Verify postback transport failure → infra error.
+  await assert.rejects(
+    verifyWebhookSignature(
+      config,
+      input,
+      api((request) => {
+        if (request.url.endsWith("/token")) return tokenHandler(request);
+        throw new TransportTimeoutError();
+      }).transport,
+    ),
+    WebhookVerificationError,
+  );
+
+  // Verify endpoint returns a non-2xx → infra error.
+  await assert.rejects(
+    verifyWebhookSignature(
+      config,
+      input,
+      api((request) => {
+        if (request.url.endsWith("/token")) return tokenHandler(request);
+        return json(500, { message: "boom" });
+      }).transport,
+    ),
+    WebhookVerificationError,
+  );
+
+  // A clean FAILURE response is still a definitive false, not an error.
+  const ok = await verifyWebhookSignature(
+    config,
+    input,
+    api((request) => {
+      if (request.url.endsWith("/token")) return tokenHandler(request);
+      return json(200, { verification_status: "FAILURE" });
+    }).transport,
+  );
+  assert.equal(ok, false);
 });
 
 // ---------------------------------------------------------------------------
