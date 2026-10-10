@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { connection } from "next/server";
-import { listDeals } from "@/lib/data/deals";
+import { listDeals } from "@/lib/data";
 import { formatCents } from "@/lib/domain/format";
 import { computeProgress, paymentStatusFor } from "@/lib/domain/status";
 import { ProgressBar } from "@/components/progress-bar";

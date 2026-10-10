@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
-import { getDeal } from "@/lib/data/deals";
+import { getDeal } from "@/lib/data";
 import { formatCents } from "@/lib/domain/format";
 import { approvalIsStale, recommendMilestone } from "@/lib/domain/rules";
 import {

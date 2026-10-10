@@ -16,12 +16,13 @@
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { randomUUID } from "node:crypto";
-import type { Database, Deal } from "../domain/types";
+import type { Database, Deal } from "../domain/types.ts";
+import { writeEvidenceFile } from "./storage.ts";
+
+export { writeEvidenceFile };
 
 const DATA_DIR = join(process.cwd(), ".data");
 const DATA_FILE = join(DATA_DIR, "fairhold.json");
-const EVIDENCE_DIR = join(DATA_DIR, "evidence");
 
 function emptyDatabase(): Database {
   return { version: 1, deals: [] };
@@ -61,21 +62,6 @@ export async function readDatabase(): Promise<Database> {
 export async function writeDatabase(db: Database): Promise<void> {
   await mkdir(DATA_DIR, { recursive: true });
   await writeFile(DATA_FILE, JSON.stringify(db, null, 2), "utf8");
-}
-
-/**
- * Persist an evidence file's bytes to the dev store and return its path
- * relative to .data. The stored name is generated (never the raw client name)
- * so a crafted filename cannot affect the path.
- */
-export async function writeEvidenceFile(
-  sanitizedName: string,
-  bytes: Uint8Array,
-): Promise<string> {
-  await mkdir(EVIDENCE_DIR, { recursive: true });
-  const storedName = `${randomUUID()}-${sanitizedName}`;
-  await writeFile(join(EVIDENCE_DIR, storedName), bytes);
-  return join("evidence", storedName);
 }
 
 // Serialize writes so two requests cannot interleave read-modify-write cycles.

@@ -25,8 +25,8 @@ import {
   setMilestoneStatus,
   setPendingAuthorization,
   updateMilestone,
-} from "@/lib/data/deals";
-import { writeEvidenceFile } from "@/lib/data/store";
+} from "@/lib/data";
+import { writeEvidenceFile } from "@/lib/data/storage";
 import { isApprovalDecision, planApproval } from "@/lib/domain/approval";
 import { validateEvidenceInput } from "@/lib/domain/evidence";
 import { recommendMilestone } from "@/lib/domain/rules";

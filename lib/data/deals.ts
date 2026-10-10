@@ -18,9 +18,9 @@ import type {
   Milestone,
   MilestoneApproval,
   MilestoneStatus,
-} from "../domain/types";
-import { canTransitionDeal, canTransitionMilestone } from "../domain/status";
-import { readDatabase, withWriteLock, writeDatabase } from "./store";
+} from "../domain/types.ts";
+import { canTransitionDeal, canTransitionMilestone } from "../domain/status.ts";
+import { readDatabase, withWriteLock, writeDatabase } from "./store.ts";
 
 export type MilestoneInput = Pick<
   Milestone,
