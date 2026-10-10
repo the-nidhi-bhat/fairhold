@@ -530,9 +530,27 @@ export interface WebhookVerificationInput {
 }
 
 /**
+ * Thrown when webhook signature verification could not be completed because of
+ * an infrastructure problem (transport failure, timeout, or an HTTP error from
+ * the PayPal API). In that case the signature's validity is UNKNOWN, so the
+ * webhook endpoint must respond 5xx so PayPal retries the delivery. This is
+ * distinct from a clean verification response of anything other than SUCCESS,
+ * which is a definitive invalid signature (4xx, never retried).
+ */
+export class WebhookVerificationError extends Error {
+  constructor(message = "PayPal webhook signature could not be verified") {
+    super(message);
+    this.name = "WebhookVerificationError";
+  }
+}
+
+/**
  * Verify a webhook signature with PayPal using the configured webhook id.
  * Returns true only when PayPal responds with verification_status SUCCESS.
  * Fails closed: missing config or fields, or any non-SUCCESS response, is false.
+ * Throws {@link WebhookVerificationError} when verification could not be
+ * completed (transport failure or PayPal API error) — callers must respond 5xx
+ * so the provider retries the delivery.
  */
 export async function verifyWebhookSignature(
   config: PayPalConfig,
@@ -570,11 +588,12 @@ export async function verifyWebhookSignature(
       ? (JSON.parse(tokenResponse.text) as Record<string, unknown>)
       : null;
     if (!tokenResponse.ok || !tokenData || typeof tokenData.access_token !== "string") {
-      return false;
+      throw new WebhookVerificationError();
     }
     token = tokenData.access_token;
-  } catch {
-    return false;
+  } catch (error) {
+    if (error instanceof WebhookVerificationError) throw error;
+    throw new WebhookVerificationError();
   }
 
   try {
@@ -596,11 +615,16 @@ export async function verifyWebhookSignature(
         webhook_event: input.event,
       }),
     });
-    if (!response.ok || !response.text) return false;
+    if (!response.ok || !response.text) {
+      throw new WebhookVerificationError();
+    }
     const data = JSON.parse(response.text) as Record<string, unknown>;
-    return data.verification_status === "SUCCESS";
-  } catch {
+    if (data.verification_status === "SUCCESS") return true;
+    // A clean non-SUCCESS response is a definitive invalid signature.
     return false;
+  } catch (error) {
+    if (error instanceof WebhookVerificationError) throw error;
+    throw new WebhookVerificationError();
   }
 }
 
