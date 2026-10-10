@@ -1,6 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getPaymentProvider } from "./demo.ts";
+import { DemoPaymentProvider } from "./demo.ts";
+
+const getPaymentProvider = () => new DemoPaymentProvider();
 
 test("demo provider: simulates an authorization with no network call", async () => {
   const provider = getPaymentProvider();
@@ -66,4 +68,13 @@ test("demo provider: void is simulated and requires an authorization", async () 
   });
   assert.equal(bad.ok, false);
   assert.equal(bad.status, "FAILED");
+});
+
+test("demo provider: authorizeOrder is simulated and needs no buyer step", async () => {
+  const provider = getPaymentProvider();
+  const result = await provider.authorizeOrder({ dealId: "deal-1", orderId: "demo-order-1" });
+  assert.equal(result.ok, true);
+  assert.equal(result.simulated, true);
+  assert.equal(result.orderId, "demo-order-1");
+  assert.ok(result.providerReference?.startsWith("demo-auth-"));
 });

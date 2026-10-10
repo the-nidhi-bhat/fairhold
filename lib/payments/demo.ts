@@ -10,11 +10,13 @@ import { randomUUID } from "node:crypto";
 import type {
   AuthorizationRequest,
   AuthorizationResult,
+  AuthorizeOrderRequest,
+  AuthorizeOrderResult,
   CaptureRequest,
   PaymentOperationResult,
   PaymentProvider,
   VoidRequest,
-} from "./provider";
+} from "./provider.ts";
 
 export class DemoPaymentProvider implements PaymentProvider {
   readonly name = "demo-payment-provider";
@@ -29,8 +31,25 @@ export class DemoPaymentProvider implements PaymentProvider {
       simulated: true,
       providerName: this.name,
       providerReference: `demo-auth-${randomUUID()}`,
+      orderId: null,
+      approvalUrl: null,
       status: "CREATED",
       message: `SIMULATED: no PayPal request was made (${request.currency} ${amount}).`,
+    };
+  }
+
+  async authorizeOrder(
+    request: AuthorizeOrderRequest,
+  ): Promise<AuthorizeOrderResult> {
+    return {
+      ok: true,
+      simulated: true,
+      providerName: this.name,
+      providerReference: `demo-auth-${randomUUID()}`,
+      orderId: request.orderId,
+      status: "CREATED",
+      message:
+        "SIMULATED: no PayPal request was made (the demo provider needs no buyer approval step).",
     };
   }
 
@@ -82,8 +101,4 @@ export class DemoPaymentProvider implements PaymentProvider {
       message,
     };
   }
-}
-
-export function getPaymentProvider(): PaymentProvider {
-  return new DemoPaymentProvider();
 }

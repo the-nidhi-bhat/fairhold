@@ -3,19 +3,29 @@
  *
  * All payment operations live behind this interface, server-side only. The app
  * must never call PayPal directly from a component or action; it calls a
- * provider. The current implementation is the demo provider (no network). A
- * PayPal sandbox adapter can be added later without touching the domain,
- * actions, or UI.
+ * provider. Two implementations exist: a demo provider (no network, simulated)
+ * and a PayPal *sandbox* adapter. The provider is selected by configuration;
+ * the app never silently switches a started real operation to simulated.
  *
- * Operations modeled: create an authorization hold, capture against it, and
- * void the remaining hold. Capture and void are deliberately separate — void is
- * NOT a refund. A refund operation is intentionally not modeled yet.
+ * Operations modeled: create an authorization hold, authorize an approved
+ * order, capture against the resulting authorization, and void the remaining
+ * authorization. Capture and void are deliberately separate — void is NOT a
+ * refund and a refund is intentionally not modeled.
+ *
+ * Nothing here proves money moved: an authorization is a hold, not a capture or
+ * a settlement. `simulated` distinguishes a demo result from a real provider
+ * result; `status` of "PENDING" means the outcome is ambiguous (for example a
+ * timeout) and a possibly-successful financial request must not be repeated.
  */
 
 export interface AuthorizationRequest {
   dealId: string;
   amountCents: number;
   currency: string;
+  /** Idempotency key. Reusing it makes a retried create return the same order. */
+  requestId?: string;
+  returnUrl?: string;
+  cancelUrl?: string;
 }
 
 export interface AuthorizationResult {
@@ -23,8 +33,30 @@ export interface AuthorizationResult {
   /** True when no external payment network was contacted. */
   simulated: boolean;
   providerName: string;
+  /** Provider order id (used later to authorize or reconcile). */
   providerReference: string | null;
+  orderId: string | null;
+  /** Buyer approval URL when the provider requires a buyer step. */
+  approvalUrl: string | null;
   status: "CREATED" | "FAILED";
+  message: string;
+}
+
+export interface AuthorizeOrderRequest {
+  dealId: string;
+  /** Provider order id returned by createAuthorizationHold. Required. */
+  orderId: string;
+  requestId?: string;
+}
+
+export interface AuthorizeOrderResult {
+  ok: boolean;
+  simulated: boolean;
+  providerName: string;
+  /** Provider authorization id (the hold) when successful. */
+  providerReference: string | null;
+  orderId: string;
+  status: "CREATED" | "PENDING" | "FAILED";
   message: string;
 }
 
@@ -33,23 +65,28 @@ export interface CaptureRequest {
   milestoneId: string;
   amountCents: number;
   currency: string;
-  /** Reference of the authorization hold this capture applies to, if known. */
+  /** Id of the authorization hold this capture applies to. Required. */
   authorizationReference: string | null;
+  finalCapture?: boolean;
+  /** Unique invoice id for this capture (PayPal rejects a duplicate). */
+  invoiceId?: string;
+  requestId?: string;
 }
 
 export interface VoidRequest {
   dealId: string;
   milestoneId: string;
-  /** Reference of the authorization hold to cancel; required. */
+  /** Id of the authorization hold to cancel; required. */
   authorizationReference: string | null;
+  requestId?: string;
 }
 
-export type PaymentOperationStatus = "COMPLETED" | "VOIDED" | "FAILED";
+export type PaymentOperationStatus = "COMPLETED" | "VOIDED" | "PENDING" | "FAILED";
 
 /**
  * Result of a capture or void. `simulated` distinguishes a demo result from a
- * real provider result, and `status` is "FAILED" when the provider refused an
- * invalid request rather than performing the operation.
+ * real provider result. "FAILED" is a confirmed refusal/decline; "PENDING" is an
+ * ambiguous outcome that must be reconciled, never retried blindly.
  */
 export interface PaymentOperationResult {
   ok: boolean;
@@ -68,6 +105,7 @@ export interface PaymentProvider {
   createAuthorizationHold(
     request: AuthorizationRequest,
   ): Promise<AuthorizationResult>;
+  authorizeOrder(request: AuthorizeOrderRequest): Promise<AuthorizeOrderResult>;
   captureAuthorization(
     request: CaptureRequest,
   ): Promise<PaymentOperationResult>;
