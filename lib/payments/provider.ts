@@ -7,9 +7,9 @@
  * PayPal sandbox adapter can be added later without touching the domain,
  * actions, or UI.
  *
- * Authorization is the only operation modeled so far because that is the only
- * one the app currently needs. Capture/void/release will be added to this
- * interface when their milestones are built.
+ * Operations modeled: create an authorization hold, capture against it, and
+ * void the remaining hold. Capture and void are deliberately separate — void is
+ * NOT a refund. A refund operation is intentionally not modeled yet.
  */
 
 export interface AuthorizationRequest {
@@ -28,6 +28,38 @@ export interface AuthorizationResult {
   message: string;
 }
 
+export interface CaptureRequest {
+  dealId: string;
+  milestoneId: string;
+  amountCents: number;
+  currency: string;
+  /** Reference of the authorization hold this capture applies to, if known. */
+  authorizationReference: string | null;
+}
+
+export interface VoidRequest {
+  dealId: string;
+  milestoneId: string;
+  /** Reference of the authorization hold to cancel; required. */
+  authorizationReference: string | null;
+}
+
+export type PaymentOperationStatus = "COMPLETED" | "VOIDED" | "FAILED";
+
+/**
+ * Result of a capture or void. `simulated` distinguishes a demo result from a
+ * real provider result, and `status` is "FAILED" when the provider refused an
+ * invalid request rather than performing the operation.
+ */
+export interface PaymentOperationResult {
+  ok: boolean;
+  simulated: boolean;
+  providerName: string;
+  providerReference: string | null;
+  status: PaymentOperationStatus;
+  message: string;
+}
+
 export type PaymentProviderMode = "demo" | "sandbox" | "live";
 
 export interface PaymentProvider {
@@ -36,4 +68,8 @@ export interface PaymentProvider {
   createAuthorizationHold(
     request: AuthorizationRequest,
   ): Promise<AuthorizationResult>;
+  captureAuthorization(
+    request: CaptureRequest,
+  ): Promise<PaymentOperationResult>;
+  voidAuthorization(request: VoidRequest): Promise<PaymentOperationResult>;
 }

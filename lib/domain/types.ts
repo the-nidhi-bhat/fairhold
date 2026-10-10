@@ -40,6 +40,11 @@ export interface Milestone {
   dueDate: string | null;
   acceptanceCriteria: string;
   status: MilestoneStatus;
+  /**
+   * The most recent human decision recorded for this milestone, or null.
+   * Null until a reviewer explicitly approves or rejects a recommendation.
+   */
+  approval: MilestoneApproval | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,7 +55,11 @@ export type DealEventType =
   | "deal.authorization_simulated"
   | "milestone.created"
   | "milestone.updated"
-  | "milestone.status_changed";
+  | "milestone.status_changed"
+  | "evidence.submitted"
+  | "evidence.reviewed"
+  | "milestone.approval_recorded"
+  | "milestone.payment_simulated";
 
 export interface DealEvent {
   id: string;
@@ -72,6 +81,10 @@ export interface Deal {
   /** ISO 4217 code. Only "USD" is supported in the current build. */
   currency: string;
   status: DealStatus;
+  /** Record of the (currently simulated) authorization hold, or null. */
+  authorization: DealAuthorization | null;
+  /** Append-only evidence submissions across all milestones of this deal. */
+  evidence: EvidenceSubmission[];
   milestones: Milestone[];
   events: DealEvent[];
   createdAt: string;
@@ -81,4 +94,114 @@ export interface Deal {
 export interface Database {
   version: number;
   deals: Deal[];
+}
+
+// ---------------------------------------------------------------------------
+// Evidence
+// ---------------------------------------------------------------------------
+
+export const EVIDENCE_DECISIONS = ["pending", "accepted", "rejected"] as const;
+export type EvidenceDecision = (typeof EVIDENCE_DECISIONS)[number];
+
+export interface EvidenceFile {
+  /** Display name after sanitization; never used as a filesystem path. */
+  name: string;
+  /** Size in bytes. */
+  size: number;
+  /** Content type detected from the file's bytes, not from the client. */
+  type: string;
+  /** Path relative to the .data directory, e.g. "evidence/<id>.png". */
+  storedPath: string;
+}
+
+export interface EvidenceSubmission {
+  id: string;
+  milestoneId: string;
+  note: string;
+  url: string | null;
+  file: EvidenceFile | null;
+  submittedAt: string;
+  /** "system" until authentication exists; never taken from the client. */
+  submittedBy: string;
+  decision: EvidenceDecision;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic recommendation
+// ---------------------------------------------------------------------------
+
+export const RECOMMENDATION_ACTIONS = [
+  "CAPTURE",
+  "HOLD",
+  "VOID",
+  "DISPUTE",
+] as const;
+export type RecommendationAction = (typeof RECOMMENDATION_ACTIONS)[number];
+
+export const REASON_CODES = [
+  "EVIDENCE_MISSING",
+  "EVIDENCE_PENDING_REVIEW",
+  "EVIDENCE_ACCEPTED",
+  "EVIDENCE_REJECTED",
+  "EVIDENCE_NOT_MACHINE_CHECKABLE",
+  "DEADLINE_PASSED",
+  "DEADLINE_MET",
+  "DEAL_NOT_AUTHORIZED",
+  "DEAL_CANCELLED",
+  "MILESTONE_CANCELLED",
+  "MILESTONE_DISPUTED",
+  "ALREADY_PROCESSED",
+] as const;
+export type ReasonCode = (typeof REASON_CODES)[number];
+
+export interface Recommendation {
+  action: RecommendationAction;
+  reasonCodes: ReasonCode[];
+  /** Human-readable explanation of why this action was recommended. */
+  explanation: string;
+  /** True whenever a human decision is required before any payment step. */
+  requiresHumanReview: boolean;
+  /** Number of evidence submissions considered (for the audit trail). */
+  evidenceReviewedCount: number;
+  /** Fingerprint of the reviewed evidence; a change makes an approval stale. */
+  evidenceFingerprint: string;
+}
+
+// ---------------------------------------------------------------------------
+// Human approval + payment authorization record
+// ---------------------------------------------------------------------------
+
+export const APPROVAL_DECISIONS = ["approve", "reject"] as const;
+export type ApprovalDecision = (typeof APPROVAL_DECISIONS)[number];
+
+/** The concrete action a reviewer's decision carried out (or "NONE"). */
+export type ApprovalAction = "CAPTURE" | "VOID" | "NONE";
+
+export interface MilestoneApproval {
+  id: string;
+  decision: ApprovalDecision;
+  action: ApprovalAction;
+  reasonCodes: ReasonCode[];
+  explanation: string;
+  evidenceFingerprint: string;
+  evidenceReviewedCount: number;
+  /** "system" until authentication exists; never taken from the client. */
+  reviewedBy: string;
+  reviewedAt: string;
+  /** Provider reference for a simulated/real payment operation, if any. */
+  providerReference: string | null;
+  providerName: string | null;
+  simulated: boolean;
+  /** Optional human note recorded with the decision. */
+  note: string | null;
+}
+
+export interface DealAuthorization {
+  providerName: string;
+  providerReference: string | null;
+  simulated: boolean;
+  amountCents: number;
+  createdAt: string;
 }

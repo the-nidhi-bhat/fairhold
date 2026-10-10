@@ -10,7 +10,10 @@ import { randomUUID } from "node:crypto";
 import type {
   AuthorizationRequest,
   AuthorizationResult,
+  CaptureRequest,
+  PaymentOperationResult,
   PaymentProvider,
+  VoidRequest,
 } from "./provider";
 
 export class DemoPaymentProvider implements PaymentProvider {
@@ -28,6 +31,55 @@ export class DemoPaymentProvider implements PaymentProvider {
       providerReference: `demo-auth-${randomUUID()}`,
       status: "CREATED",
       message: `SIMULATED: no PayPal request was made (${request.currency} ${amount}).`,
+    };
+  }
+
+  async captureAuthorization(
+    request: CaptureRequest,
+  ): Promise<PaymentOperationResult> {
+    if (!Number.isSafeInteger(request.amountCents) || request.amountCents <= 0) {
+      return this.failure(
+        "Refusing capture: the amount must be a positive integer number of cents.",
+      );
+    }
+    const amount = (request.amountCents / 100).toFixed(2);
+    return {
+      ok: true,
+      simulated: true,
+      providerName: this.name,
+      providerReference: `demo-capture-${randomUUID()}`,
+      status: "COMPLETED",
+      message: `SIMULATED: no PayPal request was made (captured ${request.currency} ${amount}).`,
+    };
+  }
+
+  async voidAuthorization(
+    request: VoidRequest,
+  ): Promise<PaymentOperationResult> {
+    if (!request.authorizationReference) {
+      return this.failure(
+        "Refusing void: no authorization reference was provided.",
+      );
+    }
+    return {
+      ok: true,
+      simulated: true,
+      providerName: this.name,
+      providerReference: `demo-void-${randomUUID()}`,
+      status: "VOIDED",
+      message:
+        "SIMULATED: no PayPal request was made (the remaining hold was voided).",
+    };
+  }
+
+  private failure(message: string): PaymentOperationResult {
+    return {
+      ok: false,
+      simulated: true,
+      providerName: this.name,
+      providerReference: null,
+      status: "FAILED",
+      message,
     };
   }
 }

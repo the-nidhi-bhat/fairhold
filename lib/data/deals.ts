@@ -12,7 +12,11 @@ import type {
   DealEvent,
   DealEventType,
   DealStatus,
+  EvidenceDecision,
+  EvidenceFile,
+  EvidenceSubmission,
   Milestone,
+  MilestoneApproval,
   MilestoneStatus,
 } from "../domain/types";
 import { canTransitionDeal, canTransitionMilestone } from "../domain/status";
@@ -75,6 +79,8 @@ export async function createDeal(
       freelancerName: input.freelancerName,
       currency: input.currency,
       status: "Draft",
+      authorization: null,
+      evidence: [],
       milestones: [],
       events: [],
       createdAt: timestamp,
@@ -103,6 +109,7 @@ export async function addMilestone(
       id: randomUUID(),
       ...input,
       status: "Draft",
+      approval: null,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -230,7 +237,12 @@ export async function setDealStatus(
  */
 export async function markDealAuthorized(
   dealId: string,
-  authorization: { providerName: string; providerReference: string | null; simulated: boolean },
+  authorization: {
+    providerName: string;
+    providerReference: string | null;
+    simulated: boolean;
+    amountCents: number;
+  },
   actor = "system",
 ): Promise<DealMutationResult> {
   return withWriteLock(async () => {
@@ -244,6 +256,13 @@ export async function markDealAuthorized(
       };
     }
     deal.status = "Authorized";
+    deal.authorization = {
+      providerName: authorization.providerName,
+      providerReference: authorization.providerReference,
+      simulated: authorization.simulated,
+      amountCents: authorization.amountCents,
+      createdAt: now(),
+    };
     deal.updatedAt = now();
     deal.events.push(
       makeEvent(
@@ -254,6 +273,192 @@ export async function markDealAuthorized(
         actor,
       ),
     );
+    await writeDatabase(db);
+    return { ok: true, deal };
+  });
+}
+
+export interface EvidenceInput {
+  note: string;
+  url: string | null;
+  file: EvidenceFile | null;
+}
+
+/**
+ * Append an evidence submission to a milestone. The milestone must belong to
+ * the deal, and terminal milestones reject new evidence.
+ */
+export async function addEvidence(
+  dealId: string,
+  milestoneId: string,
+  input: EvidenceInput,
+  actor = "system",
+): Promise<DealMutationResult> {
+  return withWriteLock(async () => {
+    const db = await readDatabase();
+    const deal = db.deals.find((d) => d.id === dealId);
+    if (!deal) return { ok: false, error: "Deal not found." };
+    const milestone = deal.milestones.find((m) => m.id === milestoneId);
+    if (!milestone) {
+      return { ok: false, error: "Milestone not found in this deal." };
+    }
+    if (milestone.status === "Completed" || milestone.status === "Cancelled") {
+      return {
+        ok: false,
+        error: `Cannot add evidence to a ${milestone.status.toLowerCase()} milestone.`,
+      };
+    }
+    const timestamp = now();
+    const submission: EvidenceSubmission = {
+      id: randomUUID(),
+      milestoneId,
+      note: input.note,
+      url: input.url,
+      file: input.file,
+      submittedAt: timestamp,
+      submittedBy: actor,
+      decision: "pending",
+      reviewedAt: null,
+      reviewNote: null,
+    };
+    deal.evidence.push(submission);
+    deal.updatedAt = timestamp;
+    const detail = [
+      input.file ? `file '${input.file.name}'` : null,
+      input.url ? "a link" : null,
+      input.note ? "a note" : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
+    deal.events.push(
+      makeEvent(
+        "evidence.submitted",
+        `Evidence submitted for '${milestone.title}' (${detail}).`,
+        actor,
+        milestoneId,
+      ),
+    );
+    await writeDatabase(db);
+    return { ok: true, deal };
+  });
+}
+
+/** Record a human review decision on a pending submission (one-time only). */
+export async function reviewEvidence(
+  dealId: string,
+  submissionId: string,
+  decision: Exclude<EvidenceDecision, "pending">,
+  reviewNote: string | null,
+  actor = "system",
+): Promise<DealMutationResult> {
+  return withWriteLock(async () => {
+    const db = await readDatabase();
+    const deal = db.deals.find((d) => d.id === dealId);
+    if (!deal) return { ok: false, error: "Deal not found." };
+    const submission = deal.evidence.find((e) => e.id === submissionId);
+    if (!submission) {
+      return { ok: false, error: "Evidence submission not found." };
+    }
+    if (submission.decision !== "pending") {
+      return { ok: false, error: "This submission has already been reviewed." };
+    }
+    const milestone = deal.milestones.find((m) => m.id === submission.milestoneId);
+    const timestamp = now();
+    submission.decision = decision;
+    submission.reviewedAt = timestamp;
+    submission.reviewNote = reviewNote;
+    deal.updatedAt = timestamp;
+    deal.events.push(
+      makeEvent(
+        "evidence.reviewed",
+        `Evidence ${decision} for '${milestone?.title ?? "milestone"}'.`,
+        actor,
+        submission.milestoneId,
+      ),
+    );
+    await writeDatabase(db);
+    return { ok: true, deal };
+  });
+}
+
+/**
+ * Persist a human approval decision together with the recommendation it was
+ * based on. The caller must have already validated the gating rules and run any
+ * (simulated) payment operation; this function only records the outcome.
+ */
+export async function recordMilestoneApproval(
+  dealId: string,
+  milestoneId: string,
+  approval: MilestoneApproval,
+  actor = "system",
+): Promise<DealMutationResult> {
+  return withWriteLock(async () => {
+    const db = await readDatabase();
+    const deal = db.deals.find((d) => d.id === dealId);
+    if (!deal) return { ok: false, error: "Deal not found." };
+    const milestone = deal.milestones.find((m) => m.id === milestoneId);
+    if (!milestone) {
+      return { ok: false, error: "Milestone not found in this deal." };
+    }
+    const timestamp = now();
+    milestone.approval = approval;
+    milestone.updatedAt = timestamp;
+
+    deal.events.push(
+      makeEvent(
+        "milestone.approval_recorded",
+        `Reviewer decision for '${milestone.title}': ${approval.decision} → ${approval.action}` +
+          `${approval.simulated && approval.action !== "NONE" ? " (SIMULATED — no PayPal request)" : ""}.`,
+        actor,
+        milestoneId,
+      ),
+    );
+
+    if (
+      approval.decision === "approve" &&
+      approval.action === "CAPTURE" &&
+      milestone.status !== "Completed"
+    ) {
+      const from = milestone.status;
+      milestone.status = "Completed";
+      deal.events.push(
+        makeEvent(
+          "milestone.status_changed",
+          `Milestone '${milestone.title}' moved from '${from}' to 'Completed'.`,
+          actor,
+          milestoneId,
+        ),
+      );
+    } else if (
+      approval.action === "VOID" &&
+      canTransitionMilestone(milestone.status, "Cancelled")
+    ) {
+      const from = milestone.status;
+      milestone.status = "Cancelled";
+      deal.events.push(
+        makeEvent(
+          "milestone.status_changed",
+          `Milestone '${milestone.title}' moved from '${from}' to 'Cancelled'.`,
+          actor,
+          milestoneId,
+        ),
+      );
+    }
+
+    if (approval.action !== "NONE" && approval.providerReference) {
+      deal.events.push(
+        makeEvent(
+          "milestone.payment_simulated",
+          approval.simulated
+            ? `Simulated ${approval.action} recorded via ${approval.providerName} (no PayPal request was made).`
+            : `${approval.action} recorded via ${approval.providerName}.`,
+          actor,
+          milestoneId,
+        ),
+      );
+    }
+
+    deal.updatedAt = timestamp;
     await writeDatabase(db);
     return { ok: true, deal };
   });
