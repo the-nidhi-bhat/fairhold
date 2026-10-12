@@ -1,6 +1,6 @@
 # Development status
 
-Last updated: Phase 5 (PayPal webhook endpoint + durable reconciliation).
+Last updated: Phase 0 closure (sandbox partial-capture-and-void lifecycle run) + Phase 5 (PayPal webhook endpoint + durable reconciliation).
 
 ## What exists
 
@@ -131,17 +131,27 @@ Last updated: Phase 5 (PayPal webhook endpoint + durable reconciliation).
   acknowledgement (200) for processed / duplicate / quarantined / unsupported
   outcomes.
 - A separate PayPal **sandbox kill-test harness** under `scripts/` (a development
-  probe; not part of the app runtime).
+  probe; not part of the app runtime). On 2026-10-12 it executed and verified a
+  full sandbox lifecycle: create → buyer approval → authorize ($90.00) → one
+  partial capture ($10.00, `COMPLETED`) → void of the remaining authorization
+  (HTTP 204) → authorization `VOIDED` (see
+  `docs/evidence/paypal-kill-test.md`). Multi-partial-capture,
+  `final_capture=true`, live over-capture rejection, and live timeout recovery
+  remain unexercised.
 - Verification scripts: `npm run lint`, `npm run typecheck`, `npm run build`,
   `npm test`. All pass at this revision.
 
 ## What does not exist yet
 
-- A call from the app to PayPal with real configured credentials (the kill-test
-  harness is the only thing that has ever contacted PayPal). The sandbox adapter
-  is wired and unit-tested, but an end-to-end run against the sandbox API
-  requires real developer.paypal.com credentials, which are not committed here.
-  No authorization, capture, settlement, or refund has occurred through the app.
+- A call **from the app** to PayPal with real configured credentials. The sandbox
+  adapter is wired and unit-tested, but it has never made a real call; an
+  end-to-end run from the app requires real developer.paypal.com credentials,
+  which are not committed here. The separate `scripts/` kill-test harness has
+  now executed the sandbox lifecycle (order `0NV67669XK692321B`, authorization
+  `4AN26660J95331452` at $90.00, partial capture `43C06829W11193325` at $10.00
+  `COMPLETED`, remainder voided HTTP 204 → `VOIDED`, 2026-10-12), but the app
+  itself has never authorized, captured, settled, or refunded anything. Refunds
+  are not implemented.
 - AI/model integration. The recommendation is produced by deterministic rules
   alone; no LLM judges whether work is complete.
 - PostgreSQL is implemented and verified against a disposable container, but the
