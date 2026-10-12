@@ -141,6 +141,28 @@ export async function updateMilestone(
     if (!deal) return { ok: false, error: "Deal not found." };
     const milestone = deal.milestones.find((m) => m.id === milestoneId);
     if (!milestone) return { ok: false, error: "Milestone not found." };
+    if (deal.authorization) {
+      return {
+        ok: false,
+        error: "Milestones cannot be edited after an authorization exists.",
+      };
+    }
+    if (deal.status === "Completed" || deal.status === "Disputed" || deal.status === "Cancelled") {
+      return {
+        ok: false,
+        error: "Milestones cannot be edited while the deal is " + deal.status + ".",
+      };
+    }
+    if (
+      milestone.status === "Completed" ||
+      milestone.status === "Disputed" ||
+      milestone.status === "Cancelled"
+    ) {
+      return {
+        ok: false,
+        error: "Milestones cannot be edited while the milestone is " + milestone.status + ".",
+      };
+    }
     Object.assign(milestone, input, { updatedAt: now() });
     deal.updatedAt = now();
     deal.events.push(

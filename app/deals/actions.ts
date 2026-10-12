@@ -117,6 +117,23 @@ export async function updateMilestoneAction(
   });
   if (!result.ok) return { ok: false, errors: result.errors };
 
+  const deal = await getDeal(dealId);
+  if (!deal) return { ok: false, errors: { _form: "Deal not found." } };
+  const milestone = deal.milestones.find((m) => m.id === milestoneId);
+  if (!milestone) return { ok: false, errors: { _form: "Milestone not found in this deal." } };
+  if (deal.authorization) {
+    return { ok: false, errors: { _form: "Milestones cannot be edited after an authorization exists." } };
+  }
+  if (deal.status === "Completed" || deal.status === "Disputed" || deal.status === "Cancelled") {
+    return { ok: false, errors: { _form: "Milestones cannot be edited while the deal is " + deal.status + "." } };
+  }
+  if (
+    milestone.status === "Completed" ||
+    milestone.status === "Disputed" ||
+    milestone.status === "Cancelled"
+  ) {
+    return { ok: false, errors: { _form: "Milestones cannot be edited while the milestone is " + milestone.status + "." } };
+  }
   const response = await updateMilestone(
     dealId,
     milestoneId,

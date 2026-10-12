@@ -184,6 +184,21 @@ export async function updateMilestone(
     );
     if ((found.rowCount ?? 0) === 0)
       return { ok: false, error: "Milestone not found." };
+    const dealRow = await client.query('SELECT status, authorization_id FROM deals WHERE id = ', [dealId]);
+    const dealInfo = dealRow.rows[0] as { status: string; authorization_id: string | null };
+    if (dealInfo.authorization_id) {
+      return { ok: false, error: "Milestones cannot be edited after an authorization exists." };
+    }
+    if (dealInfo.status === "Completed" || dealInfo.status === "Disputed" || dealInfo.status === "Cancelled") {
+      return { ok: false, error: "Milestones cannot be edited while the deal is " + dealInfo.status + "." };
+    }
+
+
+    const mrow = await client.query('SELECT status FROM milestones WHERE id =  AND deal_id = ', [milestoneId, dealId]);
+    const mstat = (mrow.rows[0] as { status: string }).status;
+    if (mstat === "Completed" || mstat === "Disputed" || mstat === "Cancelled") {
+      return { ok: false, error: "Milestones cannot be edited while the milestone is " + mstat + "." };
+    }
     await client.query(
       `UPDATE milestones SET title = $1, description = $2, amount_cents = $3,
               due_date = $4, acceptance_criteria = $5, updated_at = $6
@@ -413,7 +428,7 @@ export async function addEvidence(
     if (!(await lockDeal(client, dealId)))
       return { ok: false, error: "Deal not found." };
     const found = await client.query(
-      "SELECT status FROM milestones WHERE id = $1 AND deal_id = $2",
+      'SELECT status FROM milestones WHERE id =  AND deal_id = ',
       [milestoneId, dealId],
     );
     if ((found.rowCount ?? 0) === 0)
