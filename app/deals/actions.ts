@@ -95,6 +95,15 @@ export async function addMilestoneAction(
   });
   if (!result.ok) return { ok: false, errors: result.errors };
 
+  const deal = await getDeal(dealId);
+  if (!deal) return { ok: false, errors: { _form: "Deal not found." } };
+  if (deal.authorization) {
+    return { ok: false, errors: { _form: "Milestones cannot be added after an authorization exists." } };
+  }
+  if (deal.status === "Completed" || deal.status === "Disputed" || deal.status === "Cancelled") {
+    return { ok: false, errors: { _form: "Milestones cannot be added while the deal is " + deal.status + "." } };
+  }
+
   const response = await addMilestone(dealId, result.value, "system");
   if (!response.ok) return { ok: false, errors: { _form: response.error } };
 
