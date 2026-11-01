@@ -5,7 +5,7 @@ Last updated: 2026-11-01
 ## Current state
 
 - Branch: `feat/deal-milestone-foundation`
-- Head: `1c9fbe0` (`fix(ui): verify dashboard payment summary totals`)
+- Head: `48ef93a` (`fix(db): correct PostgreSQL milestone and evidence persistence`)
 - Previous UI commit reviewed: `68d9e92`
 - Existing uncommitted PayPal changes remain in:
   - `lib/payments/paypal.test.ts`
@@ -73,15 +73,42 @@ Do not stage, modify, revert, or commit the three pre-existing uncommitted PayPa
 files unless the next owner explicitly takes responsibility for those changes.
 The dashboard correction was committed separately and does not include them.
 
+## PostgreSQL persistence verification
+
+- Commit: `48ef93a`
+- Corrected malformed milestone and evidence SQL placeholders.
+- Replaced the nonexistent `deals.authorization_id` reference with an existence
+  lookup on `payment_authorizations`.
+- Preserved the deal currency when creating an authorization instead of hardcoding
+  USD.
+- Added `FOR UPDATE` locks to milestone and evidence mutation queries.
+- Added integration coverage for milestone updates and evidence metadata.
+- Added schema-contract regressions for placeholders, authorization columns,
+  evidence columns, and row locking.
+- `npm run typecheck`: pass
+- `npm run lint`: pass
+- Focused schema-contract suite: 10 passed, 0 failed, 0 skipped.
+- Complete suite: 146 tests, 125 passed, 0 failed, 21 skipped, 0 cancelled.
+- PostgreSQL integration tests did not execute because
+  `FAIRHOLD_TEST_DATABASE_URL` was not set.
+- Run them on Windows with an isolated PostgreSQL database:
+  `$env:FAIRHOLD_TEST_DATABASE_URL="postgresql://user:password@localhost:5432/fairhold_test"`
+- Then run:
+  `npm test`
+- PostgreSQL integration coverage is not reported as passing until an actual
+  isolated test database runs those tests.
+
+## Remaining database issues
+
+- Live PostgreSQL integration execution still requires an isolated test database.
+- The integration suite should be rerun after any PostgreSQL environment change.
+- JSON and PostgreSQL consistency remains supported by domain-level unit coverage,
+  but live PostgreSQL roundtrips still require the isolated database.
+
 ## Next task
 
-Improve the deal-detail payment summary and milestone layouts without changing
-payment behavior:
+Recommended next task: payment-safe buyer/seller flow hardening or final QA:
 
-1. Present the authorization state as the same explicit labels used by the
-   dashboard.
-2. Reserve clear responsive sections for authorization, milestones, evidence,
-   approval, and payment activity.
-3. Add loading, validation, and error-state coverage for the affected UI.
-4. Run focused lint, typecheck, and tests before committing a separate logical
-   change.
+1. Run and repair the PostgreSQL integration suite against an isolated database.
+2. Verify authorization and capture locking under real concurrency.
+3. Then move to buyer/seller access control and MVP flow QA.
