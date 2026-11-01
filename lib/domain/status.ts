@@ -93,6 +93,36 @@ export interface PaymentStatusInfo {
   detail: string;
 }
 
+export type PaymentSummary = Record<PaymentStatusKey, number>;
+
+export function summarizePaymentStatuses(
+  deals: readonly Pick<
+    Deal,
+    "status" | "authorization" | "pendingAuthorization"
+  >[],
+): PaymentSummary {
+  const summary: PaymentSummary = {
+    not_authorized: 0,
+    authorization_pending: 0,
+    authorization_simulated: 0,
+    authorization_sandbox: 0,
+    no_payment: 0,
+  };
+
+  for (const deal of deals) {
+    summary[paymentStatusFor(deal).key] += 1;
+  }
+
+  const total = Object.values(summary).reduce((sum, count) => sum + count, 0);
+  if (total !== deals.length) {
+    throw new Error(
+      `Payment summary total ${total} does not match ${deals.length} deals`,
+    );
+  }
+
+  return summary;
+}
+
 /**
  * Payment status is derived from the deal state. A simulated authorization (the
  * demo adapter) is labelled as simulated; a real PayPal *sandbox* authorization

@@ -3,7 +3,11 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { listDeals } from "@/lib/data";
 import { formatCents } from "@/lib/domain/format";
-import { computeProgress, paymentStatusFor } from "@/lib/domain/status";
+import {
+  computeProgress,
+  paymentStatusFor,
+  summarizePaymentStatuses,
+} from "@/lib/domain/status";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatusBadge, dealStatusTone } from "@/components/status-badge";
 
@@ -71,19 +75,7 @@ async function DashboardContent() {
     (sum, deal) => sum + computeProgress(deal).completed,
     0,
   );
-  const paymentSummary = deals.reduce(
-    (summary, deal) => {
-      summary[paymentStatusFor(deal).key] += 1;
-      return summary;
-    },
-    {
-      not_authorized: 0,
-      authorization_pending: 0,
-      authorization_simulated: 0,
-      authorization_sandbox: 0,
-      no_payment: 0,
-    },
-  );
+  const paymentSummary = summarizePaymentStatuses(deals);
 
   return (
     <>

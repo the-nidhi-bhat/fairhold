@@ -6,6 +6,7 @@ import {
   canTransitionMilestone,
   computeProgress,
   paymentStatusFor,
+  summarizePaymentStatuses,
 } from "./status.ts";
 import type { Milestone } from "./types.ts";
 
@@ -145,5 +146,68 @@ test("paymentStatusFor: cancelled deals show no payment", () => {
       pendingAuthorization: null,
     }).key,
     "no_payment",
+  );
+});
+
+test("summarizePaymentStatuses: covers every payment key exactly once", () => {
+  const summary = summarizePaymentStatuses([
+    {
+      status: "Draft",
+      authorization: null,
+      pendingAuthorization: null,
+    },
+    {
+      status: "Ready for Authorization",
+      authorization: null,
+      pendingAuthorization: {
+        providerName: "paypal-sandbox",
+        mode: "sandbox",
+        providerOrderId: "ORDER-1",
+        approvalUrl: "https://example.test/approve",
+        amountCents: 1000,
+        currency: "USD",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+    },
+    {
+      status: "Authorized",
+      authorization: {
+        providerName: "demo-payment-provider",
+        providerReference: "demo-auth-1",
+        simulated: true,
+        amountCents: 1000,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+      pendingAuthorization: null,
+    },
+    {
+      status: "Authorized",
+      authorization: {
+        providerName: "paypal-sandbox",
+        providerReference: "AUTH-1",
+        providerOrderId: "ORDER-1",
+        simulated: false,
+        amountCents: 1000,
+        createdAt: "2026-01-01T00:00:00.000Z",
+      },
+      pendingAuthorization: null,
+    },
+    {
+      status: "Cancelled",
+      authorization: null,
+      pendingAuthorization: null,
+    },
+  ]);
+
+  assert.deepEqual(summary, {
+    not_authorized: 1,
+    authorization_pending: 1,
+    authorization_simulated: 1,
+    authorization_sandbox: 1,
+    no_payment: 1,
+  });
+  assert.equal(
+    Object.values(summary).reduce((total, count) => total + count, 0),
+    5,
   );
 });
