@@ -25,7 +25,7 @@ const DATA_DIR = join(process.cwd(), ".data");
 const DATA_FILE = join(DATA_DIR, "fairhold.json");
 
 function emptyDatabase(): Database {
-  return { version: 1, deals: [] };
+  return { version: 1, deals: [], paymentOperations: [] };
 }
 
 /**

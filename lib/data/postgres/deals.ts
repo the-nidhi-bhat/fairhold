@@ -26,6 +26,7 @@ import type {
   DealEventType,
   EvidenceDecision,
   Milestone,
+  PaymentOperation,
 } from "../../domain/types.ts";
 import { isUniqueViolation, getPool, lockDeal, withTransaction } from "./client.ts";
 import { loadDealsBy } from "./mappers.ts";
@@ -678,8 +679,7 @@ export async function recordMilestoneApproval(
       approval.decision === "approve" &&
       approval.action !== "NONE" &&
       approval.providerReference &&
-      (approval.paymentStatus === "COMPLETED" ||
-        approval.paymentStatus === "VOIDED")
+      approval.paymentStatus === "COMPLETED"
     ) {
       const payment = await client.query(
         `SELECT pa.provider_reference, pa.currency
@@ -717,5 +717,100 @@ export async function recordMilestoneApproval(
 
     await touchDeal(client, dealId);
     return { ok: true, deal: (await loadDealOrNull(client, dealId)) as Deal };
+  });
+}
+
+export interface BeginPaymentOperationInput {
+  dealId: string;
+  milestoneId: string | null;
+  authorizationReference: string | null;
+  action: PaymentOperation["action"];
+  requestedAmountCents: number | null;
+  currency: string | null;
+  idempotencyKey: string;
+  providerName: string;
+  finalCapture?: boolean;
+}
+
+export async function beginPaymentOperation(
+  input: BeginPaymentOperationInput,
+): Promise<PaymentOperation> {
+  return withTransaction(async (client) => {
+    await lockDeal(client, input.dealId);
+    const existing = await client.query(
+      `SELECT * FROM payment_operations WHERE idempotency_key = $1`,
+      [input.idempotencyKey],
+    );
+    if ((existing.rowCount ?? 0) > 0) {
+      const row = existing.rows[0];
+      return {
+        id: row.id,
+        dealId: row.deal_id,
+        milestoneId: row.milestone_id,
+        authorizationReference: row.authorization_reference,
+        action: row.action,
+        requestedAmountCents: row.requested_amount_cents,
+        currency: row.currency,
+        idempotencyKey: row.idempotency_key,
+        providerName: row.provider_name,
+        providerReference: row.provider_reference,
+        status: row.status,
+        finalCapture: row.final_capture,
+        createdAt: row.created_at.toISOString(),
+        updatedAt: row.updated_at.toISOString(),
+      };
+    }
+    const id = randomUUID();
+    const result = await client.query(
+      `INSERT INTO payment_operations
+         (id, deal_id, milestone_id, authorization_reference, action,
+          requested_amount_cents, currency, idempotency_key, provider_name,
+          provider_reference, status, final_capture)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULL, 'PENDING', $10)
+       RETURNING *`,
+      [
+        id,
+        input.dealId,
+        input.milestoneId,
+        input.authorizationReference,
+        input.action,
+        input.requestedAmountCents,
+        input.currency,
+        input.idempotencyKey,
+        input.providerName,
+        input.finalCapture ?? false,
+      ],
+    );
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      dealId: row.deal_id,
+      milestoneId: row.milestone_id,
+      authorizationReference: row.authorization_reference,
+      action: row.action,
+      requestedAmountCents: row.requested_amount_cents,
+      currency: row.currency,
+      idempotencyKey: row.idempotency_key,
+      providerName: row.provider_name,
+      providerReference: row.provider_reference,
+      status: row.status,
+      finalCapture: row.final_capture,
+      createdAt: row.created_at.toISOString(),
+      updatedAt: row.updated_at.toISOString(),
+    };
+  });
+}
+
+export async function updatePaymentOperation(
+  idempotencyKey: string,
+  update: Pick<PaymentOperation, "status" | "providerReference">,
+): Promise<void> {
+  await withTransaction(async (client) => {
+    await client.query(
+      `UPDATE payment_operations
+       SET status = $2, provider_reference = $3, updated_at = now()
+       WHERE idempotency_key = $1`,
+      [idempotencyKey, update.status, update.providerReference],
+    );
   });
 }

@@ -6,9 +6,8 @@
  * Every action treats its input as untrusted: fields are read from FormData,
  * validated with the pure domain validators, and status changes are re-checked
  * against the deterministic rules before anything is persisted. Payment status
- * and amounts are never taken from the client. Authentication does not exist
- * yet, so all actions run as the "system" actor and this is recorded honestly
- * in the audit trail.
+ * and amounts are never taken from the client. Signed demo authentication
+ * supplies the audit actor; production identity providers remain out of scope.
  */
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
@@ -16,6 +15,7 @@ import { redirect } from "next/navigation";
 import {
   addEvidence,
   addMilestone,
+  beginPaymentOperation,
   createDeal,
   getDeal,
   markDealAuthorized,
@@ -25,7 +25,9 @@ import {
   setMilestoneStatus,
   setPendingAuthorization,
   updateMilestone,
+  updatePaymentOperation,
 } from "@/lib/data";
+import { planCapture } from "@/lib/payments/capture-state";
 import { writeEvidenceFile } from "@/lib/data/storage";
 import { isApprovalDecision, planApproval } from "@/lib/domain/approval";
 import { validateEvidenceInput } from "@/lib/domain/evidence";
@@ -464,12 +466,51 @@ export async function recordApprovalAction(
   let paymentStatus: "COMPLETED" | "VOIDED" | "PENDING" | "FAILED" | undefined;
 
   if (plan.action === "CAPTURE") {
+    const capturedCents = deal.milestones.reduce(
+      (total, item) =>
+        total +
+        (item.approval?.action === "CAPTURE" &&
+        item.approval.paymentStatus === "COMPLETED"
+          ? item.amountCents
+          : 0),
+      0,
+    );
+    const capturePlan = planCapture(
+      deal.authorization?.amountCents ?? 0,
+      capturedCents,
+      milestone.amountCents,
+    );
+    if (!capturePlan.allowed) {
+      return {
+        ok: false,
+        errors: { _form: capturePlan.error ?? "Capture is not allowed." },
+      };
+    }
+    const idempotencyKey = `capture:${dealId}:${milestoneId}`;
+    await beginPaymentOperation({
+      dealId,
+      milestoneId,
+      authorizationReference: deal.authorization?.providerReference ?? null,
+      action: "CAPTURE",
+      requestedAmountCents: milestone.amountCents,
+      currency: deal.currency,
+      idempotencyKey,
+      providerName: provider.name,
+      finalCapture: capturePlan.finalCapture,
+    });
     const result = await provider.captureAuthorization({
       dealId,
       milestoneId,
       amountCents: milestone.amountCents,
       currency: deal.currency,
       authorizationReference: deal.authorization?.providerReference ?? null,
+      finalCapture: capturePlan.finalCapture,
+      invoiceId: idempotencyKey,
+      requestId: idempotencyKey,
+    });
+    await updatePaymentOperation(idempotencyKey, {
+      status: result.status,
+      providerReference: result.providerReference,
     });
     if (!result.ok) return { ok: false, errors: { _form: result.message } };
     providerReference = result.providerReference;
@@ -477,10 +518,26 @@ export async function recordApprovalAction(
     simulated = result.simulated;
     paymentStatus = result.status;
   } else if (plan.action === "VOID") {
+    const idempotencyKey = `void:${dealId}:${milestoneId}`;
+    await beginPaymentOperation({
+      dealId,
+      milestoneId,
+      authorizationReference: deal.authorization?.providerReference ?? null,
+      action: "VOID",
+      requestedAmountCents: null,
+      currency: deal.currency,
+      idempotencyKey,
+      providerName: provider.name,
+    });
     const result = await provider.voidAuthorization({
       dealId,
       milestoneId,
       authorizationReference: deal.authorization?.providerReference ?? null,
+      requestId: idempotencyKey,
+    });
+    await updatePaymentOperation(idempotencyKey, {
+      status: result.status,
+      providerReference: result.providerReference,
     });
     if (!result.ok) return { ok: false, errors: { _form: result.message } };
     providerReference = result.providerReference;

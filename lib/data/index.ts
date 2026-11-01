@@ -28,11 +28,15 @@ export {
 } from "./importValidate.ts";
 export { isPostgresConfigured, resolveDataBackend } from "./db.ts";
 export { writeEvidenceFile };
-
 export type DataBackendModule = typeof jsonBackend;
 
 const backend: DataBackendModule =
   resolveDataBackend() === "postgres" ? postgresBackend : jsonBackend;
+
+export const beginPaymentOperation: typeof jsonBackend.beginPaymentOperation =
+  backend.beginPaymentOperation;
+export const updatePaymentOperation: typeof jsonBackend.updatePaymentOperation =
+  backend.updatePaymentOperation;
 
 export const listDeals: typeof jsonBackend.listDeals = backend.listDeals;
 export const getDeal: typeof jsonBackend.getDeal = backend.getDeal;

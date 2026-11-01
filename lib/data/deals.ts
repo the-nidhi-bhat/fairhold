@@ -21,6 +21,7 @@ import type {
 } from "../domain/types.ts";
 import { canTransitionDeal, canTransitionMilestone } from "../domain/status.ts";
 import { readDatabase, withWriteLock, writeDatabase } from "./store.ts";
+export { beginPaymentOperation, updatePaymentOperation } from "./payment-operations.ts";
 
 export type MilestoneInput = Pick<
   Milestone,
@@ -490,6 +491,7 @@ export async function recordMilestoneApproval(
     if (
       approval.decision === "approve" &&
       approval.action === "CAPTURE" &&
+      approval.paymentStatus === "COMPLETED" &&
       milestone.status !== "Completed"
     ) {
       const from = milestone.status;

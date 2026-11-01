@@ -281,6 +281,36 @@ async function reconcileCaptureCompleted(
   if (Number(row.milestone_amount_cents) !== amountCents || currency !== "USD") {
     return { outcome: "quarantined", reason: "capture amount mismatch" };
   }
+  await client.query(
+    `UPDATE milestone_approvals
+     SET payment_status = 'COMPLETED', provider_reference = COALESCE(provider_reference, $2)
+     WHERE milestone_id = $1`,
+    [row.milestone_id, id],
+  );
+  await client.query(
+    `UPDATE payment_operations
+     SET status = 'COMPLETED', provider_reference = COALESCE(provider_reference, $2), updated_at = now()
+     WHERE deal_id = $1 AND milestone_id = $3 AND action = 'CAPTURE'`,
+    [row.deal_id, id, row.milestone_id],
+  );
+  await client.query(
+    `INSERT INTO payment_captures
+       (id, deal_id, milestone_id, provider_name, provider_reference,
+        authorization_reference, amount_cents, currency, invoice_id, status, simulated, created_at)
+     SELECT $1, $2, $3, 'paypal', $4,
+            pa.provider_reference, $5, $6, po.idempotency_key, 'COMPLETED', false, now()
+       FROM payment_authorizations pa
+       JOIN payment_operations po ON po.deal_id = pa.deal_id
+        AND po.milestone_id = $3 AND po.action = 'CAPTURE'
+       WHERE pa.deal_id = $2
+     ON CONFLICT (provider_name, provider_reference) DO NOTHING`,
+    [randomUUID(), row.deal_id, row.milestone_id, id, amountCents, currency],
+  );
+  await client.query(
+    `UPDATE milestones SET status = 'Completed', updated_at = now()
+     WHERE id = $1 AND status <> 'Completed'`,
+    [row.milestone_id],
+  );
   // The human approval flow already moved the milestone to Completed; a
   // redelivery is a no-op. Never regress or advance milestone state here.
   if (row.milestone_status === "Completed") {

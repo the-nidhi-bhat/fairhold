@@ -104,6 +104,24 @@ export interface Deal {
 export interface Database {
   version: number;
   deals: Deal[];
+  paymentOperations?: PaymentOperation[];
+}
+
+export interface PaymentOperation {
+  id: string;
+  dealId: string;
+  milestoneId: string | null;
+  authorizationReference: string | null;
+  action: "CAPTURE" | "VOID" | "AUTHORIZE";
+  requestedAmountCents: number | null;
+  currency: string | null;
+  idempotencyKey: string;
+  providerName: string;
+  providerReference: string | null;
+  status: "COMPLETED" | "VOIDED" | "PENDING" | "FAILED";
+  finalCapture: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ---------------------------------------------------------------------------
