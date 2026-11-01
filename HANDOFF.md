@@ -12,6 +12,9 @@ Last updated: 2026-11-01
   - `lib/payments/paypal.ts`
   - `lib/payments/provider.ts`
 
+Canonical task files were added for this execution: `TASKS.md`,
+`DECISIONS.md`, `QA_REPORT.md`, and `FAIRHOLD_STATE.md`.
+
 ## Independent review of commit 68d9e92
 
 ### Findings
