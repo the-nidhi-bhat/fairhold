@@ -112,9 +112,6 @@ export default function Home() {
             </li>
           ))}
         </ol>
-        <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
-          This is the intended flow. It is not implemented yet.
-        </p>
       </section>
 
       {/* Separation of responsibilities */}

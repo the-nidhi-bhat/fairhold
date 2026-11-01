@@ -218,6 +218,35 @@ async function DealDetail({ id }: { id: string }) {
         ) : null}
       </section>
 
+      <section className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+          Payment history
+        </h2>
+        {deal.milestones.some((milestone) => milestone.approval?.action !== undefined) ? (
+          <div className="mt-4 divide-y divide-slate-200 dark:divide-slate-800">
+            {deal.milestones.filter((milestone) => milestone.approval).map((milestone) => {
+              const approval = milestone.approval!;
+              return (
+                <div key={milestone.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div>
+                    <p className="text-sm font-medium">{milestone.title}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {approval.action} · {approval.paymentStatus ?? "No payment operation"}
+                    </p>
+                  </div>
+                  <StatusBadge
+                    label={approval.simulated ? "Simulated" : approval.providerName ?? "No provider"}
+                    tone={approval.paymentStatus === "COMPLETED" || approval.paymentStatus === "VOIDED" ? "success" : "neutral"}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-slate-500">No payment operations recorded for this deal.</p>
+        )}
+      </section>
+
       {/* Agreement */}
       <section className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
         <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">

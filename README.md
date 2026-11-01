@@ -13,8 +13,9 @@
 > webhook endpoint** (`/api/paypal/webhook`) verifies signatures and durably
 > reconciles authorization and capture events against PostgreSQL (requires
 > `DATABASE_URL` + `PAYPAL_WEBHOOK_ID`). Payments are **simulated** by a demo
-> provider by default — no real PayPal call is made — with an opt-in PayPal
-> sandbox adapter. AI analysis and authentication are not implemented yet.
+> provider by default. Signed demo authentication supports buyer, seller and
+> reviewer flows. Structured AI advisory includes a deterministic fallback;
+> rules always remain authoritative.
 
 FairHold is an **AI-assisted conditional payment platform** built around PayPal,
 where:
@@ -53,7 +54,7 @@ it "escrow".
 | Web app | Next.js + TypeScript | Deals, milestones, dashboard, workflow states |
 | Data | PostgreSQL | Schema + migrations + data-access layer implemented; JSON dev store (`.data/`, git-ignored) is the default when `DATABASE_URL` is unset |
 | Payments | PayPal APIs, server-side only | Interface + simulated demo provider (authorize/capture/void) + PayPal sandbox adapter + verified webhook endpoint (`/api/paypal/webhook`) with durable, idempotent reconciliation; no live call from the app |
-| Intelligence | AI recommendations feeding a rules engine | Deterministic rules engine implemented; AI model not implemented |
+| Intelligence | Structured advisory plus deterministic rules | Validated AI-shaped output with deterministic fallback; payment decisions are never delegated to AI |
 
 ## Getting started
 
