@@ -3,6 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { canAccessDeal, getDemoSession } from "@/lib/auth/session";
+import {
+  deterministicEvidenceAdvisory,
+  deterministicMilestoneProposal,
+} from "@/lib/ai/advisory";
 import { getDeal } from "@/lib/data";
 import { formatCents } from "@/lib/domain/format";
 import { approvalIsStale, recommendMilestone } from "@/lib/domain/rules";
@@ -302,6 +306,9 @@ async function DealDetail({ id }: { id: string }) {
 
       {/* Milestones */}
       <section className="mt-6">
+        {deal.milestones.length === 0 ? (
+          <MilestoneAdvisory agreement={deal.agreement} />
+        ) : null}
         <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
           Milestones
         </h2>
@@ -363,6 +370,17 @@ async function DealDetail({ id }: { id: string }) {
                       {milestone.acceptanceCriteria}
                     </p>
                   </div>
+
+                  <EvidenceAdvisoryPanel
+                    criteria={milestone.acceptanceCriteria}
+                    evidence={deal.evidence
+                      .filter((item) => item.milestoneId === milestone.id)
+                      .map((item) =>
+                        [item.note, item.url, item.file?.name]
+                          .filter((value): value is string => Boolean(value))
+                          .join(" "),
+                      )}
+                  />
 
                   <MilestoneEvidence deal={deal} milestone={milestone} />
 
@@ -444,6 +462,60 @@ async function DealDetail({ id }: { id: string }) {
         )}
       </section>
     </>
+  );
+}
+
+function MilestoneAdvisory({ agreement }: { agreement: string }) {
+  const proposal = deterministicMilestoneProposal(agreement);
+  return (
+    <section className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/20">
+      <p className="text-xs font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+        AI-shaped milestone advisory
+      </p>
+      <h3 className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-50">
+        {proposal.title}
+      </h3>
+      <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+        {proposal.description}
+      </p>
+      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+        Suggested acceptance criteria: {proposal.acceptanceCriteria}
+      </p>
+      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        Advisory only. A human creates milestones and deterministic rules decide
+        payment.
+      </p>
+    </section>
+  );
+}
+
+function EvidenceAdvisoryPanel({
+  criteria,
+  evidence,
+}: {
+  criteria: string;
+  evidence: string[];
+}) {
+  const advisory = deterministicEvidenceAdvisory(criteria, evidence);
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        Evidence advisory
+      </p>
+      <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+        {advisory.summary}
+      </p>
+      {advisory.concerns.length > 0 ? (
+        <ul className="mt-2 list-disc pl-5 text-xs text-amber-700 dark:text-amber-300">
+          {advisory.concerns.map((concern) => (
+            <li key={concern}>{concern}</li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        Advisory only; it cannot approve evidence or execute payment.
+      </p>
+    </div>
   );
 }
 
