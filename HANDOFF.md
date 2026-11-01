@@ -5,7 +5,7 @@ Last updated: 2026-11-01
 ## Current state
 
 - Branch: `feat/deal-milestone-foundation`
-- Head: `3e555fd` (`fix(ui): separate dashboard payment summary states`)
+- Head: `1c9fbe0` (`fix(ui): verify dashboard payment summary totals`)
 - Previous UI commit reviewed: `68d9e92`
 - Existing uncommitted PayPal changes remain in:
   - `lib/payments/paypal.test.ts`
@@ -39,14 +39,33 @@ Last updated: 2026-11-01
 ### Correction commit
 
 - `3e555fd` separates `authorization_simulated` and `no_payment`.
+- `1c9fbe0` routes dashboard aggregation through the exhaustive
+  `PaymentStatusKey` summary and adds a test proving the category total equals
+  the number of deals.
 
 ## Verification
 
 - `npm run typecheck`: pass
-- `npx eslint app/dashboard/page.tsx`: pass
-- `npm test`: 141 tests total, 121 passed, 20 skipped, 0 failed, 0 cancelled,
+- `npm run lint`: pass
+- Complete test runner summary before final invariant coverage: 141 tests
+  total, 121 passed, 20 skipped, 0 failed, 0 cancelled,
   0 todo.
 - The 20 skipped tests require `FAIRHOLD_TEST_DATABASE_URL`.
+
+## Final dashboard verification
+
+- Dashboard correction commit: `1c9fbe0`
+- `npm run typecheck`: pass
+- `npm run lint`: pass
+- Complete test runner summary: 142 tests, 122 passed, 0 failed, 20 skipped,
+  0 cancelled, 0 todo.
+- The 20 skipped PostgreSQL integration tests require
+  `FAIRHOLD_TEST_DATABASE_URL`.
+- The five `PaymentStatusKey` categories are represented once in
+  `PaymentSummary`; `summarizePaymentStatuses()` throws if category totals do
+  not equal the input deal count.
+- Unit coverage verifies one representative deal in each category and a total
+  of exactly five deals.
 
 ## Protected work
 
