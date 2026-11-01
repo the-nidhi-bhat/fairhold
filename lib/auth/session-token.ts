@@ -8,6 +8,8 @@ export interface DemoSession {
   role: DemoRole;
 }
 
+const MAX_AGE_MS = 8 * 60 * 60 * 1000;
+
 function secret(): string {
   const configured = process.env.FAIRHOLD_SESSION_SECRET;
   if (configured) return configured;
@@ -25,12 +27,15 @@ function isDemoRole(value: unknown): value is DemoRole {
   return DEMO_ROLES.includes(value as DemoRole);
 }
 
-export function encodeDemoSession(session: DemoSession): string {
-  const payload = Buffer.from(JSON.stringify(session)).toString("base64url");
+export function encodeDemoSession(session: DemoSession, now = Date.now()): string {
+  const payload = Buffer.from(JSON.stringify({ ...session, exp: now + MAX_AGE_MS })).toString("base64url");
   return `${payload}.${signature(payload)}`;
 }
 
-export function decodeDemoSession(value: string | undefined): DemoSession | null {
+export function decodeDemoSession(
+  value: string | undefined,
+  now = Date.now(),
+): DemoSession | null {
   if (!value) return null;
   const separator = value.lastIndexOf(".");
   if (separator < 1) return null;
@@ -50,11 +55,14 @@ export function decodeDemoSession(value: string | undefined): DemoSession | null
   try {
     const parsed = JSON.parse(
       Buffer.from(payload, "base64url").toString("utf8"),
-    ) as Partial<DemoSession>;
+    ) as Partial<DemoSession> & { exp?: unknown };
     if (
       typeof parsed.name !== "string" ||
       parsed.name.trim().length === 0 ||
-      !isDemoRole(parsed.role)
+      !isDemoRole(parsed.role) ||
+      typeof parsed.exp !== "number" ||
+      !Number.isSafeInteger(parsed.exp) ||
+      parsed.exp <= now
     ) {
       return null;
     }

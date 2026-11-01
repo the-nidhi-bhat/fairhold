@@ -94,6 +94,7 @@ export async function createDealAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const session = await requireRole("buyer", "seller", "reviewer");
   const result = validateDealInput({
     title: field(formData, "title"),
     clientName: field(formData, "clientName"),
@@ -102,6 +103,15 @@ export async function createDealAction(
     agreement: field(formData, "agreement"),
   });
   if (!result.ok) return { ok: false, errors: result.errors };
+  if (
+    session.role !== "reviewer" &&
+    ((session.role === "buyer" &&
+      result.value.clientName.toLowerCase() !== session.name.toLowerCase()) ||
+      (session.role === "seller" &&
+        result.value.freelancerName.toLowerCase() !== session.name.toLowerCase()))
+  ) {
+    return { ok: false, errors: { _form: "The party name must match your signed demo identity." } };
+  }
 
   const deal = await createDeal(result.value, await currentActor());
   revalidatePath("/dashboard");
@@ -190,6 +200,7 @@ export async function updateMilestoneAction(
 export async function changeMilestoneStatusAction(
   formData: FormData,
 ): Promise<void> {
+  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
   const to = field(formData, "status");
@@ -207,6 +218,7 @@ export async function changeMilestoneStatusAction(
 }
 
 export async function changeDealStatusAction(formData: FormData): Promise<void> {
+  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const to = field(formData, "status");
   if (!isDealStatus(to) || to === "Authorized") return;
