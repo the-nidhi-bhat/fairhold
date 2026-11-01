@@ -163,3 +163,27 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
 2. Exercise live PayPal sandbox operations with sandbox credentials.
 3. Run desktop/mobile browser smoke tests against the authenticated flows.
 4. Perform final origin fetch, diff review, secret scan, and normal branch push.
+
+## Post-audit hardening checkpoint
+
+- Authentication commit: `a75a9f1`
+  - Buyer and seller demo names are allowlisted from server environment.
+  - Reviewers require both a server allowlist entry and deal-specific grant in
+    `FAIRHOLD_REVIEWER_DEALS`.
+  - Signed sessions are rechecked against the server allowlist.
+- Payment commit: `1e921a5`
+  - Capture and void operations are durable before provider invocation.
+  - Stable operation and provider request identities are reused for retries.
+  - Capture amounts are limited to authorization remaining balance.
+  - Webhook completion reconciles operations, ledger rows and milestone
+    completion; duplicate provider captures remain protected by unique provider
+    references.
+  - Ambiguous/PENDING outcomes are persisted and are not treated as captures.
+- Verification:
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm run build`: passed.
+  - Full unit suite: 157 tests, 136 passed, 21 skipped, 0 failed.
+  - PostgreSQL integrations skipped: `FAIRHOLD_TEST_DATABASE_URL` was unset.
+  - Live PayPal sandbox operations remain unverified.
+- The protected PayPal worktree was preserved and was not committed.

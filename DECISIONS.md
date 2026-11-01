@@ -7,3 +7,7 @@
 - Authentication and authorization must be enforced server-side even in demo mode.
 - No deal, payment or evidence mutation should trust a client-controlled identity.
 - Documentation status may describe intent only when implementation evidence is absent.
+- Demo authentication is not production authentication; reviewer identities
+  require both an environment allowlist and explicit deal grants.
+- PayPal calls receive a durable operation intent and stable idempotency key
+  before network execution; ambiguous outcomes remain PENDING until reconciled.

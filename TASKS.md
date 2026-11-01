@@ -14,6 +14,9 @@
 - PayPal sandbox adapter hardening committed as `248b9c4`.
 - AI advisory UI and deterministic fallback committed as `a8c2c02`.
 - Payment-history UI and responsive loading states committed as `b712448`.
+- Demo authentication is restricted by server allowlists (`a75a9f1`).
+- Durable payment operations, capture limits, and webhook reconciliation were
+  added (`1e921a5`).
 
 ## Blocked by infrastructure
 

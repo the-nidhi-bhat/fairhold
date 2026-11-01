@@ -28,5 +28,17 @@
 - Browser/E2E: not executed; browser automation and authenticated desktop/mobile
   sessions were not available in the verification environment.
 - Live PayPal sandbox: not executed; sandbox credentials were unavailable.
+
+## Post-audit hardening verification
+
+- Authentication correction commit: `a75a9f1`.
+- Payment state correction commit: `1e921a5`.
+- TypeScript: passed.
+- ESLint: passed.
+- Production build: passed.
+- Node test runner: 157 total, 136 passed, 21 skipped, 0 failed.
+- PostgreSQL integration tests: skipped; isolated database unavailable.
+- Live PayPal: not executed.
+- Browser/E2E: not executed.
 - PayPal adapter unit tests are included in the passing suite; network operations
   are simulated by transport doubles and not claimed as live sandbox proof.
