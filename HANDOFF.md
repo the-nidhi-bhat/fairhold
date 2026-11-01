@@ -130,3 +130,36 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
 1. Run and repair the PostgreSQL integration suite against an isolated database.
 2. Verify authorization and capture locking under real concurrency.
 3. Then move to buyer/seller access control and MVP flow QA.
+
+## MVP continuation checkpoint
+
+- HEAD after verified continuation units: `a8c2c02`.
+- Verified commits:
+  - `248b9c4` hardened the protected PayPal sandbox adapter and its regressions.
+  - `b712448` added advisory UI, payment-history UI, landing copy, demo notes,
+    and responsive create-deal loading state.
+  - `a8c2c02` surfaced milestone and evidence advisory in deal detail without
+    granting AI payment authority.
+- Authentication, deterministic rules, buyer/seller/reviewer server actions,
+  PostgreSQL persistence corrections, PayPal adapter operations, webhook
+  handling, AI parsing/fallback, and responsive core screens are implemented.
+- Verification at this checkpoint:
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm run build`: passed.
+  - Tests: 152 total; 131 passed; 21 skipped; 0 failed.
+- PostgreSQL integration execution remains blocked by the unset
+  `FAIRHOLD_TEST_DATABASE_URL`.
+- Live PayPal sandbox execution remains blocked by unavailable sandbox
+  credentials and is not represented as passing.
+- Browser automation was not available as an executed final verification
+  environment.
+
+## Remaining limitations and next recommended task
+
+1. Execute PostgreSQL integrations with an isolated database using:
+   `$env:FAIRHOLD_TEST_DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/fairhold_test"`
+   then `npm test`.
+2. Exercise live PayPal sandbox operations with sandbox credentials.
+3. Run desktop/mobile browser smoke tests against the authenticated flows.
+4. Perform final origin fetch, diff review, secret scan, and normal branch push.

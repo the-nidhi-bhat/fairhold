@@ -2,7 +2,7 @@
 
 ## In progress
 
-- Establish the verified implementation baseline and canonical QA records.
+- Final canonical QA records, browser smoke execution, and branch delivery.
 
 ## Verified
 
@@ -11,6 +11,9 @@
 - Payment adapter unit tests are present.
 - Signed demo sessions and server-side buyer/seller/reviewer access checks.
 - Protected PayPal worktree files remain uncommitted.
+- PayPal sandbox adapter hardening committed as `248b9c4`.
+- AI advisory UI and deterministic fallback committed as `a8c2c02`.
+- Payment-history UI and responsive loading states committed as `b712448`.
 
 ## Blocked by infrastructure
 
@@ -29,3 +32,5 @@
 8. Complete responsive fintech UI and payment states.
 9. Perform security, reliability and browser QA.
 10. Push the verified feature branch without pushing secrets.
+11. Execute live PostgreSQL integration tests when infrastructure is available.
+12. Exercise live PayPal sandbox and browser flows when credentials/tools are available.
