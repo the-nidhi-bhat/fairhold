@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import type { Deal } from "@/lib/domain/types";
+import { authorizeDemoLogin, authorizeReviewerDeal } from "./demo-allowlist.ts";
 import {
   decodeDemoSession,
   DEMO_ROLES,
@@ -16,7 +17,8 @@ export type { DemoRole, DemoSession };
 
 export async function getDemoSession(): Promise<DemoSession | null> {
   const store = await cookies();
-  return decodeDemoSession(store.get(COOKIE_NAME)?.value);
+  const session = decodeDemoSession(store.get(COOKIE_NAME)?.value);
+  return session && authorizeDemoLogin(session) ? session : null;
 }
 
 export async function setDemoSession(session: DemoSession): Promise<void> {
@@ -36,8 +38,10 @@ export async function clearDemoSession(): Promise<void> {
 }
 
 export function canAccessDeal(session: DemoSession, deal: Deal): boolean {
-  if (session.role === "reviewer") return true;
   const normalizedName = session.name.trim().toLowerCase();
+  if (session.role === "reviewer") {
+    return authorizeReviewerDeal(normalizedName, deal.id);
+  }
   return session.role === "buyer"
     ? deal.clientName.trim().toLowerCase() === normalizedName
     : deal.freelancerName.trim().toLowerCase() === normalizedName;

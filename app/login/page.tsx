@@ -6,8 +6,9 @@ export default function LoginPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <h1 className="text-2xl font-semibold tracking-tight">Demo sign in</h1>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-          Use the exact buyer or seller name shown on a deal. Demo sessions are
-          signed locally and are not production authentication.
+          Enter an identity explicitly allowlisted on the server. Demo sessions
+          are signed locally and are not production authentication; reviewers
+          require a separate server allowlist.
         </p>
         <form action={loginAction} className="mt-6 space-y-4">
           <label className="block text-sm font-medium">
