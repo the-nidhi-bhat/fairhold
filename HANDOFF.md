@@ -15,6 +15,21 @@ Last updated: 2026-11-01
 Canonical task files were added for this execution: `TASKS.md`,
 `DECISIONS.md`, `QA_REPORT.md`, and `FAIRHOLD_STATE.md`.
 
+## Authentication checkpoint
+
+- Authentication commit: `8c7498665053ef24ffe16b57be7d77e5fdcc6921`
+- Added signed, HTTP-only demo sessions and buyer/seller/reviewer roles.
+- Dashboard and deal routes filter or deny deals server-side.
+- Mutating deal actions require authentication and server-side role checks.
+- Audit actors now identify the signed demo identity instead of `"system"`.
+- Typecheck: passed.
+- ESLint: passed.
+- Production build: passed.
+- Test suite: 148 total, 127 passed, 21 skipped, 0 failed.
+- PostgreSQL integrations remain skipped because `FAIRHOLD_TEST_DATABASE_URL`
+  is absent.
+- Protected PayPal worktree files remain untouched by authentication commits.
+
 ## Independent review of commit 68d9e92
 
 ### Findings

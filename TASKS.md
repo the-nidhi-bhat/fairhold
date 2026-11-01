@@ -9,6 +9,7 @@
 - Dashboard payment summary uses the five payment status keys.
 - PostgreSQL milestone and evidence SQL has been corrected.
 - Payment adapter unit tests are present.
+- Signed demo sessions and server-side buyer/seller/reviewer access checks.
 - Protected PayPal worktree files remain uncommitted.
 
 ## Blocked by infrastructure
