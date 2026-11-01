@@ -85,8 +85,20 @@ export type PaymentOperationStatus = "COMPLETED" | "VOIDED" | "PENDING" | "FAILE
 
 /**
  * Result of a capture or void. `simulated` distinguishes a demo result from a
- * real provider result. "FAILED" is a confirmed refusal/decline; "PENDING" is an
- * ambiguous outcome that must be reconciled, never retried blindly.
+ * real provider result.
+ *
+ * Status contract (the adapter enforces this, it is not just advisory):
+ *  - "COMPLETED": settled money. A real provider must have explicitly reported
+ *    success AND returned a usable reference; a 2xx response alone is not
+ *    enough.
+ *  - "PENDING": the request was accepted but the outcome is not settled — a
+ *    timeout, an explicit PENDING, or a missing/unknown/unexpected provider
+ *    status (treated conservatively). Reconcile against the provider before
+ *    acting; never retry blindly.
+ *  - "FAILED": a definite refusal/decline. No money moved.
+ *  - "VOIDED": an authorization hold was released. This is NOT a refund.
+ *
+ * `ok` is true only for "COMPLETED" and "VOIDED".
  */
 export interface PaymentOperationResult {
   ok: boolean;

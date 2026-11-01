@@ -224,6 +224,48 @@ test("paypal: authorizeOrder timeout is PENDING, never retried blindly", async (
   assert.match(result.message, /retry blindly/i);
 });
 
+test("paypal: authorizeOrder treats a PENDING authorization as an unconfirmed hold", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, {
+      id: "ORDER-1",
+      status: "COMPLETED",
+      purchase_units: [
+        { payments: { authorizations: [{ id: "AUTH-P", status: "PENDING" }] } },
+      ],
+    });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).authorizeOrder({
+    dealId: "deal-1",
+    orderId: "ORDER-1",
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "PENDING");
+  assert.equal(result.providerReference, "AUTH-P");
+  assert.match(result.message, /unconfirmed/i);
+  assert.match(result.message, /do not retry blindly/i);
+});
+
+test("paypal: authorizeOrder treats a DENIED authorization as failed", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, {
+      id: "ORDER-1",
+      status: "COMPLETED",
+      purchase_units: [
+        { payments: { authorizations: [{ id: "AUTH-D", status: "DENIED" }] } },
+      ],
+    });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).authorizeOrder({
+    dealId: "deal-1",
+    orderId: "ORDER-1",
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "FAILED");
+  assert.match(result.message, /DENIED/);
+});
+
 // ---------------------------------------------------------------------------
 // captureAuthorization
 // ---------------------------------------------------------------------------
@@ -280,6 +322,103 @@ test("paypal: captureAuthorization timeout is PENDING", async () => {
   assert.equal(result.status, "PENDING");
 });
 
+test("paypal: captureAuthorization reports COMPLETED only with an explicit status and id", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, { id: "CAP-1", status: "COMPLETED" });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).captureAuthorization({
+    dealId: "d", milestoneId: "m", amountCents: 1000, currency: "USD", authorizationReference: "AUTH-9",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "COMPLETED");
+  assert.equal(result.providerReference, "CAP-1");
+});
+
+test("paypal: captureAuthorization treats an explicit PENDING as unsettled", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, { id: "CAP-2", status: "PENDING" });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).captureAuthorization({
+    dealId: "d", milestoneId: "m", amountCents: 1000, currency: "USD", authorizationReference: "AUTH-9",
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "PENDING");
+  assert.equal(result.providerReference, "CAP-2");
+  assert.match(result.message, /unsettled/i);
+  assert.match(result.message, /reconcil/i);
+  assert.match(result.message, /do not retry blindly/i);
+});
+
+test("paypal: captureAuthorization treats PENDING without an id as unsettled", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, { status: "PENDING" });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).captureAuthorization({
+    dealId: "d", milestoneId: "m", amountCents: 1000, currency: "USD", authorizationReference: "AUTH-9",
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "PENDING");
+  assert.equal(result.providerReference, null);
+});
+
+test("paypal: captureAuthorization treats a missing status as PENDING (conservative)", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, { id: "CAP-3" });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).captureAuthorization({
+    dealId: "d", milestoneId: "m", amountCents: 1000, currency: "USD", authorizationReference: "AUTH-9",
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "PENDING");
+  assert.equal(result.providerReference, "CAP-3");
+  assert.match(result.message, /no status field/i);
+});
+
+test("paypal: captureAuthorization treats COMPLETED without an id as PENDING", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, { status: "COMPLETED" });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).captureAuthorization({
+    dealId: "d", milestoneId: "m", amountCents: 1000, currency: "USD", authorizationReference: "AUTH-9",
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "PENDING");
+  assert.equal(result.providerReference, null);
+  assert.match(result.message, /COMPLETED/);
+  assert.match(result.message, /no capture id/i);
+});
+
+test("paypal: captureAuthorization reports a DECLINED capture as FAILED", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(200, { id: "CAP-4", status: "DECLINED" });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).captureAuthorization({
+    dealId: "d", milestoneId: "m", amountCents: 1000, currency: "USD", authorizationReference: "AUTH-9",
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "FAILED");
+});
+
+test("paypal: captureAuthorization treats an unknown status as PENDING", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, { id: "CAP-5", status: "SOMETHING_NEW" });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).captureAuthorization({
+    dealId: "d", milestoneId: "m", amountCents: 1000, currency: "USD", authorizationReference: "AUTH-9",
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "PENDING");
+  assert.equal(result.providerReference, "CAP-5");
+  assert.match(result.message, /SOMETHING_NEW/);
+});
+
 // ---------------------------------------------------------------------------
 // voidAuthorization
 // ---------------------------------------------------------------------------
@@ -325,9 +464,9 @@ test("paypal: PayPal-Request-Id is sent on create, authorize, capture and void",
   const { calls, transport } = api((request) => {
     if (request.url.endsWith("/token")) return tokenHandler(request);
     if (request.url.endsWith("/authorize")) {
-      return json(201, { id: "ORDER-1", purchase_units: [{ payments: { authorizations: [{ id: "A" }] } }] });
+      return json(201, { id: "ORDER-1", purchase_units: [{ payments: { authorizations: [{ id: "A", status: "AUTHORIZED" }] } }] });
     }
-    if (request.url.endsWith("/capture")) return json(201, { id: "CAP" });
+    if (request.url.endsWith("/capture")) return json(201, { id: "CAP", status: "COMPLETED" });
     if (request.url.endsWith("/void")) return { status: 204, ok: true, text: "" };
     return json(201, { id: "ORDER-1", links: [] });
   });

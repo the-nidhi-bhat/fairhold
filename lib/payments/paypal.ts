@@ -43,6 +43,7 @@ const SANDBOX_API = "https://api-m.sandbox.paypal.com";
 const TOKEN_SAFETY_MARGIN_MS = 60_000;
 const DEFAULT_TOKEN_TTL_MS = 3_000_000;
 const MAX_ERROR_TEXT = 200;
+const MAX_STATUS_TEXT = 40;
 
 interface TokenCache {
   value: string;
@@ -94,6 +95,19 @@ function describeError(data: Record<string, unknown> | null, fallback: string): 
   }
   const text = pieces.join(": ").trim();
   return (text || fallback).slice(0, MAX_ERROR_TEXT);
+}
+
+/**
+ * Render an untrusted provider status value for a human message. Only a short
+ * alphanumeric token survives, so no arbitrary payload text (or secret) reaches
+ * the caller. Never treat the result as a success signal.
+ */
+function describeProviderStatus(raw: unknown): string {
+  if (raw === undefined) return "no status field";
+  if (typeof raw !== "string") return `a non-string status (${typeof raw})`;
+  const cleaned = raw.replace(/[^A-Za-z0-9_-]/g, "").slice(0, MAX_STATUS_TEXT);
+  if (!cleaned) return "an empty status";
+  return `status "${cleaned}"`;
 }
 
 export interface PayPalSandboxProviderOptions {
@@ -354,8 +368,8 @@ export class PayPalSandboxProvider implements PaymentProvider {
       };
     }
 
-    const authorizationId = extractAuthorizationId(result.data);
-    if (!authorizationId) {
+    const authorization = extractAuthorization(result.data);
+    if (!authorization.id) {
       return {
         ...base,
         ok: false,
@@ -364,12 +378,39 @@ export class PayPalSandboxProvider implements PaymentProvider {
         message: "PayPal responded without an authorization id.",
       };
     }
+    // A 2xx only means the request was accepted. The hold exists only when
+    // PayPal reports the authorization resource itself as CREATED/AUTHORIZED.
+    if (authorization.status === "CREATED" || authorization.status === "AUTHORIZED") {
+      return {
+        ...base,
+        ok: true,
+        providerReference: authorization.id,
+        status: "CREATED",
+        message: "Sandbox authorization hold created. This is a hold, not a capture or a settlement.",
+      };
+    }
+    if (
+      authorization.status === "DENIED" ||
+      authorization.status === "DECLINED" ||
+      authorization.status === "FAILED" ||
+      authorization.status === "VOIDED" ||
+      authorization.status === "EXPIRED"
+    ) {
+      return {
+        ...base,
+        ok: false,
+        providerReference: authorization.id,
+        status: "FAILED",
+        message: `PayPal did not create the authorization hold (reported ${describeProviderStatus(authorization.status)}).`,
+      };
+    }
+    // PENDING, or any missing/unknown status, is accepted-but-unconfirmed.
     return {
       ...base,
-      ok: true,
-      providerReference: authorizationId,
-      status: "CREATED",
-      message: "Sandbox authorization hold created. This is a hold, not a capture or a settlement.",
+      ok: false,
+      providerReference: authorization.id,
+      status: "PENDING",
+      message: `PayPal accepted the authorization request but reported ${describeProviderStatus(authorization.status)}, so the hold is unconfirmed. Reconcile against PayPal before retrying; do not retry blindly.`,
     };
   }
 
@@ -424,14 +465,44 @@ export class PayPalSandboxProvider implements PaymentProvider {
     if (!result.ok) {
       return { ...base, ok: false, providerReference: null, status: "FAILED", message: describeError(result.data, "PayPal did not capture the authorization.") };
     }
+
+    // A 2xx means PayPal accepted the request, NOT that money settled. Only an
+    // explicit COMPLETED with a capture id is settled money; everything else is
+    // reported conservatively.
+    const data = result.data;
     const captureId =
-      result.data && typeof result.data.id === "string" ? result.data.id : null;
+      data && typeof data.id === "string" && data.id.trim() !== "" ? data.id : null;
+    const rawStatus = data ? data.status : undefined;
+
+    if (rawStatus === "COMPLETED" && captureId) {
+      return {
+        ...base,
+        ok: true,
+        providerReference: captureId,
+        status: "COMPLETED",
+        message: "PayPal sandbox reported the capture as completed.",
+      };
+    }
+    if (rawStatus === "DECLINED" || rawStatus === "FAILED") {
+      return {
+        ...base,
+        ok: false,
+        providerReference: captureId,
+        status: "FAILED",
+        message: `PayPal sandbox reported the capture as ${rawStatus}. No money moved.`,
+      };
+    }
+
+    const detail =
+      rawStatus === "COMPLETED"
+        ? "reported it as COMPLETED but returned no capture id"
+        : `reported ${describeProviderStatus(rawStatus)}`;
     return {
       ...base,
-      ok: true,
+      ok: false,
       providerReference: captureId,
-      status: "COMPLETED",
-      message: "PayPal sandbox reported the capture as completed.",
+      status: "PENDING",
+      message: `PayPal accepted the capture request but ${detail}. This capture is unsettled: reconcile it against PayPal and do not retry blindly.`,
     };
   }
 
@@ -489,10 +560,16 @@ function extractApprovalUrl(order: Record<string, unknown>): string | null {
   return null;
 }
 
-function extractAuthorizationId(
+interface ExtractedAuthorization {
+  id: string | null;
+  /** Raw, untrusted status value from PayPal; not a success signal. */
+  status: unknown;
+}
+
+function extractAuthorization(
   order: Record<string, unknown> | null,
-): string | null {
-  if (!order) return null;
+): ExtractedAuthorization {
+  if (!order) return { id: null, status: undefined };
   const units = Array.isArray(order.purchase_units) ? order.purchase_units : [];
   for (const unit of units) {
     if (!unit || typeof unit !== "object") continue;
@@ -504,16 +581,14 @@ function extractAuthorizationId(
       ? ((payments as Record<string, unknown>).authorizations as unknown[])
       : [];
     for (const authorization of authorizations) {
-      if (
-        authorization &&
-        typeof authorization === "object" &&
-        typeof (authorization as Record<string, unknown>).id === "string"
-      ) {
-        return (authorization as Record<string, unknown>).id as string;
+      if (!authorization || typeof authorization !== "object") continue;
+      const record = authorization as Record<string, unknown>;
+      if (typeof record.id === "string" && record.id.trim() !== "") {
+        return { id: record.id, status: record.status };
       }
     }
   }
-  return null;
+  return { id: null, status: undefined };
 }
 
 // ---------------------------------------------------------------------------
