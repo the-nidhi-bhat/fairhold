@@ -115,7 +115,7 @@ async function DashboardContent() {
             Current authorization state across all deals.
           </p>
         </div>
-        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           <PaymentSummaryStat
             label="Needs authorization"
             value={paymentSummary.not_authorized}
@@ -132,10 +132,13 @@ async function DashboardContent() {
             tone="success"
           />
           <PaymentSummaryStat
-            label="Other states"
-            value={
-              paymentSummary.authorization_simulated + paymentSummary.no_payment
-            }
+            label="Simulated authorized"
+            value={paymentSummary.authorization_simulated}
+            tone="warning"
+          />
+          <PaymentSummaryStat
+            label="No payment"
+            value={paymentSummary.no_payment}
             tone="neutral"
           />
         </dl>
