@@ -13,6 +13,10 @@ import { join } from "node:path";
 
 const MIGRATIONS_DIR = join(process.cwd(), "migrations");
 const sql = await readFile(join(MIGRATIONS_DIR, "0001_initial.sql"), "utf8");
+const dealsSql = await readFile(
+  join(process.cwd(), "lib", "data", "postgres", "deals.ts"),
+  "utf8",
+);
 
 test("schema defines every required table", () => {
   for (const table of [
@@ -60,4 +64,28 @@ test("webhook inbox table is append-only with safe error metadata", () => {
   assert.match(sql, /status\s+text NOT NULL DEFAULT 'received'/);
   assert.match(sql, /last_error\s+text/);
   assert.match(sql, /processed_at\s+timestamptz/);
+});
+
+test("deal mutations do not query nonexistent authorization_id", () => {
+  assert.doesNotMatch(dealsSql, /deals?\.authorization_id|authorization_id/i);
+});
+
+test("milestone and evidence queries contain placeholders and row locks", () => {
+  assert.doesNotMatch(dealsSql, /WHERE id =  (AND|$)|WHERE id = $1  AND/);
+  assert.match(
+    dealsSql,
+    /WHERE id = \$1 AND deal_id = \$2\s+FOR UPDATE/,
+  );
+  assert.match(
+    dealsSql,
+    /WHERE id = \$1 AND deal_id = \$2\s+FOR UPDATE/,
+  );
+});
+
+test("evidence persistence writes every metadata column", () => {
+  assert.match(
+    dealsSql,
+    /file_name, file_size, file_type, file_stored_path, submitted_by, submitted_at/,
+  );
+  assert.match(dealsSql, /VALUES \(\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11\)/);
 });

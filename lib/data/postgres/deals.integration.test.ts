@@ -27,6 +27,7 @@ import {
   recordMilestoneApproval,
   reviewEvidence,
   setDealStatus,
+  updateMilestone,
 } from "./deals.ts";
 import type { Deal } from "../../domain/types.ts";
 
@@ -108,6 +109,52 @@ test("postgres: create/list/get roundtrip preserves the full tree", { skip: skip
   assert.equal(loaded.events[0].type, "deal.created");
   assert.equal(loaded.authorization, null);
   assert.equal(loaded.pendingAuthorization, null);
+});
+
+test("postgres: milestone update and evidence persistence roundtrip", { skip: skipReason }, async () => {
+  const { deal, milestoneId } = await seedDealWithMilestone();
+  const updated = await updateMilestone(
+    deal.id,
+    milestoneId,
+    {
+      title: "Milestone updated",
+      description: "Updated description.",
+      amountCents: 30000,
+      dueDate: "2026-12-31",
+      acceptanceCriteria: "Updated acceptance criteria.",
+    },
+    "system",
+  );
+  assert.equal(updated.ok, true);
+
+  const evidence = await addEvidence(
+    deal.id,
+    milestoneId,
+    {
+      note: "Completed work.",
+      url: "https://example.test/proof",
+      file: {
+        name: "proof.txt",
+        size: 12,
+        type: "text/plain",
+        storedPath: "evidence/proof.txt",
+      },
+    },
+    "seller",
+  );
+  assert.equal(evidence.ok, true);
+
+  const loaded = await getDeal(deal.id);
+  assert.ok(loaded);
+  assert.equal(loaded.milestones[0].title, "Milestone updated");
+  assert.equal(loaded.milestones[0].amountCents, 30000);
+  assert.equal(loaded.evidence[0].note, "Completed work.");
+  assert.equal(loaded.evidence[0].url, "https://example.test/proof");
+  assert.equal(loaded.evidence[0].submittedBy, "seller");
+  assert.equal(loaded.evidence[0].file?.name, "proof.txt");
+  assert.equal(loaded.evidence[0].file?.size, 12);
+  assert.equal(loaded.evidence[0].file?.type, "text/plain");
+  assert.equal(loaded.evidence[0].file?.storedPath, "evidence/proof.txt");
 });
 
 test("postgres: approval is recorded atomically with audit events", { skip: skipReason }, async () => {
