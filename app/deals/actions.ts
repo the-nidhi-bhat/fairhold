@@ -461,6 +461,7 @@ export async function recordApprovalAction(
   let providerReference: string | null = null;
   let providerName: string | null = null;
   let simulated = false;
+  let paymentStatus: "COMPLETED" | "VOIDED" | "PENDING" | "FAILED" | undefined;
 
   if (plan.action === "CAPTURE") {
     const result = await provider.captureAuthorization({
@@ -474,6 +475,7 @@ export async function recordApprovalAction(
     providerReference = result.providerReference;
     providerName = result.providerName;
     simulated = result.simulated;
+    paymentStatus = result.status;
   } else if (plan.action === "VOID") {
     const result = await provider.voidAuthorization({
       dealId,
@@ -484,6 +486,7 @@ export async function recordApprovalAction(
     providerReference = result.providerReference;
     providerName = result.providerName;
     simulated = result.simulated;
+    paymentStatus = result.status;
   }
 
   const approval: MilestoneApproval = {
@@ -499,6 +502,7 @@ export async function recordApprovalAction(
     providerReference,
     providerName,
     simulated,
+    paymentStatus,
     note: note === "" ? null : note.slice(0, 1000),
   };
 

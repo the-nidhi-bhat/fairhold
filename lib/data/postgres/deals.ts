@@ -562,6 +562,7 @@ export async function recordMilestoneApproval(
     providerReference: string | null;
     providerName: string | null;
     simulated: boolean;
+    paymentStatus?: "COMPLETED" | "VOIDED" | "PENDING" | "FAILED";
     note: string | null;
   },
   actor = "system",
@@ -587,8 +588,9 @@ export async function recordMilestoneApproval(
       await client.query(
         `INSERT INTO milestone_approvals
            (id, milestone_id, decision, action, reason_codes, explanation, evidence_fingerprint,
-            evidence_reviewed_count, reviewed_by, reviewed_at, provider_reference, provider_name, simulated, note)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
+            evidence_reviewed_count, reviewed_by, reviewed_at, provider_reference, provider_name,
+            simulated, payment_status, note)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
         [
           approval.id,
           milestoneId,
@@ -603,6 +605,7 @@ export async function recordMilestoneApproval(
           approval.providerReference,
           approval.providerName,
           approval.simulated,
+          approval.paymentStatus ?? null,
           approval.note,
         ],
       );
@@ -668,6 +671,47 @@ export async function recordMilestoneApproval(
           : `${approval.action} recorded via ${approval.providerName}.`,
         actor,
         milestoneId,
+      );
+    }
+
+    if (
+      approval.decision === "approve" &&
+      approval.action !== "NONE" &&
+      approval.providerReference &&
+      (approval.paymentStatus === "COMPLETED" ||
+        approval.paymentStatus === "VOIDED")
+    ) {
+      const payment = await client.query(
+        `SELECT pa.provider_reference, pa.currency
+         FROM payment_authorizations pa
+         WHERE pa.deal_id = $1
+         FOR UPDATE`,
+        [dealId],
+      );
+      if ((payment.rowCount ?? 0) === 0) {
+        throw new Error("Payment authorization required for payment ledger.");
+      }
+      await client.query(
+        `INSERT INTO payment_captures
+           (id, deal_id, milestone_id, provider_name, provider_reference,
+            authorization_reference, amount_cents, currency, invoice_id,
+            status, simulated, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         ON CONFLICT (provider_name, provider_reference) DO NOTHING`,
+        [
+          randomUUID(),
+          dealId,
+          milestoneId,
+          approval.providerName ?? "unknown",
+          approval.providerReference,
+          payment.rows[0].provider_reference,
+          milestone.amount_cents,
+          payment.rows[0].currency,
+          null,
+          approval.paymentStatus,
+          approval.simulated,
+          now(),
+        ],
       );
     }
 

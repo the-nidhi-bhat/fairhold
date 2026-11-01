@@ -57,6 +57,7 @@ export async function loadDealsBy(
             a.provider_reference          AS approval_provider_reference,
             a.provider_name               AS approval_provider_name,
             a.simulated                   AS approval_simulated,
+            a.payment_status              AS approval_payment_status,
             a.note                        AS approval_note
      FROM milestones m
      LEFT JOIN milestone_approvals a ON a.milestone_id = m.id
@@ -130,6 +131,7 @@ export async function loadDealsBy(
               providerReference: row.approval_provider_reference ?? null,
               providerName: row.approval_provider_name ?? null,
               simulated: row.approval_simulated as boolean,
+              paymentStatus: row.approval_payment_status ?? undefined,
               note: row.approval_note ?? null,
             };
       return {

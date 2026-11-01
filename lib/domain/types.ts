@@ -204,6 +204,8 @@ export interface MilestoneApproval {
   providerReference: string | null;
   providerName: string | null;
   simulated: boolean;
+  /** Persisted provider outcome for the operation, when one was requested. */
+  paymentStatus?: "COMPLETED" | "VOIDED" | "PENDING" | "FAILED";
   /** Optional human note recorded with the decision. */
   note: string | null;
 }
