@@ -71,6 +71,19 @@ async function DashboardContent() {
     (sum, deal) => sum + computeProgress(deal).completed,
     0,
   );
+  const paymentSummary = deals.reduce(
+    (summary, deal) => {
+      summary[paymentStatusFor(deal).key] += 1;
+      return summary;
+    },
+    {
+      not_authorized: 0,
+      authorization_pending: 0,
+      authorization_simulated: 0,
+      authorization_sandbox: 0,
+      no_payment: 0,
+    },
+  );
 
   return (
     <>
@@ -86,6 +99,47 @@ async function DashboardContent() {
           value={String(completedMilestones)}
         />
       </dl>
+
+      <section
+        className="mt-6 rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950"
+        aria-labelledby="payment-summary-heading"
+      >
+        <div>
+          <h2
+            id="payment-summary-heading"
+            className="text-sm font-semibold text-slate-900 dark:text-slate-50"
+          >
+            Payment summary
+          </h2>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            Current authorization state across all deals.
+          </p>
+        </div>
+        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <PaymentSummaryStat
+            label="Needs authorization"
+            value={paymentSummary.not_authorized}
+            tone="neutral"
+          />
+          <PaymentSummaryStat
+            label="Buyer approval pending"
+            value={paymentSummary.authorization_pending}
+            tone="warning"
+          />
+          <PaymentSummaryStat
+            label="Sandbox authorized"
+            value={paymentSummary.authorization_sandbox}
+            tone="success"
+          />
+          <PaymentSummaryStat
+            label="Other states"
+            value={
+              paymentSummary.authorization_simulated + paymentSummary.no_payment
+            }
+            tone="neutral"
+          />
+        </dl>
+      </section>
 
       <h2 className="mt-10 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
         All deals
@@ -159,6 +213,34 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
         {label}
       </dt>
       <dd className="mt-1 text-xl font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function PaymentSummaryStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "neutral" | "warning" | "success";
+}) {
+  const dotTone = {
+    neutral: "bg-slate-400 dark:bg-slate-500",
+    warning: "bg-amber-500",
+    success: "bg-emerald-500",
+  }[tone];
+
+  return (
+    <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
+      <dt className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
+        <span className={`h-2 w-2 rounded-full ${dotTone}`} aria-hidden="true" />
+        {label}
+      </dt>
+      <dd className="mt-2 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50">
         {value}
       </dd>
     </div>
