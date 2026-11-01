@@ -1,9 +1,13 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { getDemoSession } from "@/lib/auth/session";
 import { NewDealForm } from "./new-deal-form";
 
 export const metadata = { title: "New deal" };
+export const instant = false;
 
-export default function NewDealPage() {
+export default async function NewDealPage() {
+  if (!(await getDemoSession())) redirect("/login");
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-10">
       <Link

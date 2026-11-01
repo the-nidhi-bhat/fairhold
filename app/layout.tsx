@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SessionNavigation } from "@/components/session-navigation";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -56,6 +58,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <span className="hidden rounded-full border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-700 dark:text-amber-400 sm:inline-block">
                 Under development
               </span>
+              <Suspense fallback={<span className="text-sm text-slate-500">Account</span>}>
+                <SessionNavigation />
+              </Suspense>
             </nav>
           </div>
         </header>

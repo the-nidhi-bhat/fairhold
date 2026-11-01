@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
+import { canAccessDeal, getDemoSession } from "@/lib/auth/session";
 import { listDeals } from "@/lib/data";
 import { formatCents } from "@/lib/domain/format";
 import {
@@ -12,8 +14,10 @@ import { ProgressBar } from "@/components/progress-bar";
 import { StatusBadge, dealStatusTone } from "@/components/status-badge";
 
 export const metadata = { title: "Dashboard" };
+export const instant = false;
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  if (!(await getDemoSession())) redirect("/login");
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -42,7 +46,11 @@ export default function DashboardPage() {
 
 async function DashboardContent() {
   await connection();
-  const deals = await listDeals();
+  const session = await getDemoSession();
+  const allDeals = await listDeals();
+  const deals = session
+    ? allDeals.filter((deal) => canAccessDeal(session, deal))
+    : [];
 
   if (deals.length === 0) {
     return (

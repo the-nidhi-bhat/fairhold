@@ -43,6 +43,7 @@ import {
   validateMilestoneInput,
 } from "@/lib/domain/validation";
 import { getPaymentProvider } from "@/lib/payments";
+import { canAccessDeal, getDemoSession, type DemoSession } from "@/lib/auth/session";
 
 export interface FormState {
   ok: boolean;
@@ -62,6 +63,33 @@ function isMilestoneStatus(value: string): value is MilestoneStatus {
   return (MILESTONE_STATUSES as readonly string[]).includes(value);
 }
 
+async function currentSession(): Promise<DemoSession> {
+  const session = await getDemoSession();
+  if (!session) throw new Error("Authentication required.");
+  return session;
+}
+
+async function currentActor(): Promise<string> {
+  const session = await currentSession();
+  return `${session.role}:${session.name}`;
+}
+
+async function assertDealAccess(dealId: string): Promise<void> {
+  const session = await currentSession();
+  const deal = await getDeal(dealId);
+  if (!deal || !canAccessDeal(session, deal)) {
+    throw new Error("Deal access denied.");
+  }
+}
+
+async function requireRole(...roles: DemoSession["role"][]): Promise<DemoSession> {
+  const session = await currentSession();
+  if (!roles.includes(session.role)) {
+    throw new Error("This action is not allowed for the current role.");
+  }
+  return session;
+}
+
 export async function createDealAction(
   _prev: FormState,
   formData: FormData,
@@ -75,7 +103,7 @@ export async function createDealAction(
   });
   if (!result.ok) return { ok: false, errors: result.errors };
 
-  const deal = await createDeal(result.value, "system");
+  const deal = await createDeal(result.value, await currentActor());
   revalidatePath("/dashboard");
   revalidatePath(`/deals/${deal.id}`);
   redirect(`/deals/${deal.id}`);
@@ -85,6 +113,7 @@ export async function addMilestoneAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const result = validateMilestoneInput({
     title: field(formData, "title"),
@@ -104,7 +133,8 @@ export async function addMilestoneAction(
     return { ok: false, errors: { _form: "Milestones cannot be added while the deal is " + deal.status + "." } };
   }
 
-  const response = await addMilestone(dealId, result.value, "system");
+  await assertDealAccess(dealId);
+  const response = await addMilestone(dealId, result.value, await currentActor());
   if (!response.ok) return { ok: false, errors: { _form: response.error } };
 
   revalidatePath(`/deals/${dealId}`);
@@ -115,8 +145,10 @@ export async function updateMilestoneAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
+  await assertDealAccess(dealId);
   const result = validateMilestoneInput({
     title: field(formData, "title"),
     description: field(formData, "description"),
@@ -147,7 +179,7 @@ export async function updateMilestoneAction(
     dealId,
     milestoneId,
     result.value,
-    "system",
+    await currentActor(),
   );
   if (!response.ok) return { ok: false, errors: { _form: response.error } };
 
@@ -168,7 +200,8 @@ export async function changeMilestoneStatusAction(
   const milestone = deal.milestones.find((m) => m.id === milestoneId);
   if (!milestone || !canTransitionMilestone(milestone.status, to)) return;
 
-  await setMilestoneStatus(dealId, milestoneId, to, "system");
+  await assertDealAccess(dealId);
+  await setMilestoneStatus(dealId, milestoneId, to, await currentActor());
   revalidatePath(`/deals/${dealId}`);
   revalidatePath("/dashboard");
 }
@@ -181,7 +214,8 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
   const deal = await getDeal(dealId);
   if (!deal || !canTransitionDeal(deal.status, to)) return;
 
-  await setDealStatus(dealId, to, "system");
+  await assertDealAccess(dealId);
+  await setDealStatus(dealId, to, await currentActor());
   revalidatePath(`/deals/${dealId}`);
   revalidatePath("/dashboard");
 }
@@ -195,6 +229,8 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
  */
 export async function authorizeDealAction(formData: FormData): Promise<void> {
   const dealId = field(formData, "dealId");
+  await requireRole("buyer", "reviewer");
+  await assertDealAccess(dealId);
   const deal = await getDeal(dealId);
   if (!deal || deal.status !== "Ready for Authorization") return;
 
@@ -218,7 +254,7 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
         amountCents,
         currency: deal.currency,
       },
-      "system",
+      await currentActor(),
     );
   } else {
     await markDealAuthorized(
@@ -229,7 +265,7 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
         simulated: authorization.simulated,
         amountCents,
       },
-      "system",
+      await currentActor(),
     );
   }
   revalidatePath(`/deals/${dealId}`);
@@ -244,6 +280,8 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
  */
 export async function confirmAuthorizationAction(formData: FormData): Promise<void> {
   const dealId = field(formData, "dealId");
+  await requireRole("buyer", "reviewer");
+  await assertDealAccess(dealId);
   const deal = await getDeal(dealId);
   if (!deal || deal.status !== "Ready for Authorization") return;
   const pending = deal.pendingAuthorization;
@@ -268,7 +306,7 @@ export async function confirmAuthorizationAction(formData: FormData): Promise<vo
       simulated: result.simulated,
       amountCents: pending.amountCents,
     },
-    "system",
+    await currentActor(),
   );
   revalidatePath(`/deals/${dealId}`);
   revalidatePath("/dashboard");
@@ -278,8 +316,10 @@ export async function submitEvidenceAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
+  await assertDealAccess(dealId);
 
   const deal = await getDeal(dealId);
   if (!deal) return { ok: false, errors: { _form: "Deal not found." } };
@@ -325,7 +365,7 @@ export async function submitEvidenceAction(
           }
         : null,
     },
-    "system",
+    await currentActor(),
   );
   if (!response.ok) return { ok: false, errors: { _form: response.error } };
 
@@ -337,8 +377,10 @@ export async function reviewEvidenceAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  await requireRole("buyer", "reviewer");
   const dealId = field(formData, "dealId");
   const submissionId = field(formData, "submissionId");
+  await assertDealAccess(dealId);
   const decision = field(formData, "decision");
   if (decision !== "accepted" && decision !== "rejected") {
     return { ok: false, errors: { _form: "Choose to accept or reject." } };
@@ -351,7 +393,7 @@ export async function reviewEvidenceAction(
     submissionId,
     decision,
     reviewNote,
-    "system",
+    await currentActor(),
   );
   if (!response.ok) return { ok: false, errors: { _form: response.error } };
 
@@ -369,8 +411,10 @@ export async function recordApprovalAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  await requireRole("buyer", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
+  await assertDealAccess(dealId);
   const decision = field(formData, "decision");
   const note = field(formData, "note").trim();
 
@@ -438,7 +482,7 @@ export async function recordApprovalAction(
     explanation: recommendation.explanation,
     evidenceFingerprint: recommendation.evidenceFingerprint,
     evidenceReviewedCount: recommendation.evidenceReviewedCount,
-    reviewedBy: "system",
+    reviewedBy: await currentActor(),
     reviewedAt: new Date().toISOString(),
     providerReference,
     providerName,
@@ -450,7 +494,7 @@ export async function recordApprovalAction(
     dealId,
     milestoneId,
     approval,
-    "system",
+    await currentActor(),
   );
   if (!response.ok) return { ok: false, errors: { _form: response.error } };
 

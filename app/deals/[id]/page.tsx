@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { canAccessDeal, getDemoSession } from "@/lib/auth/session";
 import { getDeal } from "@/lib/data";
 import { formatCents } from "@/lib/domain/format";
 import { approvalIsStale, recommendMilestone } from "@/lib/domain/rules";
@@ -40,6 +41,7 @@ import {
 } from "./evidence-forms";
 
 export const metadata = { title: "Deal" };
+export const instant = false;
 
 export default function DealPage({ params }: PageProps<"/deals/[id]">) {
   return (
@@ -63,6 +65,8 @@ async function DealDetail({ id }: { id: string }) {
   await connection();
   const deal = await getDeal(id);
   if (!deal) notFound();
+  const session = await getDemoSession();
+  if (!session || !canAccessDeal(session, deal)) notFound();
 
   const progress = computeProgress(deal);
   const payment = paymentStatusFor(deal);
