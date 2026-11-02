@@ -178,6 +178,17 @@ export function paymentStatusFor(
           : "Recorded by the demo payment adapter. No PayPal request was made.",
       };
     default:
+      if (!deal.authorization) {
+        // A deal can reach an active status without a recorded authorization
+        // (manual status moves, imported data). Never claim a hold that does
+        // not exist.
+        return {
+          key: "not_authorized",
+          label: "Not authorized",
+          tone: "neutral",
+          detail: "No payment authorization is recorded for this deal.",
+        };
+      }
       return {
         key: real ? "authorization_sandbox" : "authorization_simulated",
         label: real

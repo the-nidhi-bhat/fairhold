@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { canAccessDeal, getDemoSession } from "@/lib/auth/session";
 import {
-  deterministicEvidenceAdvisory,
-  deterministicMilestoneProposal,
+  resolveEvidenceAdvisory,
+  resolveMilestoneProposal,
 } from "@/lib/ai/advisory";
 import { getDeal } from "@/lib/data";
 import { formatCents } from "@/lib/domain/format";
@@ -36,7 +36,7 @@ import {
   changeMilestoneStatusAction,
   confirmAuthorizationAction,
 } from "../actions";
-import { getPaymentProvider } from "@/lib/payments";
+import { paymentRuntime } from "@/lib/payments/runtime";
 import { AddMilestoneForm, EditMilestoneForm } from "./milestone-forms";
 import {
   AddEvidenceForm,
@@ -47,16 +47,35 @@ import {
 export const metadata = { title: "Deal" };
 export const instant = false;
 
+const ACTION_ERROR_MESSAGES: Record<string, string> = {
+  role: "This action is not allowed for your current role. No changes were made.",
+  invalid_status:
+    "That action is not available in the deal's current state. No changes were made.",
+  invalid_transition:
+    "That status change is not allowed from the current state. No changes were made.",
+  not_found: "That record no longer exists. No changes were made.",
+  no_milestones:
+    "Add at least one milestone before requesting an authorization hold.",
+  no_pending_authorization:
+    "There is no pending PayPal authorization to confirm.",
+  sandbox_unavailable:
+    "Real PayPal confirmation requires PostgreSQL-backed payment accounting. No request was made.",
+  provider:
+    "The payment provider did not complete that request. Nothing was captured or voided.",
+};
+
 export default async function DealPage({
   params,
   searchParams,
 }: PageProps<"/deals/[id]">) {
   const { id } = await params;
   const query = await searchParams;
-  const actionError =
-    query.actionError === "role"
-      ? "This action is not allowed for your current role. No changes were made."
-      : null;
+  const errorCode =
+    typeof query.actionError === "string" ? query.actionError : null;
+  const actionError = errorCode
+    ? (ACTION_ERROR_MESSAGES[errorCode] ??
+      "That action could not be completed. No changes were made.")
+    : null;
 
   return (
     <div className="page-frame py-10">
@@ -88,10 +107,21 @@ async function DealDetail({
 
   const progress = computeProgress(deal);
   const payment = paymentStatusFor(deal);
-  const sandboxConfigured = getPaymentProvider().mode === "sandbox";
+  const { provider, sandboxRequiresPostgres } = paymentRuntime();
+  const sandboxConfigured = provider.mode === "sandbox";
+  const canAuthorize = session.role === "buyer" || session.role === "reviewer";
   const dealTransitions = allowedManualDealTransitions(deal.status);
   const canAddMilestones =
-    deal.status !== "Completed" && deal.status !== "Cancelled";
+    deal.status !== "Completed" &&
+    deal.status !== "Disputed" &&
+    deal.status !== "Cancelled" &&
+    !deal.authorization &&
+    !deal.pendingAuthorization;
+  const canEditMilestone = (milestone: (typeof deal.milestones)[number]) =>
+    canAddMilestones &&
+    milestone.status !== "Completed" &&
+    milestone.status !== "Disputed" &&
+    milestone.status !== "Cancelled";
   const timeline = [...deal.events].sort((a, b) =>
     b.createdAt.localeCompare(a.createdAt),
   );
@@ -182,7 +212,15 @@ async function DealDetail({
           <StatusBadge label={payment.label} tone={payment.tone} />
         </div>
 
-        {deal.pendingAuthorization ? (
+        {sandboxRequiresPostgres ? (
+          <p className="mt-3 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+            PayPal sandbox credentials are configured, but real payment actions
+            require PostgreSQL-backed accounting. This session uses the simulated
+            provider — no PayPal request is made and no money moves.
+          </p>
+        ) : null}
+
+        {canAuthorize && deal.pendingAuthorization ? (
           <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
             <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
               Waiting for buyer approval in PayPal
@@ -217,7 +255,7 @@ async function DealDetail({
               </button>
             </form>
           </div>
-        ) : deal.status === "Ready for Authorization" ? (
+        ) : canAuthorize && deal.status === "Ready for Authorization" ? (
           <form action={authorizeDealAction} className="mt-4">
             <input type="hidden" name="dealId" value={deal.id} />
             <button
@@ -453,7 +491,8 @@ async function DealDetail({
                     </form>
                   ) : null}
 
-                  {session.role === "seller" || session.role === "reviewer" ? (
+                  {(session.role === "seller" || session.role === "reviewer") &&
+                  canEditMilestone(milestone) ? (
                     <details className="mt-4">
                       <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
                         Edit milestone
@@ -496,8 +535,8 @@ async function DealDetail({
   );
 }
 
-function MilestoneAdvisory({ agreement }: { agreement: string }) {
-  const proposal = deterministicMilestoneProposal(agreement);
+async function MilestoneAdvisory({ agreement }: { agreement: string }) {
+  const { proposal, source } = await resolveMilestoneProposal(agreement);
   return (
     <section className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/20">
       <p className="text-xs font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
@@ -512,6 +551,9 @@ function MilestoneAdvisory({ agreement }: { agreement: string }) {
       <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
         Suggested acceptance criteria: {proposal.acceptanceCriteria}
       </p>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Source: {source === "ai" ? "configured AI provider" : "deterministic fallback"}
+      </p>
       <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
         Advisory only. A human creates milestones and deterministic rules decide
         payment.
@@ -520,14 +562,14 @@ function MilestoneAdvisory({ agreement }: { agreement: string }) {
   );
 }
 
-function EvidenceAdvisoryPanel({
+async function EvidenceAdvisoryPanel({
   criteria,
   evidence,
 }: {
   criteria: string;
   evidence: string[];
 }) {
-  const advisory = deterministicEvidenceAdvisory(criteria, evidence);
+  const { advisory, source } = await resolveEvidenceAdvisory(criteria, evidence);
   return (
     <div className="mt-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
       <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -535,6 +577,9 @@ function EvidenceAdvisoryPanel({
       </p>
       <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
         {advisory.summary}
+      </p>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Source: {source === "ai" ? "configured AI provider" : "deterministic fallback"}
       </p>
       {advisory.concerns.length > 0 ? (
         <ul className="mt-2 list-disc pl-5 text-xs text-amber-700 dark:text-amber-300">
@@ -681,6 +726,13 @@ function MilestoneEvidence({
                   <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
                     File: {sub.file.name} ({sub.file.type},{" "}
                     {formatBytes(sub.file.size)})
+                    {" "}
+                    <a
+                      href={`/api/evidence/${deal.id}/${sub.id}`}
+                      className="font-medium text-indigo-600 underline dark:text-indigo-400"
+                    >
+                      Download
+                    </a>
                   </p>
                 ) : null}
                 {sub.reviewNote ? (

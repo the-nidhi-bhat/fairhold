@@ -69,3 +69,112 @@ export function parseEvidenceAdvisory(raw: unknown): EvidenceAdvisory | null {
     concerns: record.concerns.map((value) => value.trim().slice(0, 300)).slice(0, 20),
   };
 }
+
+export interface AdvisoryProviderConfig {
+  apiKey: string;
+  model: string;
+  url: string;
+}
+
+export function readAdvisoryProviderConfig(
+  env: Record<string, string | undefined> = process.env,
+): AdvisoryProviderConfig | null {
+  const apiKey = env.AI_API_KEY?.trim();
+  const model = env.AI_MODEL?.trim();
+  if (!apiKey || !model || /^your_/i.test(apiKey) || /^your_/i.test(model)) return null;
+  return {
+    apiKey,
+    model,
+    url: env.AI_API_URL?.trim() || "https://api.openai.com/v1/chat/completions",
+  };
+}
+
+function parseJsonObject(content: string): unknown {
+  const trimmed = content.trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return JSON.parse(fenced?.[1] ?? trimmed);
+}
+
+export async function resolveMilestoneProposal(
+  agreement: string,
+  env: Record<string, string | undefined> = process.env,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ proposal: MilestoneProposal; source: "ai" | "deterministic" }> {
+  const fallback = deterministicMilestoneProposal(agreement);
+  const config = readAdvisoryProviderConfig(env);
+  if (!config) return { proposal: fallback, source: "deterministic" };
+  try {
+    const response = await fetchImpl(config.url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: "Return only JSON with title, description, and acceptanceCriteria. This advisory does not authorize payment or accept evidence.",
+          },
+          { role: "user", content: `Agreement: ${agreement.slice(0, 10000)}` },
+        ],
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) return { proposal: fallback, source: "deterministic" };
+    const payload = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
+    const content = payload.choices?.[0]?.message?.content;
+    if (typeof content !== "string") return { proposal: fallback, source: "deterministic" };
+    const proposal = parseMilestoneProposal(parseJsonObject(content));
+    return proposal ? { proposal, source: "ai" } : { proposal: fallback, source: "deterministic" };
+  } catch {
+    return { proposal: fallback, source: "deterministic" };
+  }
+}
+
+export async function resolveEvidenceAdvisory(
+  acceptanceCriteria: string,
+  evidence: string[],
+  env: Record<string, string | undefined> = process.env,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ advisory: EvidenceAdvisory; source: "ai" | "deterministic" }> {
+  const fallback = deterministicEvidenceAdvisory(acceptanceCriteria, evidence);
+  const config = readAdvisoryProviderConfig(env);
+  if (!config) return { advisory: fallback, source: "deterministic" };
+  try {
+    const response = await fetchImpl(config.url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: config.model,
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: "Assess supplied evidence against acceptance criteria. Return only JSON with summary and concerns arrays, plus recommended: REVIEW, ACCEPT, or REJECT. This advisory never changes deal state.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({ acceptanceCriteria, evidence }).slice(0, 10000),
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!response.ok) return { advisory: fallback, source: "deterministic" };
+    const payload = await response.json() as { choices?: Array<{ message?: { content?: unknown } }> };
+    const content = payload.choices?.[0]?.message?.content;
+    if (typeof content !== "string") return { advisory: fallback, source: "deterministic" };
+    const advisory = parseEvidenceAdvisory(parseJsonObject(content));
+    return advisory ? { advisory, source: "ai" } : { advisory: fallback, source: "deterministic" };
+  } catch {
+    return { advisory: fallback, source: "deterministic" };
+  }
+}

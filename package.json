@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"lib/**/*.test.ts\"",
+    "demo:reset": "node scripts/demo-reset.mjs",
     "db:migrate": "node --env-file-if-exists=.env scripts/db-migrate.mjs",
     "db:import": "node --env-file-if-exists=.env scripts/db-import-json.mjs"
   },

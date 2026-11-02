@@ -12,7 +12,6 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { isPostgresConfigured } from "@/lib/data/db";
 import {
   addEvidence,
   addMilestone,
@@ -45,7 +44,7 @@ import {
   validateDealInput,
   validateMilestoneInput,
 } from "@/lib/domain/validation";
-import { getPaymentProvider } from "@/lib/payments";
+import { paymentRuntime } from "@/lib/payments/runtime";
 import { canAccessDeal, getDemoSession, type DemoSession } from "@/lib/auth/session";
 
 export interface FormState {
@@ -97,7 +96,7 @@ export async function createDealAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const session = await requireRole("buyer", "seller", "reviewer");
+  const session = await requireRole("buyer", "seller");
   const result = validateDealInput({
     title: field(formData, "title"),
     clientName: field(formData, "clientName"),
@@ -107,11 +106,10 @@ export async function createDealAction(
   });
   if (!result.ok) return { ok: false, errors: result.errors };
   if (
-    session.role !== "reviewer" &&
-    ((session.role === "buyer" &&
+    (session.role === "buyer" &&
       result.value.clientName.toLowerCase() !== session.name.toLowerCase()) ||
-      (session.role === "seller" &&
-        result.value.freelancerName.toLowerCase() !== session.name.toLowerCase()))
+    (session.role === "seller" &&
+      result.value.freelancerName.toLowerCase() !== session.name.toLowerCase())
   ) {
     return { ok: false, errors: { _form: "The party name must match your signed demo identity." } };
   }
@@ -137,16 +135,19 @@ export async function addMilestoneAction(
   });
   if (!result.ok) return { ok: false, errors: result.errors };
 
+  await assertDealAccess(dealId);
   const deal = await getDeal(dealId);
   if (!deal) return { ok: false, errors: { _form: "Deal not found." } };
   if (deal.authorization) {
     return { ok: false, errors: { _form: "Milestones cannot be added after an authorization exists." } };
   }
+  if (deal.pendingAuthorization) {
+    return { ok: false, errors: { _form: "Milestones cannot be added while a PayPal authorization is awaiting buyer approval." } };
+  }
   if (deal.status === "Completed" || deal.status === "Disputed" || deal.status === "Cancelled") {
     return { ok: false, errors: { _form: "Milestones cannot be added while the deal is " + deal.status + "." } };
   }
 
-  await assertDealAccess(dealId);
   const response = await addMilestone(dealId, result.value, await currentActor());
   if (!response.ok) return { ok: false, errors: { _form: response.error } };
 
@@ -177,6 +178,9 @@ export async function updateMilestoneAction(
   if (!milestone) return { ok: false, errors: { _form: "Milestone not found in this deal." } };
   if (deal.authorization) {
     return { ok: false, errors: { _form: "Milestones cannot be edited after an authorization exists." } };
+  }
+  if (deal.pendingAuthorization) {
+    return { ok: false, errors: { _form: "Milestones cannot be edited while a PayPal authorization is awaiting buyer approval." } };
   }
   if (deal.status === "Completed" || deal.status === "Disputed" || deal.status === "Cancelled") {
     return { ok: false, errors: { _form: "Milestones cannot be edited while the deal is " + deal.status + "." } };
@@ -211,15 +215,23 @@ export async function changeMilestoneStatusAction(
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
-  if (!isMilestoneStatus(to)) return;
+  if (!isMilestoneStatus(to)) {
+    redirect(`/deals/${dealId}?actionError=invalid_status`);
+  }
 
   const deal = await getDeal(dealId);
-  if (!deal) return;
+  if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
   const milestone = deal.milestones.find((m) => m.id === milestoneId);
-  if (!milestone || !canTransitionMilestone(milestone.status, to)) return;
+  if (!milestone) redirect(`/deals/${dealId}?actionError=not_found`);
+  if (!canTransitionMilestone(milestone.status, to)) {
+    redirect(`/deals/${dealId}?actionError=invalid_transition`);
+  }
 
   await assertDealAccess(dealId);
-  await setMilestoneStatus(dealId, milestoneId, to, await currentActor());
+  const response = await setMilestoneStatus(dealId, milestoneId, to, await currentActor());
+  if (!response.ok) {
+    redirect(`/deals/${dealId}?actionError=invalid_transition`);
+  }
   revalidatePath(`/deals/${dealId}`);
   revalidatePath("/dashboard");
 }
@@ -232,13 +244,21 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
-  if (!isDealStatus(to) || to === "Authorized") return;
+  if (!isDealStatus(to) || to === "Authorized") {
+    redirect(`/deals/${dealId}?actionError=invalid_status`);
+  }
 
   const deal = await getDeal(dealId);
-  if (!deal || !canTransitionDeal(deal.status, to)) return;
+  if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
+  if (!canTransitionDeal(deal.status, to)) {
+    redirect(`/deals/${dealId}?actionError=invalid_transition`);
+  }
 
   await assertDealAccess(dealId);
-  await setDealStatus(dealId, to, await currentActor());
+  const response = await setDealStatus(dealId, to, await currentActor());
+  if (!response.ok) {
+    redirect(`/deals/${dealId}?actionError=invalid_transition`);
+  }
   revalidatePath(`/deals/${dealId}`);
   revalidatePath("/dashboard");
 }
@@ -252,22 +272,31 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
  */
 export async function authorizeDealAction(formData: FormData): Promise<void> {
   const dealId = field(formData, "dealId");
-  await requireRole("buyer", "reviewer");
+  try {
+    await requireRole("buyer", "reviewer");
+  } catch {
+    redirect(`/deals/${dealId}?actionError=role`);
+  }
   await assertDealAccess(dealId);
   const deal = await getDeal(dealId);
-  if (!deal || deal.status !== "Ready for Authorization") return;
+  if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
+  if (deal.status !== "Ready for Authorization") {
+    redirect(`/deals/${dealId}?actionError=invalid_status`);
+  }
+  if (deal.milestones.length === 0) {
+    redirect(`/deals/${dealId}?actionError=no_milestones`);
+  }
 
   const amountCents = deal.milestones.reduce((sum, m) => sum + m.amountCents, 0);
-  const provider = getPaymentProvider();
-  if (provider.mode === "sandbox" && !isPostgresConfigured()) {
-    return;
-  }
+  const { provider } = paymentRuntime();
   const authorization = await provider.createAuthorizationHold({
     dealId,
     amountCents,
     currency: deal.currency,
   });
-  if (!authorization.ok) return;
+  if (!authorization.ok) {
+    redirect(`/deals/${dealId}?actionError=provider`);
+  }
 
   if (provider.mode === "sandbox" && authorization.orderId) {
     await setPendingAuthorization(
@@ -306,23 +335,33 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
  */
 export async function confirmAuthorizationAction(formData: FormData): Promise<void> {
   const dealId = field(formData, "dealId");
-  await requireRole("buyer", "reviewer");
+  try {
+    await requireRole("buyer", "reviewer");
+  } catch {
+    redirect(`/deals/${dealId}?actionError=role`);
+  }
   await assertDealAccess(dealId);
   const deal = await getDeal(dealId);
-  if (!deal || deal.status !== "Ready for Authorization") return;
+  if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
+  if (deal.status !== "Ready for Authorization") {
+    redirect(`/deals/${dealId}?actionError=invalid_status`);
+  }
   const pending = deal.pendingAuthorization;
-  if (!pending) return;
+  if (!pending) redirect(`/deals/${dealId}?actionError=no_pending_authorization`);
 
-  const provider = getPaymentProvider();
-  if (provider.mode !== "sandbox") return;
-  if (!isPostgresConfigured()) return;
+  const { provider } = paymentRuntime();
+  if (provider.mode !== "sandbox") {
+    redirect(`/deals/${dealId}?actionError=sandbox_unavailable`);
+  }
 
   const result = await provider.authorizeOrder({
     dealId,
     orderId: pending.providerOrderId,
     requestId: `fairhold-confirm-${dealId}`,
   });
-  if (!result.ok || !result.providerReference) return;
+  if (!result.ok || !result.providerReference) {
+    redirect(`/deals/${dealId}?actionError=provider`);
+  }
 
   await markDealAuthorized(
     dealId,
@@ -472,13 +511,7 @@ export async function recordApprovalAction(
     };
   }
 
-  const provider = getPaymentProvider();
-  if (provider.mode === "sandbox" && !isPostgresConfigured()) {
-    return {
-      ok: false,
-      errors: { _form: "Real PayPal actions require PostgreSQL-backed durable payment accounting." },
-    };
-  }
+  const { provider } = paymentRuntime();
   let providerReference: string | null = null;
   let providerName: string | null = null;
   let simulated = false;
@@ -506,17 +539,29 @@ export async function recordApprovalAction(
       };
     }
     const idempotencyKey = `capture:${dealId}:${milestoneId}`;
-    await beginPaymentOperation({
-      dealId,
-      milestoneId,
-      authorizationReference: deal.authorization?.providerReference ?? null,
-      action: "CAPTURE",
-      requestedAmountCents: milestone.amountCents,
-      currency: deal.currency,
-      idempotencyKey,
-      providerName: provider.name,
-      finalCapture: capturePlan.finalCapture,
-    });
+    try {
+      await beginPaymentOperation({
+        dealId,
+        milestoneId,
+        authorizationReference: deal.authorization?.providerReference ?? null,
+        action: "CAPTURE",
+        requestedAmountCents: milestone.amountCents,
+        currency: deal.currency,
+        idempotencyKey,
+        providerName: provider.name,
+        finalCapture: capturePlan.finalCapture,
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        errors: {
+          _form:
+            error instanceof Error
+              ? error.message
+              : "The payment operation could not be recorded. Nothing was captured.",
+        },
+      };
+    }
     const result = await provider.captureAuthorization({
       dealId,
       milestoneId,
@@ -538,16 +583,28 @@ export async function recordApprovalAction(
     paymentStatus = result.status;
   } else if (plan.action === "VOID") {
     const idempotencyKey = `void:${dealId}:${milestoneId}`;
-    await beginPaymentOperation({
-      dealId,
-      milestoneId,
-      authorizationReference: deal.authorization?.providerReference ?? null,
-      action: "VOID",
-      requestedAmountCents: null,
-      currency: deal.currency,
-      idempotencyKey,
-      providerName: provider.name,
-    });
+    try {
+      await beginPaymentOperation({
+        dealId,
+        milestoneId,
+        authorizationReference: deal.authorization?.providerReference ?? null,
+        action: "VOID",
+        requestedAmountCents: null,
+        currency: deal.currency,
+        idempotencyKey,
+        providerName: provider.name,
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        errors: {
+          _form:
+            error instanceof Error
+              ? error.message
+              : "The payment operation could not be recorded. Nothing was voided.",
+        },
+      };
+    }
     const result = await provider.voidAuthorization({
       dealId,
       milestoneId,
