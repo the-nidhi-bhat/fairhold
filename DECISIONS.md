@@ -15,3 +15,10 @@
   operations; PostgreSQL serializes allocation with deal/authorization locks.
 - Capture webhooks must match the operation's PayPal invoice/idempotency correlation
   and validate deal, milestone, currency and amount before completion.
+- A provider-confirmed capture is persisted into the operation and capture ledger
+  in one PostgreSQL transaction. Human approval remains a separate milestone
+  workflow and cannot be inferred from provider evidence alone.
+- Timeout and transport failures are PENDING/ambiguous, not FAILED; reservations
+  are released only for definite provider rejection.
+- Real PayPal actions require PostgreSQL-backed durable accounting and are
+  unavailable in JSON mode. JSON/demo simulation remains available.

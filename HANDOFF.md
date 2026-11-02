@@ -164,6 +164,24 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
 3. Run desktop/mobile browser smoke tests against the authenticated flows.
 4. Perform final origin fetch, diff review, secret scan, and normal branch push.
 
+## Payment Integrity Remediation 2 checkpoint
+
+- Implemented provider-confirmed capture ledger persistence in the operation
+  transaction, ambiguous network outcomes as PENDING, approval-gated webhook
+  milestone completion, capture ownership quarantine, migration relationship
+  preflight, and JSON-mode real-payment guards.
+- Verification after the implementation:
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test`: 161 tests total, 140 passed, 21 skipped, 0 failed.
+  - `npm run build`: passed.
+- PostgreSQL integration: not run; `FAIRHOLD_TEST_DATABASE_URL` is unset.
+- Live PayPal sandbox: not run.
+- Remaining risks include cross-system PostgreSQL/PayPal crash uncertainty and
+  unexecuted migration/concurrency/webhook integration tests. A confirmed
+  PayPal result is conserved through the operation plus capture ledger design,
+  while response-loss uncertainty must be reconciled from PayPal.
+
 ## Post-audit hardening checkpoint
 
 - Authentication commit: `a75a9f1`

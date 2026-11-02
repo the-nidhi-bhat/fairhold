@@ -8,7 +8,7 @@ import {
 } from "./paypal.ts";
 import { readPayPalConfig } from "./config.ts";
 import { getPaymentProvider } from "./index.ts";
-import { TransportTimeoutError, type HttpRequest, type HttpTransport } from "./transport.ts";
+import { TransportNetworkError, TransportTimeoutError, type HttpRequest, type HttpTransport } from "./transport.ts";
 import type { PayPalConfig } from "./config.ts";
 
 const config: PayPalConfig = {
@@ -308,6 +308,22 @@ test("paypal: captureAuthorization rejects missing reference / bad amount locall
     dealId: "d", milestoneId: "m", amountCents: 1000.5, currency: "USD", authorizationReference: "A",
   });
   assert.equal(badAmount.ok, false);
+});
+
+test("paypal: captureAuthorization network ambiguity is PENDING", async () => {
+  const transport: HttpTransport = async (request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    throw new TransportNetworkError("connection reset");
+  };
+  const result = await new PayPalSandboxProvider({ config, transport }).captureAuthorization({
+    dealId: "d",
+    milestoneId: "m",
+    amountCents: 1000,
+    currency: "USD",
+    authorizationReference: "A",
+  });
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "PENDING");
 });
 
 test("paypal: captureAuthorization timeout is PENDING", async () => {

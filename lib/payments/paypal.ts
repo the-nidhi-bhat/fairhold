@@ -356,7 +356,7 @@ export class PayPalSandboxProvider implements PaymentProvider {
       };
     }
     if (result.transportError) {
-      return { ...base, ok: false, providerReference: null, status: "FAILED", message: "Could not reach PayPal." };
+      return { ...base, ok: false, providerReference: null, status: "PENDING", message: "Could not reach PayPal; capture outcome is unknown. Preserve the reservation and reconcile before retrying." };
     }
     if (!result.ok) {
       return {
@@ -460,7 +460,7 @@ export class PayPalSandboxProvider implements PaymentProvider {
       return { ...base, ok: false, providerReference: null, status: "PENDING", message: "Capture outcome is unknown (timeout). Do not retry blindly — reconcile against PayPal first." };
     }
     if (result.transportError) {
-      return { ...base, ok: false, providerReference: null, status: "FAILED", message: "Could not reach PayPal." };
+      return { ...base, ok: false, providerReference: null, status: "PENDING", message: "Could not reach PayPal; capture outcome is unknown. Preserve the reservation and reconcile before retrying." };
     }
     if (!result.ok) {
       return { ...base, ok: false, providerReference: null, status: "FAILED", message: describeError(result.data, "PayPal did not capture the authorization.") };
@@ -531,7 +531,7 @@ export class PayPalSandboxProvider implements PaymentProvider {
       return { ...base, ok: false, providerReference: null, status: "PENDING", message: "Void outcome is unknown (timeout). Do not retry blindly — reconcile against PayPal first." };
     }
     if (result.transportError) {
-      return { ...base, ok: false, providerReference: null, status: "FAILED", message: "Could not reach PayPal." };
+      return { ...base, ok: false, providerReference: null, status: "PENDING", message: "Could not reach PayPal; void outcome is unknown. Preserve the operation and reconcile before retrying." };
     }
     // PayPal returns 204 (no body) or 200 on a successful void.
     if (result.status === 204 || result.ok) {

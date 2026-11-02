@@ -830,6 +830,19 @@ export async function updatePaymentOperation(
   update: Pick<PaymentOperation, "status" | "providerReference">,
 ): Promise<void> {
   await withTransaction(async (client) => {
+    const operation = await client.query(
+      `SELECT po.*, pa.provider_reference AS authorization_reference,
+              pa.currency AS authorization_currency
+       FROM payment_operations po
+       JOIN payment_authorizations pa ON pa.deal_id = po.deal_id
+       WHERE po.idempotency_key = $1
+       FOR UPDATE`,
+      [idempotencyKey],
+    );
+    if ((operation.rowCount ?? 0) !== 1) {
+      throw new Error("Payment operation not found.");
+    }
+    const row = operation.rows[0] as Record<string, unknown>;
     await client.query(
       `UPDATE payment_operations
        SET status = CASE
@@ -845,5 +858,26 @@ export async function updatePaymentOperation(
        WHERE idempotency_key = $1`,
       [idempotencyKey, update.status, update.providerReference],
     );
+    if (row.action === "CAPTURE" && update.status === "COMPLETED" && update.providerReference) {
+      await client.query(
+        `INSERT INTO payment_captures
+           (id, deal_id, milestone_id, provider_name, provider_reference,
+            authorization_reference, amount_cents, currency, invoice_id,
+            status, simulated, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'COMPLETED', false, now())
+         ON CONFLICT (provider_name, provider_reference) DO NOTHING`,
+        [
+          randomUUID(),
+          row.deal_id,
+          row.milestone_id,
+          row.provider_name,
+          update.providerReference,
+          row.authorization_reference,
+          row.requested_amount_cents,
+          row.currency ?? row.authorization_currency,
+          idempotencyKey,
+        ],
+      );
+    }
   });
 }

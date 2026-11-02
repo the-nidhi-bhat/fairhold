@@ -12,6 +12,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { isPostgresConfigured } from "@/lib/data/db";
 import {
   addEvidence,
   addMilestone,
@@ -250,6 +251,9 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
 
   const amountCents = deal.milestones.reduce((sum, m) => sum + m.amountCents, 0);
   const provider = getPaymentProvider();
+  if (provider.mode === "sandbox" && !isPostgresConfigured()) {
+    return;
+  }
   const authorization = await provider.createAuthorizationHold({
     dealId,
     amountCents,
@@ -303,6 +307,7 @@ export async function confirmAuthorizationAction(formData: FormData): Promise<vo
 
   const provider = getPaymentProvider();
   if (provider.mode !== "sandbox") return;
+  if (!isPostgresConfigured()) return;
 
   const result = await provider.authorizeOrder({
     dealId,
@@ -460,6 +465,12 @@ export async function recordApprovalAction(
   }
 
   const provider = getPaymentProvider();
+  if (provider.mode === "sandbox" && !isPostgresConfigured()) {
+    return {
+      ok: false,
+      errors: { _form: "Real PayPal actions require PostgreSQL-backed durable payment accounting." },
+    };
+  }
   let providerReference: string | null = null;
   let providerName: string | null = null;
   let simulated = false;

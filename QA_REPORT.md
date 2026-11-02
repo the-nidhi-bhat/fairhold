@@ -52,3 +52,17 @@
 - Browser/E2E: not executed.
 - PayPal adapter unit tests are included in the passing suite; network operations
   are simulated by transport doubles and not claimed as live sandbox proof.
+
+## Payment Integrity Remediation 2 — implementation checkpoint
+
+- Provider-confirmed PostgreSQL captures are written to the payment operation
+  and capture ledger in the same transaction; the two records do not depend on
+  a later milestone approval write.
+- Capture transport/timeouts preserve PENDING ambiguous outcomes; generic
+  network failures no longer become definite FAILED captures.
+- Webhook reconciliation records provider evidence, validates capture ownership,
+  and does not complete a milestone unless an authorized human CAPTURE approval
+  already exists.
+- Real sandbox PayPal actions are refused in JSON mode.
+- PostgreSQL integration still was not executed because
+  `FAIRHOLD_TEST_DATABASE_URL` is unset.

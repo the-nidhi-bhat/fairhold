@@ -314,12 +314,29 @@ async function reconcileCaptureCompleted(
   if (row.currency !== currency || Number(row.requested_amount_cents) !== amountCents) {
     return { outcome: "quarantined", reason: "capture operation amount mismatch" };
   }
-  await client.query(
-    `UPDATE milestone_approvals
-     SET payment_status = 'COMPLETED', provider_reference = $2
-     WHERE milestone_id = $1 AND decision = 'approve' AND action = 'CAPTURE'`,
-    [row.milestone_id, id],
+  const approval = await client.query<{ id: string }>(
+    `SELECT id FROM milestone_approvals
+     WHERE milestone_id = $1 AND decision = 'approve' AND action = 'CAPTURE'
+     LIMIT 1`,
+    [row.milestone_id],
   );
+  const conflictingCapture = await client.query(
+    `SELECT pc.deal_id, pc.milestone_id, po.id AS operation_id
+     FROM payment_captures pc
+     LEFT JOIN payment_operations po
+       ON po.deal_id = pc.deal_id
+      AND po.milestone_id = pc.milestone_id
+      AND po.provider_reference = pc.provider_reference
+     WHERE pc.provider_name = $1 AND pc.provider_reference = $2`,
+    [PAYPAL_WEBHOOK_PROVIDER, id],
+  );
+  if ((conflictingCapture.rowCount ?? 0) > 0) {
+    const owner = conflictingCapture.rows[0];
+    if (owner.deal_id !== row.deal_id || owner.milestone_id !== row.milestone_id ||
+        owner.operation_id !== row.id) {
+      return { outcome: "quarantined", reason: "capture id belongs to conflicting payment operation" };
+    }
+  }
   await client.query(
     `UPDATE payment_operations
      SET status = CASE WHEN status IN ('COMPLETED', 'VOIDED') THEN status ELSE 'COMPLETED' END,
@@ -331,20 +348,28 @@ async function reconcileCaptureCompleted(
     `INSERT INTO payment_captures
        (id, deal_id, milestone_id, provider_name, provider_reference,
         authorization_reference, amount_cents, currency, invoice_id, status, simulated, created_at)
-     SELECT $1, $2, $3, 'paypal', $4,
-            pa.provider_reference, $5, $6, po.idempotency_key, 'COMPLETED', false, now()
-       FROM payment_authorizations pa
-       JOIN payment_operations po ON po.deal_id = pa.deal_id
-        AND po.milestone_id = $3 AND po.action = 'CAPTURE'
-       WHERE pa.deal_id = $2
+     SELECT $1, $2, $3, $4, $5,
+             pa.provider_reference, $6, $7, po.idempotency_key, 'COMPLETED', false, now()
+        FROM payment_authorizations pa
+        JOIN payment_operations po ON po.id = $8
+         AND po.deal_id = $2 AND po.milestone_id = $3 AND po.action = 'CAPTURE'
+        WHERE pa.deal_id = $2
      ON CONFLICT (provider_name, provider_reference) DO NOTHING`,
-    [randomUUID(), row.deal_id, row.milestone_id, id, amountCents, currency],
+    [randomUUID(), row.deal_id, row.milestone_id, PAYPAL_WEBHOOK_PROVIDER, id, amountCents, currency, row.id],
   );
-  await client.query(
-    `UPDATE milestones SET status = 'Completed', updated_at = now()
-     WHERE id = $1 AND status <> 'Completed'`,
-    [row.milestone_id],
-  );
+  if ((approval.rowCount ?? 0) > 0) {
+    await client.query(
+      `UPDATE milestone_approvals
+        SET payment_status = 'COMPLETED', provider_reference = $2
+        WHERE milestone_id = $1 AND decision = 'approve' AND action = 'CAPTURE'`,
+      [row.milestone_id, id],
+    );
+    await client.query(
+      `UPDATE milestones SET status = 'Completed', updated_at = now()
+        WHERE id = $1 AND status <> 'Completed'`,
+      [row.milestone_id],
+    );
+  }
   // The human approval flow already moved the milestone to Completed; a
   // redelivery is a no-op. Never regress or advance milestone state here.
   if (row.milestone_status === "Completed") {

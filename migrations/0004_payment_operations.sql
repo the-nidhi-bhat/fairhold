@@ -39,6 +39,21 @@ EXCEPTION WHEN invalid_text_representation THEN
 END
 $$;
 
+-- Preflight existing financial rows before adding relationship constraints.
+DO $$
+DECLARE inconsistent_count bigint;
+BEGIN
+ SELECT count(*) INTO inconsistent_count
+ FROM payment_operations po
+ JOIN milestones m ON m.id = po.milestone_id
+ WHERE po.deal_id <> m.deal_id;
+ IF inconsistent_count > 0 THEN
+   RAISE EXCEPTION 'payment_operations preflight failed: % row(s) reference milestones belonging to another deal; no existing records were changed',
+     inconsistent_count;
+ END IF;
+END
+$$;
+
 ALTER TABLE payment_operations DROP CONSTRAINT IF EXISTS payment_operations_status_check;
 ALTER TABLE payment_operations ADD CONSTRAINT payment_operations_status_check
   CHECK (status IN ('RESERVED', 'COMPLETED', 'VOIDED', 'PENDING', 'FAILED'));
