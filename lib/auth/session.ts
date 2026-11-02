@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import type { Deal } from "@/lib/domain/types";
 import { authorizeDemoLogin, authorizeReviewerDeal } from "./demo-allowlist.ts";
 import {
@@ -16,6 +17,7 @@ export { DEMO_ROLES };
 export type { DemoRole, DemoSession };
 
 export async function getDemoSession(): Promise<DemoSession | null> {
+  await connection();
   const store = await cookies();
   const session = decodeDemoSession(store.get(COOKIE_NAME)?.value);
   return session && authorizeDemoLogin(session) ? session : null;
