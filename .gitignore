@@ -79,3 +79,9 @@ tmp/
 temp/
 .cache/
 *.bak
+
+# Development/demo persistence (JSON store; no real data)
+.data/
+
+# PayPal kill-test run state (resource IDs only; never credentials)
+scripts/.paypal-kill-test-state.json

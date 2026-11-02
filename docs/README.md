@@ -6,6 +6,10 @@ explicitly says otherwise — documentation is not proof of implementation.
 ## Index
 
 - [`development-status.md`](development-status.md) — what exists, what does not.
+- [`phase-0-closure.md`](phase-0-closure.md) — Phase 0 exit decision (verified
+  behavior, command evidence, limitations).
+- [`evidence/paypal-kill-test.md`](evidence/paypal-kill-test.md) — Phase 0
+  sandbox lifecycle evidence.
 
 ## Planned sections
 

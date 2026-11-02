@@ -1,8 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #0f172a;
+  --background: #f4f4f2;
+  --foreground: #17181a;
+  --surface: #ffffff;
+  --surface-raised: #fbfbfa;
+  --surface-muted: #efefec;
+  --border: #dcddd8;
+  --border-strong: #c7c8c2;
+  --muted: #666a70;
+  --accent: #9f1d2f;
+  --accent-hover: #861827;
+  --accent-soft: #f8ecef;
 }
 
 @theme inline {
@@ -14,8 +23,17 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0b1120;
-    --foreground: #e2e8f0;
+    --background: #121316;
+    --foreground: #f1f1ef;
+    --surface: #191a1d;
+    --surface-raised: #1d1e22;
+    --surface-muted: #242529;
+    --border: #303136;
+    --border-strong: #45464d;
+    --muted: #aaaab0;
+    --accent: #c94b5e;
+    --accent-hover: #da6576;
+    --accent-soft: #351920;
   }
 }
 
@@ -27,4 +45,117 @@ body {
 
 code {
   font-family: var(--font-geist-mono, monospace);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.site-shell {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface) 48%, transparent), transparent 240px),
+    var(--background);
+}
+
+.site-header {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
+  background: color-mix(in srgb, var(--background) 88%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+.page-frame {
+  width: min(1120px, calc(100% - 40px));
+  margin-inline: auto;
+}
+
+.surface {
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.03), 0 14px 40px rgb(0 0 0 / 0.035);
+}
+
+.surface-subtle {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-raised);
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  padding: 0.65rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 650;
+  transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+
+.primary-button {
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.primary-button:hover {
+  border-color: var(--accent-hover);
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+
+.secondary-button {
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--foreground);
+}
+
+.secondary-button:hover {
+  border-color: var(--accent);
+}
+
+.field {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  background: var(--surface);
+  padding: 0.65rem 0.75rem;
+  color: var(--foreground);
+}
+
+.field::placeholder {
+  color: color-mix(in srgb, var(--muted) 72%, transparent);
+}
+
+.field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+  outline: none;
+}
+
+.text-muted { color: var(--muted); }
+.text-accent { color: var(--accent); }
+
+@media (max-width: 640px) {
+  .page-frame { width: min(100% - 28px, 1120px); }
+  .surface { border-radius: 14px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

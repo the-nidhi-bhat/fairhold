@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SessionNavigation } from "@/components/session-navigation";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,33 +30,44 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-background text-foreground">
-        <header className="border-b border-slate-200 dark:border-slate-800">
-          <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-4">
+      <body className="site-shell flex min-h-full flex-col bg-background text-foreground">
+        <header className="site-header sticky top-0 z-40">
+          <div className="page-frame flex h-[68px] items-center justify-between gap-4">
             <Link
               href="/"
-              className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50"
+              className="text-lg font-semibold tracking-[-0.04em] text-[var(--foreground)]"
             >
               FairHold
             </Link>
-            <span className="rounded-full border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-700 dark:text-amber-400">
-              Under development
-            </span>
+            <nav
+              className="flex items-center gap-3 text-sm sm:gap-4"
+              aria-label="Primary"
+            >
+              <Link
+                href="/dashboard"
+                className="hidden font-medium text-muted transition hover:text-[var(--foreground)] sm:inline"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href="/deals/new"
+                className="primary-button min-h-9 px-3.5 py-2"
+              >
+                New deal
+              </Link>
+              <Suspense fallback={<span className="text-sm text-slate-500">Account</span>}>
+                <SessionNavigation />
+              </Suspense>
+            </nav>
           </div>
         </header>
 
         <main className="flex-1">{children}</main>
 
-        <footer className="border-t border-slate-200 dark:border-slate-800">
-          <div className="mx-auto w-full max-w-5xl space-y-2 px-6 py-6 text-sm text-slate-600 dark:text-slate-400">
-            <p>
-              FairHold is under active development. No payment, AI, or
-              agreement features are functional yet.
-            </p>
-            <p>
-              PayPal is used as the payment infrastructure. FairHold does not
-              claim that PayPal provides native escrow for this application.
-            </p>
+        <footer className="border-t border-[var(--border)]">
+          <div className="page-frame grid gap-2 py-7 text-xs leading-5 text-muted sm:grid-cols-[1fr_auto]">
+            <p>Demo workspace. Payment actions may be simulated and are not escrow.</p>
+            <p>FairHold does not provide investment, legal, or financial advice.</p>
           </div>
         </footer>
       </body>
