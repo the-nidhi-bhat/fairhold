@@ -9,7 +9,7 @@ export const instant = false;
 export default async function NewDealPage() {
   if (!(await getDemoSession())) redirect("/login");
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-10">
+    <div className="page-frame py-10">
       <Link
         href="/dashboard"
         className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
@@ -23,7 +23,7 @@ export default async function NewDealPage() {
         Record the parties and the agreement. After creating the deal you can
         add milestones with amounts, deadlines, and acceptance criteria.
       </p>
-      <NewDealForm />
+      <div className="surface mt-8 max-w-3xl p-6 sm:p-8"><NewDealForm /></div>
     </div>
   );
 }

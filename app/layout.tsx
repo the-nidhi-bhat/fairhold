@@ -30,12 +30,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-background text-foreground">
-        <header className="border-b border-slate-200 dark:border-slate-800">
-          <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-6 py-4">
+      <body className="site-shell flex min-h-full flex-col bg-background text-foreground">
+        <header className="site-header sticky top-0 z-40">
+          <div className="page-frame flex h-[68px] items-center justify-between gap-4">
             <Link
               href="/"
-              className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-50"
+              className="text-lg font-semibold tracking-[-0.04em] text-[var(--foreground)]"
             >
               FairHold
             </Link>
@@ -45,19 +45,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             >
               <Link
                 href="/dashboard"
-                className="font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-50"
+                className="hidden font-medium text-muted transition hover:text-[var(--foreground)] sm:inline"
               >
                 Dashboard
               </Link>
               <Link
                 href="/deals/new"
-                className="rounded-md bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-500"
+                className="primary-button min-h-9 px-3.5 py-2"
               >
                 New deal
               </Link>
-              <span className="hidden rounded-full border border-amber-300 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-700 dark:text-amber-400 sm:inline-block">
-                Under development
-              </span>
               <Suspense fallback={<span className="text-sm text-slate-500">Account</span>}>
                 <SessionNavigation />
               </Suspense>
@@ -67,18 +64,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 
         <main className="flex-1">{children}</main>
 
-        <footer className="border-t border-slate-200 dark:border-slate-800">
-          <div className="mx-auto w-full max-w-5xl space-y-2 px-6 py-6 text-sm text-slate-600 dark:text-slate-400">
-            <p>
-              FairHold is under active development. Deals and milestones use
-              development-only storage; authentication and AI analysis are not
-              implemented yet. Payment runs against a simulated demo adapter
-              unless PayPal sandbox credentials are configured.
-            </p>
-            <p>
-              PayPal is used as the payment infrastructure. FairHold does not
-              claim that PayPal provides native escrow for this application.
-            </p>
+        <footer className="border-t border-[var(--border)]">
+          <div className="page-frame grid gap-2 py-7 text-xs leading-5 text-muted sm:grid-cols-[1fr_auto]">
+            <p>Demo workspace. Payment actions may be simulated and are not escrow.</p>
+            <p>FairHold does not provide investment, legal, or financial advice.</p>
           </div>
         </footer>
       </body>

@@ -59,7 +59,7 @@ export default async function DealPage({
       : null;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-10">
+    <div className="page-frame py-10">
       <Link
         href="/dashboard"
         className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
@@ -106,7 +106,7 @@ async function DealDetail({
           {actionError}
         </div>
       ) : null}
-      <header className="mt-4 rounded-xl border border-slate-200 p-6 dark:border-slate-800">
+      <header className="surface mt-4 p-6 sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
@@ -169,7 +169,7 @@ async function DealDetail({
       </header>
 
       {/* Payment state — explicit and never overstated */}
-      <section className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
+      <section className="surface mt-6 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
@@ -197,7 +197,7 @@ async function DealDetail({
                 href={deal.pendingAuthorization.approvalUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-3 inline-block rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500"
+                className="primary-button mt-3"
               >
                 Open PayPal sandbox approval
               </a>
@@ -222,7 +222,7 @@ async function DealDetail({
             <input type="hidden" name="dealId" value={deal.id} />
             <button
               type="submit"
-              className="rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500"
+              className="primary-button"
             >
               {sandboxConfigured
                 ? "Create PayPal sandbox authorization"

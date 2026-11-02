@@ -250,3 +250,30 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
     server/rebuild cycle. Re-authenticate before completing broader walkthrough QA.
   - Existing unstaged launch fix in `lib/auth/session.ts` was preserved and not
     included in commit `037257c`.
+
+  ## Phase 2A-2C UI foundation — 2026-11-02
+
+  - Added a single graphite, warm-neutral and deep-crimson visual system in
+    `app/globals.css`, with dark-mode and reduced-motion support.
+  - Updated the shared shell, landing page, demo sign-in, create-deal flow,
+    dashboard, and deal detail surfaces to use the shared system.
+  - The landing page now leads with a transaction-flow preview instead of a
+    generic marketing hero, and explains AI versus deterministic authority.
+  - The dashboard preserves the five real payment-summary categories while
+    presenting clearer responsive deal cards and empty/loading states.
+  - Browser smoke-checks confirmed the landing, dashboard, create-deal form, and
+    deal-detail route render on the local JSON demo workspace. Authentication
+    state is stored in signed browser cookies and may require re-sign-in after
+    server restarts or rebuilds.
+  - No payment-domain logic or payment provider behavior was changed.
+  - Existing uncommitted `lib/auth/session.ts` work remains preserved and was not
+    staged.
+  - Verification after this UI unit:
+    - `npm run typecheck`: passed.
+    - `npm run lint`: passed.
+    - `npm test`: 161 total, 140 passed, 21 skipped, 0 failed.
+    - `npm run build`: passed.
+    - Local routes loaded successfully during browser smoke checks.
+  - Remaining UI work: complete deal-detail section styling and buyer/seller
+    walkthrough verification at desktop, tablet, and mobile widths. PostgreSQL
+    integration and live PayPal sandbox remain unavailable in this workspace.
