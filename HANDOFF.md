@@ -277,3 +277,34 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
   - Remaining UI work: complete deal-detail section styling and buyer/seller
     walkthrough verification at desktop, tablet, and mobile widths. PostgreSQL
     integration and live PayPal sandbox remain unavailable in this workspace.
+
+  ## Phase 2B workflow excellence — 2026-11-02
+
+  - Commit: `4dd980a` — `feat(workflows): improve buyer and seller queues`
+  - Added persisted-state buyer pending-review and seller active/rejected-evidence
+    dashboard queues.
+  - Added server-role-aware evidence controls: sellers can submit evidence,
+    buyers and reviewers can review it, and approval controls stay separate from
+    seller controls.
+  - Added workflow unit coverage for buyer pending evidence and seller active
+    and rejected evidence.
+  - Verification:
+    - `npm run typecheck`: passed.
+    - `npm run lint`: passed.
+    - `npm test`: 163 total, 142 passed, 21 skipped, 0 failed.
+    - `npm run build`: passed.
+    - Focused workflow suite: 2 passed, 0 failed, 0 skipped.
+  - Browser walkthrough at `http://localhost:3000`:
+    - Buyer landing and dashboard loaded; the payment summary showed one
+      `Needs authorization` deal and no fabricated records.
+    - Buyer deal detail showed the persisted agreement, milestone, evidence
+      history, advisory HOLD state, payment limitation, and activity timeline.
+    - Seller sign-in loaded a role-specific dashboard with one active milestone.
+    - Seller deal detail exposed evidence submission and milestone controls while
+      hiding buyer evidence-review and approval controls.
+    - Payments remained unmodified, simulated, and not executed.
+  - PostgreSQL integration tests remain unexecuted because
+    `FAIRHOLD_TEST_DATABASE_URL` is unset.
+  - Live PayPal sandbox operations remain unexecuted.
+  - Existing uncommitted `lib/auth/session.ts` modification was preserved and not
+    committed in this unit.
