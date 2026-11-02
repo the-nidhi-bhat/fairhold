@@ -98,13 +98,15 @@ interface PendingOrderRow {
   currency: string;
 }
 
-interface ApprovalRow {
+interface CaptureOperationRow {
+  id: string;
   deal_id: string;
   milestone_id: string;
-  decision: string;
-  action: string;
-  milestone_status: string;
+  requested_amount_cents: number;
+  currency: string;
   milestone_amount_cents: number;
+  milestone_status: string;
+  status: string;
 }
 
 async function reconcileAuthorizationCreated(
@@ -246,52 +248,84 @@ async function reconcileAuthorizationVoided(
   return { outcome: "processed" };
 }
 
+async function reconcileCapturePending(
+  client: PoolClient,
+  providerReference: string | null,
+  correlationId: string | null,
+): Promise<WebhookProcessOutcome> {
+  if (!correlationId) {
+    return { outcome: "quarantined", reason: "pending capture missing operation correlation" };
+  }
+  const operation = await client.query(
+    `UPDATE payment_operations
+     SET status = CASE
+           WHEN status = 'COMPLETED' THEN 'COMPLETED'
+           ELSE 'PENDING'
+         END,
+         provider_reference = COALESCE(provider_reference, $3),
+         updated_at = now()
+     WHERE provider_name = $1 AND idempotency_key = $2 AND action = 'CAPTURE'
+     RETURNING deal_id`,
+    [PAYPAL_WEBHOOK_PROVIDER, correlationId, providerReference],
+  );
+  if ((operation.rowCount ?? 0) !== 1) {
+    return { outcome: "quarantined", reason: "pending capture correlation mismatch" };
+  }
+  return { outcome: "processed" };
+}
+
 async function reconcileCaptureCompleted(
   client: PoolClient,
   id: string,
   amountCents: number | null,
   currency: string | null,
+  correlationId: string | null,
 ): Promise<WebhookProcessOutcome> {
-  // The capture must match a HUMAN approval that already recorded the capture
-  // provider reference. No match = a capture that FairHold never approved.
-  const approval = await client.query<ApprovalRow>(
-    `SELECT m.deal_id, ma.milestone_id, ma.decision, ma.action,
-            m.status AS milestone_status, m.amount_cents AS milestone_amount_cents
-     FROM milestone_approvals ma
-     JOIN milestones m ON m.id = ma.milestone_id
-     WHERE ma.provider_name = $1 AND ma.provider_reference = $2`,
-    [PAYPAL_WEBHOOK_PROVIDER, id],
-  );
-  if ((approval.rowCount ?? 0) === 0) {
-    return {
-      outcome: "quarantined",
-      reason: "unknown capture (no matching human approval)",
-    };
-  }
-  const row = approval.rows[0];
-  if (row.action !== "CAPTURE" || row.decision !== "approve") {
-    return {
-      outcome: "quarantined",
-      reason: "capture without approve/CAPTURE approval",
-    };
+  if (!correlationId) {
+    return { outcome: "quarantined", reason: "capture event missing operation correlation" };
   }
   if (amountCents === null || currency === null) {
     return { outcome: "quarantined", reason: "capture event missing amount details" };
   }
+  const operation = await client.query<CaptureOperationRow>(
+    `SELECT po.id, po.deal_id, po.milestone_id, po.requested_amount_cents,
+            po.currency, m.amount_cents AS milestone_amount_cents, m.status AS milestone_status,
+            po.status
+     FROM payment_operations po
+     JOIN milestones m ON m.id = po.milestone_id
+     WHERE po.provider_name = $1
+       AND po.idempotency_key = $2
+       AND po.action = 'CAPTURE'`,
+    [PAYPAL_WEBHOOK_PROVIDER, correlationId],
+  );
+  if ((operation.rowCount ?? 0) !== 1) {
+    return {
+      outcome: "quarantined",
+      reason: "capture correlation does not identify one payment operation",
+    };
+  }
+  const row = operation.rows[0];
+  if (!(await lockDeal(client, row.deal_id))) {
+    return { outcome: "quarantined", reason: "capture operation deal not found" };
+  }
   if (Number(row.milestone_amount_cents) !== amountCents || currency !== "USD") {
     return { outcome: "quarantined", reason: "capture amount mismatch" };
   }
+  if (row.currency !== currency || Number(row.requested_amount_cents) !== amountCents) {
+    return { outcome: "quarantined", reason: "capture operation amount mismatch" };
+  }
   await client.query(
     `UPDATE milestone_approvals
-     SET payment_status = 'COMPLETED', provider_reference = COALESCE(provider_reference, $2)
-     WHERE milestone_id = $1`,
+     SET payment_status = 'COMPLETED', provider_reference = $2
+     WHERE milestone_id = $1 AND decision = 'approve' AND action = 'CAPTURE'`,
     [row.milestone_id, id],
   );
   await client.query(
     `UPDATE payment_operations
-     SET status = 'COMPLETED', provider_reference = COALESCE(provider_reference, $2), updated_at = now()
-     WHERE deal_id = $1 AND milestone_id = $3 AND action = 'CAPTURE'`,
-    [row.deal_id, id, row.milestone_id],
+     SET status = CASE WHEN status IN ('COMPLETED', 'VOIDED') THEN status ELSE 'COMPLETED' END,
+         provider_reference = COALESCE(provider_reference, $2), updated_at = now()
+     WHERE id = $1`,
+    [row.id, id],
   );
   await client.query(
     `INSERT INTO payment_captures
@@ -413,13 +447,15 @@ export async function processWebhookEvent(
           normalized.id,
           normalized.amountCents,
           normalized.currency,
+          normalized.correlationId,
         );
         break;
       case "capture_pending":
-        result = {
-          outcome: "quarantined",
-          reason: "unexpected capture state PENDING — FairHold treats captures as synchronous; no settlement claimed",
-        };
+        result = await reconcileCapturePending(
+          client,
+          normalized.id,
+          normalized.correlationId,
+        );
         break;
       default:
         result = { outcome: "unsupported", reason: "unsupported event type" };

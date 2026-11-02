@@ -118,7 +118,7 @@ export interface PaymentOperation {
   idempotencyKey: string;
   providerName: string;
   providerReference: string | null;
-  status: "COMPLETED" | "VOIDED" | "PENDING" | "FAILED";
+  status: "RESERVED" | "COMPLETED" | "VOIDED" | "PENDING" | "FAILED";
   finalCapture: boolean;
   createdAt: string;
   updatedAt: string;

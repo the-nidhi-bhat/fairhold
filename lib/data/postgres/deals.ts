@@ -736,7 +736,9 @@ export async function beginPaymentOperation(
   input: BeginPaymentOperationInput,
 ): Promise<PaymentOperation> {
   return withTransaction(async (client) => {
-    await lockDeal(client, input.dealId);
+    if (!(await lockDeal(client, input.dealId))) {
+      throw new Error("Deal not found.");
+    }
     const existing = await client.query(
       `SELECT * FROM payment_operations WHERE idempotency_key = $1`,
       [input.idempotencyKey],
@@ -760,13 +762,35 @@ export async function beginPaymentOperation(
         updatedAt: row.updated_at.toISOString(),
       };
     }
+    if (input.action === "CAPTURE" && input.requestedAmountCents !== null) {
+      const allocation = await client.query(
+        `SELECT pa.amount_cents,
+          COALESCE((SELECT SUM(pc.amount_cents) FROM payment_captures pc
+                    WHERE pc.deal_id = $1 AND pc.status = 'COMPLETED'), 0)
+          + COALESCE((SELECT SUM(po.requested_amount_cents) FROM payment_operations po
+                    WHERE po.deal_id = $1 AND po.action = 'CAPTURE'
+                      AND po.status IN ('RESERVED', 'PENDING')), 0) AS allocated_cents
+         FROM payment_authorizations pa
+         WHERE pa.deal_id = $1
+         FOR UPDATE`,
+        [input.dealId],
+      );
+      if ((allocation.rowCount ?? 0) === 0) {
+        throw new Error("Payment authorization required.");
+      }
+      const authorized = Number(allocation.rows[0].amount_cents);
+      const allocated = Number(allocation.rows[0].allocated_cents);
+      if (allocated + input.requestedAmountCents > authorized) {
+        throw new Error("Capture exceeds the authorization including outstanding operations.");
+      }
+    }
     const id = randomUUID();
     const result = await client.query(
       `INSERT INTO payment_operations
          (id, deal_id, milestone_id, authorization_reference, action,
           requested_amount_cents, currency, idempotency_key, provider_name,
           provider_reference, status, final_capture)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULL, 'PENDING', $10)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULL, 'RESERVED', $10)
        RETURNING *`,
       [
         id,
@@ -808,7 +832,16 @@ export async function updatePaymentOperation(
   await withTransaction(async (client) => {
     await client.query(
       `UPDATE payment_operations
-       SET status = $2, provider_reference = $3, updated_at = now()
+       SET status = CASE
+             WHEN status IN ('COMPLETED', 'VOIDED') THEN status
+             WHEN status = 'FAILED' AND $2 <> 'FAILED' THEN status
+             ELSE $2
+           END,
+           provider_reference = CASE
+             WHEN status IN ('COMPLETED', 'VOIDED') THEN provider_reference
+             ELSE $3
+           END,
+           updated_at = now()
        WHERE idempotency_key = $1`,
       [idempotencyKey, update.status, update.providerReference],
     );

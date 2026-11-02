@@ -518,6 +518,13 @@ test("mapWebhookEvent: maps the supported event types and amounts", () => {
   assert.equal(created.orderId, "ORDER-1");
   assert.equal(created.amountCents, 12345);
   assert.equal(created.currency, "USD");
+  assert.equal(
+    mapWebhookEvent({
+      event_type: "PAYMENT.CAPTURE.COMPLETED",
+      resource: { id: "CAP-1", invoice_id: "capture:deal:milestone" },
+    }).correlationId,
+    "capture:deal:milestone",
+  );
 
   assert.equal(
     mapWebhookEvent({ event_type: "PAYMENT.AUTHORIZATION.VOIDED", resource: { id: "A" } }).kind,

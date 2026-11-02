@@ -716,6 +716,7 @@ export interface NormalizedWebhookEvent {
   orderId: string | null;
   amountCents: number | null;
   currency: string | null;
+  correlationId: string | null;
 }
 
 /**
@@ -730,6 +731,7 @@ export function mapWebhookEvent(event: unknown): NormalizedWebhookEvent {
     orderId: null,
     amountCents: null,
     currency: null,
+    correlationId: null,
   };
   if (!event || typeof event !== "object") return empty;
   const record = event as Record<string, unknown>;
@@ -740,6 +742,8 @@ export function mapWebhookEvent(event: unknown): NormalizedWebhookEvent {
       : {};
 
   const id = typeof resource.id === "string" ? resource.id : null;
+  const correlationId =
+    typeof resource.invoice_id === "string" ? resource.invoice_id : null;
 
   let orderId: string | null = null;
   const supplementary =
@@ -780,5 +784,5 @@ export function mapWebhookEvent(event: unknown): NormalizedWebhookEvent {
             ? "capture_pending"
             : "unknown";
 
-  return { kind, id, orderId, amountCents, currency };
+  return { kind, id, orderId, amountCents, currency, correlationId };
 }
