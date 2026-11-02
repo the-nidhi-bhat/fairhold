@@ -12,6 +12,7 @@ import {
 } from "@/lib/domain/status";
 import { ProgressBar } from "@/components/progress-bar";
 import { StatusBadge, dealStatusTone } from "@/components/status-badge";
+import { summarizeDashboardWorkflow } from "@/lib/domain/workflow";
 
 export const metadata = { title: "Dashboard" };
 export const instant = false;
@@ -84,9 +85,72 @@ async function DashboardContent() {
     0,
   );
   const paymentSummary = summarizePaymentStatuses(deals);
+  const workflow = summarizeDashboardWorkflow(deals, session!.role);
 
   return (
     <>
+      {(session!.role === "buyer" || session!.role === "seller") ? (
+        <section className="surface mt-8 p-5" aria-labelledby="workflow-heading">
+          <div>
+            <p className="text-xs font-semibold text-accent">
+              {session!.role === "buyer" ? "Buyer queue" : "Seller queue"}
+            </p>
+            <h2 id="workflow-heading" className="mt-1 text-lg font-semibold">
+              {session!.role === "buyer"
+                ? "What needs your review"
+                : "Work that needs attention"}
+            </h2>
+          </div>
+          {session!.role === "buyer" ? (
+            workflow.pendingReviews.length === 0 ? (
+              <p className="mt-4 text-sm text-muted">No submitted evidence is waiting for your review.</p>
+            ) : (
+              <ul className="mt-4 divide-y divide-[var(--border)]">
+                {workflow.pendingReviews.slice(0, 5).map((item) => (
+                  <li key={item.evidenceId} className="flex items-center justify-between gap-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium">{item.milestoneTitle}</p>
+                      <p className="mt-1 text-xs text-muted">{item.deal.title}</p>
+                    </div>
+                    <Link href={`/deals/${item.deal.id}`} className="secondary-button shrink-0">
+                      Review evidence
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : workflow.assignedMilestones.length === 0 && workflow.rejectedEvidence.length === 0 ? (
+            <p className="mt-4 text-sm text-muted">No active milestones or rejected evidence need attention.</p>
+          ) : (
+            <ul className="mt-4 divide-y divide-[var(--border)]">
+              {workflow.rejectedEvidence.slice(0, 3).map((item) => (
+                <li key={item.evidenceId} className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--foreground)]">{item.milestoneTitle}</p>
+                    <p className="mt-1 text-xs text-muted">Buyer feedback on {item.deal.title}</p>
+                  </div>
+                  <Link href={`/deals/${item.deal.id}`} className="secondary-button shrink-0">
+                    View feedback
+                  </Link>
+                </li>
+              ))}
+              {workflow.assignedMilestones.slice(0, 5).map((item) => (
+                <li key={item.milestoneId} className="flex items-center justify-between gap-4 py-3">
+                  <div>
+                    <p className="text-sm font-medium">{item.milestoneTitle}</p>
+                    <p className="mt-1 text-xs text-muted">
+                      {item.status}{item.dueDate ? ` · Due ${item.dueDate}` : ""}
+                    </p>
+                  </div>
+                  <Link href={`/deals/${item.deal.id}`} className="secondary-button shrink-0">
+                    Open milestone
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : null}
       <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <SummaryStat label="Deals" value={String(deals.length)} />
         <SummaryStat label="Active" value={String(active.length)} />

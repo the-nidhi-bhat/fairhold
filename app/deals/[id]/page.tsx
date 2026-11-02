@@ -405,7 +405,11 @@ async function DealDetail({
                       )}
                   />
 
-                  <MilestoneEvidence deal={deal} milestone={milestone} />
+                  <MilestoneEvidence
+                    deal={deal}
+                    milestone={milestone}
+                    role={session.role}
+                  />
 
                   {transitions.length > 0 &&
                   (session.role === "seller" || session.role === "reviewer") ? (
@@ -562,9 +566,11 @@ const EVIDENCE_TONES: Record<EvidenceDecision, BadgeTone> = {
 function MilestoneEvidence({
   deal,
   milestone,
+  role,
 }: {
   deal: Deal;
   milestone: Milestone;
+  role: "buyer" | "seller" | "reviewer";
 }) {
   const evidence = deal.evidence
     .filter((e) => e.milestoneId === milestone.id)
@@ -616,13 +622,19 @@ function MilestoneEvidence({
         </p>
       ) : null}
 
-      <ApprovalPanel
-        dealId={deal.id}
-        milestoneId={milestone.id}
-        recommendation={recommendation}
-        approval={milestone.approval}
-        stale={stale}
-      />
+      {role === "buyer" || role === "reviewer" ? (
+        <ApprovalPanel
+          dealId={deal.id}
+          milestoneId={milestone.id}
+          recommendation={recommendation}
+          approval={milestone.approval}
+          stale={stale}
+        />
+      ) : (
+        <p className="mt-3 text-xs text-muted">
+          Final payment decisions are made by the buyer or an authorized reviewer.
+        </p>
+      )}
 
       <div className="mt-4">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
@@ -676,7 +688,9 @@ function MilestoneEvidence({
                     Review: {sub.reviewNote}
                   </p>
                 ) : null}
-                {sub.decision === "pending" && canSubmit ? (
+                {sub.decision === "pending" &&
+                canSubmit &&
+                (role === "buyer" || role === "reviewer") ? (
                   <ReviewEvidenceForm dealId={deal.id} submissionId={sub.id} />
                 ) : null}
               </li>
@@ -685,7 +699,7 @@ function MilestoneEvidence({
         )}
       </div>
 
-      {canSubmit ? (
+      {canSubmit && (role === "seller" || role === "reviewer") ? (
         <AddEvidenceForm dealId={deal.id} milestoneId={milestone.id} />
       ) : null}
     </div>
