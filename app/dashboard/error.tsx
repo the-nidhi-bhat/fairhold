@@ -8,7 +8,7 @@ export default function DashboardError({
   retry: () => void;
 }) {
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-10">
+    <div className="page-frame py-10">
       <div
         role="alert"
         className="rounded-xl border border-rose-300 bg-rose-50 p-6 dark:border-rose-800 dark:bg-rose-950"
