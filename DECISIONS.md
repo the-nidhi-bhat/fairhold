@@ -11,3 +11,7 @@
   require both an environment allowlist and explicit deal grants.
 - PayPal calls receive a durable operation intent and stable idempotency key
   before network execution; ambiguous outcomes remain PENDING until reconciled.
+- Capture reservations include completed captures and outstanding RESERVED/PENDING
+  operations; PostgreSQL serializes allocation with deal/authorization locks.
+- Capture webhooks must match the operation's PayPal invoice/idempotency correlation
+  and validate deal, milestone, currency and amount before completion.

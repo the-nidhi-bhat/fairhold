@@ -187,3 +187,22 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
   - PostgreSQL integrations skipped: `FAIRHOLD_TEST_DATABASE_URL` was unset.
   - Live PayPal sandbox operations remain unverified.
 - The protected PayPal worktree was preserved and was not committed.
+
+## Critical integrity remediation
+
+- Authentication commit: `1ee9538`.
+  - Buyer and seller allowlists have no implicit identities.
+  - Missing allowlists and malformed reviewer grants fail closed.
+- Payment commit: `6a1838c`.
+  - Migration `0004` now upgrades UUID identifiers and adds the milestone relationship.
+  - Capture operations reserve capacity under PostgreSQL deal locks and JSON write locks.
+  - Provider capture webhooks reconcile by operation invoice/idempotency correlation,
+    and terminal completion cannot be regressed.
+- Verification:
+  - `npm run typecheck`: passed.
+  - `npm run lint`: passed.
+  - `npm test`: 160 total, 139 passed, 21 skipped, 0 failed.
+  - `npm run build`: passed.
+  - PostgreSQL integrations remain unverified because
+    `FAIRHOLD_TEST_DATABASE_URL` is unset.
+  - Live PayPal sandbox and browser verification remain unverified.

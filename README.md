@@ -87,6 +87,23 @@ npm run db:import
 There is no silent fallback: once `DATABASE_URL` is set, a missing or
 unreachable database makes the app fail loudly.
 
+## Demo authentication configuration
+
+Demo authentication is not production identity verification. Every buyer and
+seller identity must be configured explicitly in `FAIRHOLD_DEMO_BUYERS` and
+`FAIRHOLD_DEMO_SELLERS`. Reviewers require names in `FAIRHOLD_DEMO_REVIEWERS`
+plus deal grants in `FAIRHOLD_REVIEWER_DEALS`, formatted as
+`reviewer-name:deal-id`.
+
+## Payment integrity
+
+Capture operations are reserved durably before provider execution and remain
+pending or ambiguous until confirmed. Capture capacity includes completed and
+outstanding reservations. Capture webhooks reconcile by operation correlation
+and validate deal, milestone, amount and currency before completion. Duplicate
+deliveries are idempotent. PayPal authorization is a provider hold, not escrow.
+JSON webhooks remain unsupported.
+
 ### Optional: PayPal webhook
 
 The webhook endpoint lives at `/api/paypal/webhook`. It is **fail-closed**:

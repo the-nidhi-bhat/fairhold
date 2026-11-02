@@ -6,6 +6,10 @@
 
 ## Verified
 
+- Migration 0004 UUID compatibility, operation relationship validation, capture
+  reservation allocation, operation-correlation webhook reconciliation, and
+  fail-closed demo allowlists are implemented and locally verified.
+
 - Dashboard payment summary uses the five payment status keys.
 - PostgreSQL milestone and evidence SQL has been corrected.
 - Payment adapter unit tests are present.
