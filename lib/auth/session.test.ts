@@ -47,3 +47,22 @@ test("reviewers require an explicit deal grant and cannot bypass membership", ()
   assert.equal(authorizeReviewerDeal("Morgan Reviewer", "deal-2", env), false);
   assert.equal(authorizeReviewerDeal("Other Reviewer", "deal-1", env), false);
 });
+
+test("removed demo defaults and empty allowlists fail closed", () => {
+  assert.equal(authorizeDemoLogin({ name: "Alex Buyer", role: "buyer" }, {}), false);
+  assert.equal(authorizeDemoLogin({ name: "Jamie Seller", role: "seller" }, {}), false);
+  assert.equal(authorizeDemoLogin({ name: "Morgan Reviewer", role: "reviewer" }, {}), false);
+  assert.equal(authorizeDemoLogin({ name: "Alex Buyer", role: "buyer" }, {
+    FAIRHOLD_DEMO_BUYERS: "  ",
+  }), false);
+});
+
+test("malformed or role-impersonating reviewer grants fail closed", () => {
+  const env = {
+    FAIRHOLD_DEMO_REVIEWERS: "Morgan Reviewer",
+    FAIRHOLD_REVIEWER_DEALS: "Morgan Reviewer-deal-1,Morgan Reviewer:deal-1:extra",
+  };
+  assert.equal(authorizeReviewerDeal("Morgan Reviewer", "deal-1", env), false);
+  assert.equal(authorizeReviewerDeal("Morgan Reviewer", "deal-1:extra", env), false);
+  assert.equal(authorizeDemoLogin({ name: "Morgan Reviewer", role: "buyer" }, env), false);
+});

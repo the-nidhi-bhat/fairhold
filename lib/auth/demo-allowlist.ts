@@ -16,9 +16,9 @@ export function authorizeDemoLogin(
 
   const configured =
     input.role === "buyer"
-      ? allowedNames(env.FAIRHOLD_DEMO_BUYERS ?? "Alex Buyer")
+      ? allowedNames(env.FAIRHOLD_DEMO_BUYERS)
       : input.role === "seller"
-        ? allowedNames(env.FAIRHOLD_DEMO_SELLERS ?? "Jamie Seller")
+        ? allowedNames(env.FAIRHOLD_DEMO_SELLERS)
         : allowedNames(env.FAIRHOLD_DEMO_REVIEWERS);
 
   return configured.includes(normalized);
