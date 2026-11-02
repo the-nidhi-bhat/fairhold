@@ -166,6 +166,7 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
 
 ## Payment Integrity Remediation 2 checkpoint
 
+- Code commit: `7a96547`
 - Implemented provider-confirmed capture ledger persistence in the operation
   transaction, ambiguous network outcomes as PENDING, approval-gated webhook
   milestone completion, capture ownership quarantine, migration relationship
