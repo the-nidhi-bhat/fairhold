@@ -203,10 +203,14 @@ export async function updateMilestoneAction(
 export async function changeMilestoneStatusAction(
   formData: FormData,
 ): Promise<void> {
-  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
   const to = field(formData, "status");
+  try {
+    await requireRole("seller", "reviewer");
+  } catch {
+    redirect(`/deals/${dealId}?actionError=role`);
+  }
   if (!isMilestoneStatus(to)) return;
 
   const deal = await getDeal(dealId);
@@ -221,9 +225,13 @@ export async function changeMilestoneStatusAction(
 }
 
 export async function changeDealStatusAction(formData: FormData): Promise<void> {
-  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const to = field(formData, "status");
+  try {
+    await requireRole("seller", "reviewer");
+  } catch {
+    redirect(`/deals/${dealId}?actionError=role`);
+  }
   if (!isDealStatus(to) || to === "Authorized") return;
 
   const deal = await getDeal(dealId);

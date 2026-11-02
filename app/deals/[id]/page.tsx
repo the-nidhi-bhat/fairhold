@@ -47,7 +47,17 @@ import {
 export const metadata = { title: "Deal" };
 export const instant = false;
 
-export default function DealPage({ params }: PageProps<"/deals/[id]">) {
+export default async function DealPage({
+  params,
+  searchParams,
+}: PageProps<"/deals/[id]">) {
+  const { id } = await params;
+  const query = await searchParams;
+  const actionError =
+    query.actionError === "role"
+      ? "This action is not allowed for your current role. No changes were made."
+      : null;
+
   return (
     <div className="mx-auto w-full max-w-5xl px-6 py-10">
       <Link
@@ -57,15 +67,19 @@ export default function DealPage({ params }: PageProps<"/deals/[id]">) {
         &larr; Dashboard
       </Link>
       <Suspense fallback={<DealSkeleton />}>
-        {params.then(({ id }) => (
-          <DealDetail id={id} />
-        ))}
+        <DealDetail id={id} actionError={actionError} />
       </Suspense>
     </div>
   );
 }
 
-async function DealDetail({ id }: { id: string }) {
+async function DealDetail({
+  id,
+  actionError,
+}: {
+  id: string;
+  actionError: string | null;
+}) {
   await connection();
   const deal = await getDeal(id);
   if (!deal) notFound();
@@ -84,6 +98,14 @@ async function DealDetail({ id }: { id: string }) {
 
   return (
     <>
+      {actionError ? (
+        <div
+          role="alert"
+          className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+        >
+          {actionError}
+        </div>
+      ) : null}
       <header className="mt-4 rounded-xl border border-slate-200 p-6 dark:border-slate-800">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
@@ -262,7 +284,8 @@ async function DealDetail({ id }: { id: string }) {
       </section>
 
       {/* Deal status controls */}
-      {dealTransitions.length > 0 ? (
+      {dealTransitions.length > 0 &&
+      (session.role === "seller" || session.role === "reviewer") ? (
         <section className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
           <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
             Move this deal
@@ -384,7 +407,8 @@ async function DealDetail({ id }: { id: string }) {
 
                   <MilestoneEvidence deal={deal} milestone={milestone} />
 
-                  {transitions.length > 0 ? (
+                  {transitions.length > 0 &&
+                  (session.role === "seller" || session.role === "reviewer") ? (
                     <form
                       action={changeMilestoneStatusAction}
                       className="mt-4 flex flex-wrap items-center gap-2"
@@ -425,19 +449,22 @@ async function DealDetail({ id }: { id: string }) {
                     </form>
                   ) : null}
 
-                  <details className="mt-4">
-                    <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Edit milestone
-                    </summary>
-                    <EditMilestoneForm dealId={deal.id} milestone={milestone} />
-                  </details>
+                  {session.role === "seller" || session.role === "reviewer" ? (
+                    <details className="mt-4">
+                      <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
+                        Edit milestone
+                      </summary>
+                      <EditMilestoneForm dealId={deal.id} milestone={milestone} />
+                    </details>
+                  ) : null}
                 </li>
               );
             })}
           </ul>
         )}
 
-        {canAddMilestones ? (
+        {canAddMilestones &&
+        (session.role === "seller" || session.role === "reviewer") ? (
           <div className="mt-4">
             <AddMilestoneForm dealId={deal.id} />
           </div>
