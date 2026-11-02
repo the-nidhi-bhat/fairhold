@@ -225,3 +225,28 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
   - PostgreSQL integrations remain unverified because
     `FAIRHOLD_TEST_DATABASE_URL` is unset.
   - Live PayPal sandbox and browser verification remain unverified.
+
+  ## Local walkthrough authorization fix — 2026-11-02
+
+  - Commit: `037257c` — `fix(deals): return authorization errors inline`
+  - Fixed forbidden deal and milestone status mutations so the server action
+    redirects back to the deal with an accessible inline role-denied message
+    instead of rendering an HTTP 500 error page.
+  - Added role-gated deal-status, milestone-status, edit, and add-milestone UI
+    controls so buyers no longer see seller-only mutation controls.
+  - Server-side role enforcement remains intact. The UI gate is not an
+    authorization replacement.
+  - Verification:
+    - `npm run typecheck`: passed.
+    - `npm run lint`: passed.
+    - `npm test`: 161 total, 140 passed, 21 skipped, 0 failed.
+    - `npm run build`: passed.
+    - `git diff --check`: passed for the committed implementation.
+    - PostgreSQL integrations remain unexecuted because
+      `FAIRHOLD_TEST_DATABASE_URL` is unset.
+    - Live PayPal operations remain unverified and were not attempted.
+  - Browser verification of the inline query-state banner and role-gated controls
+    was limited by the demo session state becoming unavailable during the local
+    server/rebuild cycle. Re-authenticate before completing broader walkthrough QA.
+  - Existing unstaged launch fix in `lib/auth/session.ts` was preserved and not
+    included in commit `037257c`.
