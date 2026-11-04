@@ -87,6 +87,19 @@ npm run db:import
 There is no silent fallback: once `DATABASE_URL` is set, a missing or
 unreachable database makes the app fail loudly.
 
+### Browser end-to-end tests
+
+```bash
+npm run test:e2e
+```
+
+Playwright runs three journeys (evidence lifecycle, access control, deal
+creation) at desktop, mobile and tablet sizes. It starts its own dev server on
+port 3100 against the JSON demo store, so it never reuses an unrelated server
+and never touches PostgreSQL or PayPal. Install the browser once with
+`npx playwright install chromium` if needed. These tests require the demo
+payment provider; a real sandbox run fails loudly instead of passing silently.
+
 ## Demo authentication configuration
 
 Demo authentication is not production identity verification. Every buyer and

@@ -1,27 +1,38 @@
 # FairHold implementation state
 
-## Implemented
+Updated 2026-11-04.
 
-- App Router scaffold, dashboard, deal creation/detail, milestones and evidence UI.
-- Deterministic status and rules engines.
-- JSON development persistence and PostgreSQL persistence.
-- Demo payment provider and PayPal sandbox adapter foundation.
-- Payment webhook endpoint and reconciliation foundations.
-- Dashboard payment summary.
+## Implemented and verified
 
-## Not demonstrated
+- App Router UI: landing, demo login, dashboard, deal creation, deal detail,
+  milestones, evidence, approvals and activity timeline.
+- Server-side demo authentication with allowlists and deal-level access checks.
+- Deterministic rules engine for milestone and deal status transitions.
+- JSON development persistence and PostgreSQL persistence with per-file test
+  schema isolation and concurrency-safe migrations.
+- Payment authorization, capture ledger, capture limits, void handling and
+  webhook reconciliation. Ambiguous outcomes stay PENDING.
+- Demo payment provider with explicit simulated labeling; no provider requests
+  are made in demo mode.
+- AI milestone and evidence advisory with validated JSON output and
+  deterministic fallback; advisory only, never state-changing.
+- Automated browser journeys for desktop, mobile and tablet (Chromium).
 
-- Live PostgreSQL integration execution.
-- Live PayPal sandbox lifecycle execution.
-- Authentication and deal-level access control.
-- AI milestone and evidence advisory flows.
-- Full browser QA across desktop and mobile.
+## Verified evidence
 
-## Protected work
+- `npm test` against an isolated PostgreSQL 16 container: 172/172 pass,
+  0 skipped.
+- `npx playwright test`: 9/9 pass.
+- `npm run typecheck`, `npm run lint`, `npm run build`: pass.
+- See `QA_REPORT.md` for commands, the acceptance matrix and defects fixed.
 
-The following uncommitted files are pre-existing user work and must not be
-overwritten:
+## Not demonstrated / blocked
 
-- `lib/payments/paypal.ts`
-- `lib/payments/paypal.test.ts`
-- `lib/payments/provider.ts`
+- Live PayPal sandbox execution: blocked on `DATABASE_URL`, a public HTTPS
+  webhook endpoint and `PAYPAL_WEBHOOK_ID`. The app runs the demo provider and
+  refuses real sandbox actions without PostgreSQL.
+- Live AI provider calls: blocked on `AI_API_KEY`/`AI_MODEL`; the deterministic
+  fallback is verified.
+- Cross-browser (Firefox/WebKit) and physical-device testing: not run.
+- Production authentication: demo login is name+role based and not suitable for
+  production.
