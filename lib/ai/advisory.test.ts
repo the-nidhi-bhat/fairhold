@@ -39,6 +39,32 @@ test("AI evidence advisory falls back safely when provider output is invalid", a
   assert.equal(Array.isArray(result.advisory.concerns), true);
 });
 
+test("AI evidence advisory uses a valid structured provider response", async () => {
+  let requestBody = "";
+  const fetchImpl = (async (_url: string, init?: RequestInit) => {
+    requestBody = String(init?.body ?? "");
+    return new Response(JSON.stringify({
+      choices: [{ message: { content: JSON.stringify({
+        summary: "The submitted file matches the acceptance criteria.",
+        matchedCriteria: ["Deliverable is provided"],
+        concerns: [],
+      }) } }],
+    }));
+  }) as typeof fetch;
+
+  const result = await resolveEvidenceAdvisory("Deliverable is provided", ["delivery.pdf"], {
+    AI_API_KEY: "test-key",
+    AI_MODEL: "test-model",
+  }, fetchImpl);
+
+  assert.equal(result.source, "ai");
+  assert.deepEqual(result.advisory.matchedCriteria, ["Deliverable is provided"]);
+  // The provider contract must request the fields the parser validates and must
+  // never ask the model for an approval decision.
+  assert.match(requestBody, /matchedCriteria/);
+  assert.doesNotMatch(requestBody, /recommended/);
+});
+
 test("AI output parsers reject incomplete structures", () => {
   assert.equal(parseMilestoneProposal({ title: "Incomplete" }), null);
   assert.equal(parseEvidenceAdvisory({ summary: "Missing arrays" }), null);

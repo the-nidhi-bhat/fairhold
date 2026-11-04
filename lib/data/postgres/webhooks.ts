@@ -274,6 +274,114 @@ async function reconcileCapturePending(
   return { outcome: "processed" };
 }
 
+async function confirmCaptureWithoutCorrelation(
+  client: PoolClient,
+  id: string,
+  amountCents: number,
+  currency: string,
+): Promise<WebhookProcessOutcome> {
+  // No invoice_id on the event: the only safe correlation left is the capture
+  // reference that a HUMAN approval already recorded from the provider
+  // response. A webhook can confirm that decision; it can never create one.
+  const found = await client.query<{
+    approval_id: string;
+    milestone_id: string;
+    deal_id: string;
+    milestone_amount_cents: number;
+    milestone_status: string;
+  }>(
+    `SELECT ma.id AS approval_id,
+            m.id AS milestone_id,
+            m.deal_id,
+            m.amount_cents AS milestone_amount_cents,
+            m.status AS milestone_status
+       FROM milestone_approvals ma
+       JOIN milestones m ON m.id = ma.milestone_id
+      WHERE ma.provider_name = $1
+        AND ma.provider_reference = $2
+        AND ma.decision = 'approve'
+        AND ma.action = 'CAPTURE'`,
+    [PAYPAL_WEBHOOK_PROVIDER, id],
+  );
+  if ((found.rowCount ?? 0) === 0) {
+    return { outcome: "quarantined", reason: "no matching human approval" };
+  }
+  if ((found.rowCount ?? 0) > 1) {
+    return {
+      outcome: "quarantined",
+      reason: "capture reference matches multiple human approvals",
+    };
+  }
+  const row = found.rows[0];
+  if (!(await lockDeal(client, row.deal_id))) {
+    return { outcome: "quarantined", reason: "capture approval deal not found" };
+  }
+  if (Number(row.milestone_amount_cents) !== amountCents) {
+    return { outcome: "quarantined", reason: "capture amount mismatch" };
+  }
+  if (currency !== "USD") {
+    return { outcome: "quarantined", reason: "capture currency mismatch" };
+  }
+  if (!["In Progress", "Awaiting Review", "Completed"].includes(row.milestone_status)) {
+    return {
+      outcome: "quarantined",
+      reason: "capture conflicts with milestone state",
+    };
+  }
+
+  const authorization = await client.query<{
+    provider_reference: string;
+    currency: string;
+  }>(
+    `SELECT provider_reference, currency
+       FROM payment_authorizations
+      WHERE deal_id = $1
+      FOR UPDATE`,
+    [row.deal_id],
+  );
+  if ((authorization.rowCount ?? 0) === 0) {
+    return { outcome: "quarantined", reason: "capture authorization missing" };
+  }
+
+  await client.query(
+    `INSERT INTO payment_captures
+       (id, deal_id, milestone_id, provider_name, provider_reference,
+        authorization_reference, amount_cents, currency, invoice_id, status,
+        simulated, created_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, 'COMPLETED', false, now())
+     ON CONFLICT (provider_name, provider_reference) DO NOTHING`,
+    [
+      randomUUID(),
+      row.deal_id,
+      row.milestone_id,
+      PAYPAL_WEBHOOK_PROVIDER,
+      id,
+      authorization.rows[0].provider_reference,
+      amountCents,
+      currency,
+    ],
+  );
+  await client.query(
+    `UPDATE milestone_approvals
+        SET payment_status = 'COMPLETED', provider_reference = $2
+      WHERE id = $1`,
+    [row.approval_id, id],
+  );
+  await client.query(
+    `UPDATE milestones SET status = 'Completed', updated_at = now()
+      WHERE id = $1 AND status <> 'Completed'`,
+    [row.milestone_id],
+  );
+  await insertAudit(
+    client,
+    row.deal_id,
+    "payment.capture_confirmed",
+    `Capture ${id} completed by PayPal for milestone.`,
+    row.milestone_id,
+  );
+  return { outcome: "processed" };
+}
+
 async function reconcileCaptureCompleted(
   client: PoolClient,
   id: string,
@@ -281,11 +389,11 @@ async function reconcileCaptureCompleted(
   currency: string | null,
   correlationId: string | null,
 ): Promise<WebhookProcessOutcome> {
-  if (!correlationId) {
-    return { outcome: "quarantined", reason: "capture event missing operation correlation" };
-  }
   if (amountCents === null || currency === null) {
     return { outcome: "quarantined", reason: "capture event missing amount details" };
+  }
+  if (!correlationId) {
+    return confirmCaptureWithoutCorrelation(client, id, amountCents, currency);
   }
   const operation = await client.query<CaptureOperationRow>(
     `SELECT po.id, po.deal_id, po.milestone_id, po.requested_amount_cents,

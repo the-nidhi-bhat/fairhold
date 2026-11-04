@@ -572,7 +572,7 @@ export async function recordMilestoneApproval(
     if (!(await lockDeal(client, dealId)))
       return { ok: false, error: "Deal not found." };
     const found = await client.query(
-      `SELECT id, title, status
+      `SELECT id, title, status, amount_cents
        FROM milestones
        WHERE id = $1 AND deal_id = $2
        FOR UPDATE`,
@@ -585,36 +585,67 @@ export async function recordMilestoneApproval(
     const title = milestone.title as string;
     const status = milestone.status as Milestone["status"];
 
-    try {
-      await client.query(
-        `INSERT INTO milestone_approvals
-           (id, milestone_id, decision, action, reason_codes, explanation, evidence_fingerprint,
-            evidence_reviewed_count, reviewed_by, reviewed_at, provider_reference, provider_name,
-            simulated, payment_status, note)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-        [
-          approval.id,
-          milestoneId,
-          approval.decision,
-          approval.action,
-          JSON.stringify(approval.reasonCodes),
-          approval.explanation,
-          approval.evidenceFingerprint,
-          approval.evidenceReviewedCount,
-          approval.reviewedBy,
-          approval.reviewedAt,
-          approval.providerReference,
-          approval.providerName,
-          approval.simulated,
-          approval.paymentStatus ?? null,
-          approval.note,
-        ],
-      );
-    } catch (error) {
-      if (isUniqueViolation(error)) {
+    const approvalValues = [
+      approval.decision,
+      approval.action,
+      JSON.stringify(approval.reasonCodes),
+      approval.explanation,
+      approval.evidenceFingerprint,
+      approval.evidenceReviewedCount,
+      approval.reviewedBy,
+      approval.reviewedAt,
+      approval.providerReference,
+      approval.providerName,
+      approval.simulated,
+      approval.paymentStatus ?? null,
+      approval.note,
+    ];
+
+    // One decision per milestone may execute a payment. A human may revise a
+    // non-terminal decision (action NONE, i.e. "reject / keep on hold"), but an
+    // approval that already captured or voided money can never be overwritten.
+    const existingApproval = await client.query<{ id: string; action: string }>(
+      `SELECT id, action FROM milestone_approvals WHERE milestone_id = $1`,
+      [milestoneId],
+    );
+    if ((existingApproval.rowCount ?? 0) > 0) {
+      if (existingApproval.rows[0].action !== "NONE") {
         return { ok: false, error: "This milestone has already been reviewed." };
       }
-      throw error;
+      await client.query(
+        `UPDATE milestone_approvals
+            SET decision = $2,
+                action = $3,
+                reason_codes = $4,
+                explanation = $5,
+                evidence_fingerprint = $6,
+                evidence_reviewed_count = $7,
+                reviewed_by = $8,
+                reviewed_at = $9,
+                provider_reference = $10,
+                provider_name = $11,
+                simulated = $12,
+                payment_status = $13,
+                note = $14
+          WHERE id = $1`,
+        [existingApproval.rows[0].id, ...approvalValues],
+      );
+    } else {
+      try {
+        await client.query(
+          `INSERT INTO milestone_approvals
+             (id, milestone_id, decision, action, reason_codes, explanation, evidence_fingerprint,
+              evidence_reviewed_count, reviewed_by, reviewed_at, provider_reference, provider_name,
+              simulated, payment_status, note)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+          [approval.id, milestoneId, ...approvalValues],
+        );
+      } catch (error) {
+        if (isUniqueViolation(error)) {
+          return { ok: false, error: "This milestone has already been reviewed." };
+        }
+        throw error;
+      }
     }
 
     await insertEvent(
@@ -827,7 +858,10 @@ export async function beginPaymentOperation(
 
 export async function updatePaymentOperation(
   idempotencyKey: string,
-  update: Pick<PaymentOperation, "status" | "providerReference">,
+  update: Pick<PaymentOperation, "status" | "providerReference"> & {
+    /** True when the operation ran against the demo (no-network) provider. */
+    simulated?: boolean;
+  },
 ): Promise<void> {
   await withTransaction(async (client) => {
     const operation = await client.query(
@@ -859,13 +893,15 @@ export async function updatePaymentOperation(
       [idempotencyKey, update.status, update.providerReference],
     );
     if (row.action === "CAPTURE" && update.status === "COMPLETED" && update.providerReference) {
+      const simulated = update.simulated ?? false;
       await client.query(
         `INSERT INTO payment_captures
            (id, deal_id, milestone_id, provider_name, provider_reference,
             authorization_reference, amount_cents, currency, invoice_id,
             status, simulated, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'COMPLETED', false, now())
-         ON CONFLICT (provider_name, provider_reference) DO NOTHING`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'COMPLETED', $10, now())
+         ON CONFLICT (provider_name, provider_reference) DO UPDATE
+           SET simulated = payment_captures.simulated OR EXCLUDED.simulated`,
         [
           randomUUID(),
           row.deal_id,
@@ -876,6 +912,7 @@ export async function updatePaymentOperation(
           row.requested_amount_cents,
           row.currency ?? row.authorization_currency,
           idempotencyKey,
+          simulated,
         ],
       );
     }

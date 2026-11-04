@@ -140,7 +140,17 @@ export function recommendMilestone({
     );
   }
 
-  if (evidence.some((e) => e.decision === "rejected")) {
+  // A rejection blocks payment until a *newer* submission is accepted, so the
+  // required revision loop (reject → resubmit → accept) can still complete.
+  const rejectedAt = evidence
+    .filter((e) => e.decision === "rejected")
+    .map((e) => e.submittedAt)
+    .sort()
+    .at(-1);
+  const rejectionResolved =
+    rejectedAt !== undefined &&
+    evidence.some((e) => e.decision === "accepted" && e.submittedAt > rejectedAt);
+  if (rejectedAt !== undefined && !rejectionResolved) {
     return build(
       "DISPUTE",
       ["EVIDENCE_REJECTED"],

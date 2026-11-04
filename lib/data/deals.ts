@@ -474,6 +474,12 @@ export async function recordMilestoneApproval(
     if (!milestone) {
       return { ok: false, error: "Milestone not found in this deal." };
     }
+    // A recorded decision that already executed (or attempted) a payment can
+    // never be overwritten. A non-terminal "reject / keep on hold" decision may
+    // be revised later by a human.
+    if (milestone.approval && milestone.approval.action !== "NONE") {
+      return { ok: false, error: "This milestone has already been reviewed." };
+    }
     const timestamp = now();
     milestone.approval = approval;
     milestone.updatedAt = timestamp;

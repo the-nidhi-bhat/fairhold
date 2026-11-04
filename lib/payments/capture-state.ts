@@ -15,7 +15,7 @@ export function planCapture(
   if (!Number.isSafeInteger(authorizationCents) || authorizationCents <= 0) {
     return { allowed: false, remainingCents: 0, captureCents: 0, finalCapture: false, error: "Invalid authorization amount." };
   }
-  if (capturedCents < 0 || capturedCents >= authorizationCents && requestedCents <= 0) {
+  if (capturedCents < 0 || capturedCents >= authorizationCents) {
     return { allowed: false, remainingCents, captureCents: 0, finalCapture: false, error: "Authorization has no remaining amount." };
   }
   if (!Number.isSafeInteger(requestedCents) || requestedCents <= 0) {

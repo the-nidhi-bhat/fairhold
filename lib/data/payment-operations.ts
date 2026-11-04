@@ -60,7 +60,14 @@ export async function beginPaymentOperation(
 
 export async function updatePaymentOperation(
   idempotencyKey: string,
-  update: Pick<PaymentOperation, "status" | "providerReference">,
+  update: Pick<PaymentOperation, "status" | "providerReference"> & {
+    /**
+     * Parity with the PostgreSQL backend, which records whether a capture came
+     * from the demo provider. The JSON store keeps that flag on the milestone
+     * approval, so it is accepted here and not persisted twice.
+     */
+    simulated?: boolean;
+  },
 ): Promise<void> {
   await withWriteLock(async () => {
     const db = await readDatabase();

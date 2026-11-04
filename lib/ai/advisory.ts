@@ -158,7 +158,7 @@ export async function resolveEvidenceAdvisory(
         messages: [
           {
             role: "system",
-            content: "Assess supplied evidence against acceptance criteria. Return only JSON with summary and concerns arrays, plus recommended: REVIEW, ACCEPT, or REJECT. This advisory never changes deal state.",
+            content: "Assess the supplied evidence against the acceptance criteria. Return only JSON with summary (string), matchedCriteria (array of strings), and concerns (array of strings). Do not decide or recommend acceptance: a human reviewer decides. This advisory never changes deal state.",
           },
           {
             role: "user",
