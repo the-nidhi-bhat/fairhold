@@ -15,8 +15,8 @@
  * large and binary, and the relational database should not carry object
  * payloads.
  */
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
 export const EVIDENCE_DIR_REL = "evidence";
@@ -35,4 +35,15 @@ export async function writeEvidenceFile(
   const storedName = `${randomUUID()}-${sanitizedName}`;
   await writeFile(join(dir, storedName), bytes);
   return join(EVIDENCE_DIR_REL, storedName);
+}
+
+export async function readEvidenceFile(storedPath: string): Promise<Uint8Array> {
+  const root = resolve(evidenceStorageDir());
+  const normalized = storedPath.replaceAll("/", sep).replaceAll("\\", sep);
+  if (normalized.split(sep).length !== 2 || normalized.split(sep)[0] !== EVIDENCE_DIR_REL) {
+    throw new Error("Invalid evidence storage key.");
+  }
+  const filePath = resolve(root, normalized.slice(EVIDENCE_DIR_REL.length + sep.length));
+  if (dirname(filePath) !== root) throw new Error("Invalid evidence storage key.");
+  return readFile(filePath);
 }

@@ -9,6 +9,8 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"lib/**/*.test.ts\"",
+    "test:e2e": "playwright test",
+    "demo:reset": "node scripts/demo-reset.mjs",
     "db:migrate": "node --env-file-if-exists=.env scripts/db-migrate.mjs",
     "db:import": "node --env-file-if-exists=.env scripts/db-import-json.mjs"
   },
@@ -19,6 +21,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.23.1",

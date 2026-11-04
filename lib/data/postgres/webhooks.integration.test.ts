@@ -17,6 +17,10 @@ import { randomUUID } from "node:crypto";
 import pg from "pg";
 
 import { runMigrations } from "./migrate.ts";
+import {
+  prepareIntegrationDatabase,
+  type IntegrationDatabase,
+} from "./integration-database.ts";
 import { processWebhookEvent } from "./webhooks.ts";
 import { addMilestone, createDeal, recordMilestoneApproval, setDealStatus, setPendingAuthorization } from "./deals.ts";
 import type { Deal } from "../../domain/types.ts";
@@ -24,29 +28,28 @@ import type { Deal } from "../../domain/types.ts";
 const TEST_URL = process.env.FAIRHOLD_TEST_DATABASE_URL;
 const live = Boolean(TEST_URL);
 
-// The implementation reads DATABASE_URL lazily on first use; point it at the
-// test database before any call.
-if (TEST_URL) process.env.DATABASE_URL = TEST_URL;
-
 const skipReason = live
   ? false
   : "set FAIRHOLD_TEST_DATABASE_URL (isolated Postgres) to run these tests";
 
-const pool = new pg.Pool({
-  connectionString: TEST_URL ?? "postgresql://unused:unused@localhost:5432/unused",
-  max: 2,
-});
+let pool: pg.Pool;
+let database: IntegrationDatabase | null = null;
 
 test.before(async () => {
-  if (!live) return;
+  if (!TEST_URL) return;
+  // Each test file gets its own schema so parallel files cannot interfere.
+  database = await prepareIntegrationDatabase(TEST_URL, "webhooks");
+  // The implementation reads DATABASE_URL lazily on first use; point it at the
+  // isolated schema before any call.
+  process.env.DATABASE_URL = database.connectionString;
+  pool = new pg.Pool({ connectionString: database.connectionString, max: 2 });
   await runMigrations(pool);
-  await pool.query(
-    "TRUNCATE deals, milestones, evidence, milestone_approvals, audit_events, payment_orders, payment_authorizations, payment_captures, webhook_events RESTART IDENTITY CASCADE",
-  );
 });
 
 test.after(async () => {
-  await pool.end();
+  if (pool) await pool.end();
+  await database?.drop();
+  database = null;
 });
 
 function newDealInput() {

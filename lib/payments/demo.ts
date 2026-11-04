@@ -66,7 +66,9 @@ export class DemoPaymentProvider implements PaymentProvider {
       ok: true,
       simulated: true,
       providerName: this.name,
-      providerReference: `demo-capture-${randomUUID()}`,
+      // Deterministic per request so a retried capture returns the same
+      // reference instead of double-counting a second simulated capture.
+      providerReference: `demo-capture-${request.requestId ?? randomUUID()}`,
       status: "COMPLETED",
       message: `SIMULATED: no PayPal request was made (captured ${request.currency} ${amount}).`,
     };
@@ -84,7 +86,7 @@ export class DemoPaymentProvider implements PaymentProvider {
       ok: true,
       simulated: true,
       providerName: this.name,
-      providerReference: `demo-void-${randomUUID()}`,
+      providerReference: `demo-void-${request.requestId ?? randomUUID()}`,
       status: "VOIDED",
       message:
         "SIMULATED: no PayPal request was made (the remaining hold was voided).",

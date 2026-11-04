@@ -308,3 +308,33 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
   - Live PayPal sandbox operations remain unexecuted.
   - Existing uncommitted `lib/auth/session.ts` modification was preserved and not
     committed in this unit.
+
+  ## Full evidence pass - 2026-11-04
+
+  - Isolated PostgreSQL 16 container `fairhold-pg-test` (port 55432) used for
+    integration tests; the developer's Supabase stack was not touched.
+  - `npm test` with `FAIRHOLD_TEST_DATABASE_URL`: 172 total, 172 passed,
+    0 skipped, 0 failed. The previously skipped PostgreSQL suites now execute.
+  - `npx playwright test`: 9 passed (3 journeys x desktop, mobile, tablet)
+    against a Playwright-managed dev server on port 3100.
+    - Lifecycle: authorization, upload/download, rejection, resubmission,
+      acceptance, simulated capture, history, persistence, double-pay blocked.
+    - Access control: anonymous download 404, unknown login rejected,
+      non-participant deal shows not-found, role-gated controls.
+    - Deal creation and seller milestone authoring with buyer visibility.
+  - `npm run typecheck`, `npm run lint`, `npm run build`: passed.
+  - Defect fixed: inaccessible/unknown deals rendered a blank page because the
+    guard ran inside the Suspense boundary after the Partial Prerender shell had
+    streamed. The guard now runs before the shell; a regression test asserts the
+    not-found UI. HTTP status stays 200 for this streamed route by design.
+  - Defect fixed: cross-account/wrong-role server actions no longer return
+    HTTP 500; they return inline errors or `?actionError=forbidden`.
+  - Test infrastructure fixed: a stale wedged dev server on port 3000 had been
+    producing invalid blank-page results. Playwright now owns port 3100.
+  - Still blocked, not faked: live PayPal sandbox (needs `DATABASE_URL`, public
+    HTTPS webhook endpoint, `PAYPAL_WEBHOOK_ID`; app currently runs the demo
+    provider) and live AI provider calls (needs `AI_API_KEY`/`AI_MODEL`).
+  - Browser coverage is Chromium-only; no axe/Lighthouse run. Mobile and tablet
+    are emulated viewports.
+  - See `QA_REPORT.md` for the full evidence matrix and `TASKS.md` for the
+    remaining/blocked list.

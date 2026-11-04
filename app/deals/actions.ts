@@ -12,7 +12,6 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { isPostgresConfigured } from "@/lib/data/db";
 import {
   addEvidence,
   addMilestone,
@@ -45,7 +44,7 @@ import {
   validateDealInput,
   validateMilestoneInput,
 } from "@/lib/domain/validation";
-import { getPaymentProvider } from "@/lib/payments";
+import { paymentRuntime } from "@/lib/payments/runtime";
 import { canAccessDeal, getDemoSession, type DemoSession } from "@/lib/auth/session";
 
 export interface FormState {
@@ -68,9 +67,16 @@ function isMilestoneStatus(value: string): value is MilestoneStatus {
 
 async function currentSession(): Promise<DemoSession> {
   const session = await getDemoSession();
-  if (!session) throw new Error("Authentication required.");
+  if (!session) throw new AccessDeniedError("Sign in to make changes.");
   return session;
 }
+
+/**
+ * A guard failure (not signed in, wrong role, not your deal) is a normal
+ * outcome of a crafted or stale request. It is carried as a typed error so an
+ * action can answer with an inline message or a redirect instead of a 500.
+ */
+class AccessDeniedError extends Error {}
 
 async function currentActor(): Promise<string> {
   const session = await currentSession();
@@ -81,23 +87,68 @@ async function assertDealAccess(dealId: string): Promise<void> {
   const session = await currentSession();
   const deal = await getDeal(dealId);
   if (!deal || !canAccessDeal(session, deal)) {
-    throw new Error("Deal access denied.");
+    throw new AccessDeniedError(
+      "You do not have access to this deal. No changes were made.",
+    );
   }
 }
 
 async function requireRole(...roles: DemoSession["role"][]): Promise<DemoSession> {
   const session = await currentSession();
   if (!roles.includes(session.role)) {
-    throw new Error("This action is not allowed for the current role.");
+    throw new AccessDeniedError(
+      "This action is not allowed for your current role. No changes were made.",
+    );
   }
   return session;
+}
+
+/** Form-state actions: turn a denied guard into an inline error, not a 500. */
+function denialForm(error: unknown): FormState | null {
+  return error instanceof AccessDeniedError
+    ? { ok: false, errors: { _form: error.message } }
+    : null;
+}
+
+/** Redirect actions: turn a denied guard into a banner on the deal page. */
+async function requireDealAccessOrRedirect(dealId: string): Promise<void> {
+  try {
+    await assertDealAccess(dealId);
+  } catch (error) {
+    if (!(error instanceof AccessDeniedError)) throw error;
+    redirect(`/deals/${dealId}?actionError=forbidden`);
+  }
+}
+
+type FormGuard = { denied: FormState } | { session: DemoSession };
+
+/**
+ * Form-state guard: signs the caller in, checks the role, and (when a deal is
+ * given) checks deal ownership. A denied request returns an inline error, so a
+ * stale tab or a crafted post never produces a 500.
+ */
+async function guardForm(
+  roles: DemoSession["role"][],
+  dealId: string | null,
+): Promise<FormGuard> {
+  try {
+    const session = await requireRole(...roles);
+    if (dealId) await assertDealAccess(dealId);
+    return { session };
+  } catch (error) {
+    const denied = denialForm(error);
+    if (denied) return { denied };
+    throw error;
+  }
 }
 
 export async function createDealAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const session = await requireRole("buyer", "seller", "reviewer");
+  const guard = await guardForm(["buyer", "seller"], null);
+  if ("denied" in guard) return guard.denied;
+  const session = guard.session;
   const result = validateDealInput({
     title: field(formData, "title"),
     clientName: field(formData, "clientName"),
@@ -107,11 +158,10 @@ export async function createDealAction(
   });
   if (!result.ok) return { ok: false, errors: result.errors };
   if (
-    session.role !== "reviewer" &&
-    ((session.role === "buyer" &&
+    (session.role === "buyer" &&
       result.value.clientName.toLowerCase() !== session.name.toLowerCase()) ||
-      (session.role === "seller" &&
-        result.value.freelancerName.toLowerCase() !== session.name.toLowerCase()))
+    (session.role === "seller" &&
+      result.value.freelancerName.toLowerCase() !== session.name.toLowerCase())
   ) {
     return { ok: false, errors: { _form: "The party name must match your signed demo identity." } };
   }
@@ -126,8 +176,9 @@ export async function addMilestoneAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
+  const guard = await guardForm(["seller", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
   const result = validateMilestoneInput({
     title: field(formData, "title"),
     description: field(formData, "description"),
@@ -142,11 +193,13 @@ export async function addMilestoneAction(
   if (deal.authorization) {
     return { ok: false, errors: { _form: "Milestones cannot be added after an authorization exists." } };
   }
+  if (deal.pendingAuthorization) {
+    return { ok: false, errors: { _form: "Milestones cannot be added while a PayPal authorization is awaiting buyer approval." } };
+  }
   if (deal.status === "Completed" || deal.status === "Disputed" || deal.status === "Cancelled") {
     return { ok: false, errors: { _form: "Milestones cannot be added while the deal is " + deal.status + "." } };
   }
 
-  await assertDealAccess(dealId);
   const response = await addMilestone(dealId, result.value, await currentActor());
   if (!response.ok) return { ok: false, errors: { _form: response.error } };
 
@@ -158,10 +211,10 @@ export async function updateMilestoneAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
-  await assertDealAccess(dealId);
+  const guard = await guardForm(["seller", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
   const result = validateMilestoneInput({
     title: field(formData, "title"),
     description: field(formData, "description"),
@@ -177,6 +230,9 @@ export async function updateMilestoneAction(
   if (!milestone) return { ok: false, errors: { _form: "Milestone not found in this deal." } };
   if (deal.authorization) {
     return { ok: false, errors: { _form: "Milestones cannot be edited after an authorization exists." } };
+  }
+  if (deal.pendingAuthorization) {
+    return { ok: false, errors: { _form: "Milestones cannot be edited while a PayPal authorization is awaiting buyer approval." } };
   }
   if (deal.status === "Completed" || deal.status === "Disputed" || deal.status === "Cancelled") {
     return { ok: false, errors: { _form: "Milestones cannot be edited while the deal is " + deal.status + "." } };
@@ -211,15 +267,23 @@ export async function changeMilestoneStatusAction(
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
-  if (!isMilestoneStatus(to)) return;
+  if (!isMilestoneStatus(to)) {
+    redirect(`/deals/${dealId}?actionError=invalid_status`);
+  }
 
   const deal = await getDeal(dealId);
-  if (!deal) return;
+  if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
   const milestone = deal.milestones.find((m) => m.id === milestoneId);
-  if (!milestone || !canTransitionMilestone(milestone.status, to)) return;
+  if (!milestone) redirect(`/deals/${dealId}?actionError=not_found`);
+  if (!canTransitionMilestone(milestone.status, to)) {
+    redirect(`/deals/${dealId}?actionError=invalid_transition`);
+  }
 
-  await assertDealAccess(dealId);
-  await setMilestoneStatus(dealId, milestoneId, to, await currentActor());
+  await requireDealAccessOrRedirect(dealId);
+  const response = await setMilestoneStatus(dealId, milestoneId, to, await currentActor());
+  if (!response.ok) {
+    redirect(`/deals/${dealId}?actionError=invalid_transition`);
+  }
   revalidatePath(`/deals/${dealId}`);
   revalidatePath("/dashboard");
 }
@@ -232,13 +296,21 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
-  if (!isDealStatus(to) || to === "Authorized") return;
+  if (!isDealStatus(to) || to === "Authorized") {
+    redirect(`/deals/${dealId}?actionError=invalid_status`);
+  }
 
   const deal = await getDeal(dealId);
-  if (!deal || !canTransitionDeal(deal.status, to)) return;
+  if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
+  if (!canTransitionDeal(deal.status, to)) {
+    redirect(`/deals/${dealId}?actionError=invalid_transition`);
+  }
 
-  await assertDealAccess(dealId);
-  await setDealStatus(dealId, to, await currentActor());
+  await requireDealAccessOrRedirect(dealId);
+  const response = await setDealStatus(dealId, to, await currentActor());
+  if (!response.ok) {
+    redirect(`/deals/${dealId}?actionError=invalid_transition`);
+  }
   revalidatePath(`/deals/${dealId}`);
   revalidatePath("/dashboard");
 }
@@ -252,22 +324,31 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
  */
 export async function authorizeDealAction(formData: FormData): Promise<void> {
   const dealId = field(formData, "dealId");
-  await requireRole("buyer", "reviewer");
-  await assertDealAccess(dealId);
+  try {
+    await requireRole("buyer", "reviewer");
+  } catch {
+    redirect(`/deals/${dealId}?actionError=role`);
+  }
+  await requireDealAccessOrRedirect(dealId);
   const deal = await getDeal(dealId);
-  if (!deal || deal.status !== "Ready for Authorization") return;
+  if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
+  if (deal.status !== "Ready for Authorization") {
+    redirect(`/deals/${dealId}?actionError=invalid_status`);
+  }
+  if (deal.milestones.length === 0) {
+    redirect(`/deals/${dealId}?actionError=no_milestones`);
+  }
 
   const amountCents = deal.milestones.reduce((sum, m) => sum + m.amountCents, 0);
-  const provider = getPaymentProvider();
-  if (provider.mode === "sandbox" && !isPostgresConfigured()) {
-    return;
-  }
+  const { provider } = paymentRuntime();
   const authorization = await provider.createAuthorizationHold({
     dealId,
     amountCents,
     currency: deal.currency,
   });
-  if (!authorization.ok) return;
+  if (!authorization.ok) {
+    redirect(`/deals/${dealId}?actionError=provider`);
+  }
 
   if (provider.mode === "sandbox" && authorization.orderId) {
     await setPendingAuthorization(
@@ -306,23 +387,33 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
  */
 export async function confirmAuthorizationAction(formData: FormData): Promise<void> {
   const dealId = field(formData, "dealId");
-  await requireRole("buyer", "reviewer");
-  await assertDealAccess(dealId);
+  try {
+    await requireRole("buyer", "reviewer");
+  } catch {
+    redirect(`/deals/${dealId}?actionError=role`);
+  }
+  await requireDealAccessOrRedirect(dealId);
   const deal = await getDeal(dealId);
-  if (!deal || deal.status !== "Ready for Authorization") return;
+  if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
+  if (deal.status !== "Ready for Authorization") {
+    redirect(`/deals/${dealId}?actionError=invalid_status`);
+  }
   const pending = deal.pendingAuthorization;
-  if (!pending) return;
+  if (!pending) redirect(`/deals/${dealId}?actionError=no_pending_authorization`);
 
-  const provider = getPaymentProvider();
-  if (provider.mode !== "sandbox") return;
-  if (!isPostgresConfigured()) return;
+  const { provider } = paymentRuntime();
+  if (provider.mode !== "sandbox") {
+    redirect(`/deals/${dealId}?actionError=sandbox_unavailable`);
+  }
 
   const result = await provider.authorizeOrder({
     dealId,
     orderId: pending.providerOrderId,
     requestId: `fairhold-confirm-${dealId}`,
   });
-  if (!result.ok || !result.providerReference) return;
+  if (!result.ok || !result.providerReference) {
+    redirect(`/deals/${dealId}?actionError=provider`);
+  }
 
   await markDealAuthorized(
     dealId,
@@ -343,10 +434,10 @@ export async function submitEvidenceAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
-  await assertDealAccess(dealId);
+  const guard = await guardForm(["seller", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
 
   const deal = await getDeal(dealId);
   if (!deal) return { ok: false, errors: { _form: "Deal not found." } };
@@ -404,10 +495,10 @@ export async function reviewEvidenceAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("buyer", "reviewer");
   const dealId = field(formData, "dealId");
   const submissionId = field(formData, "submissionId");
-  await assertDealAccess(dealId);
+  const guard = await guardForm(["buyer", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
   const decision = field(formData, "decision");
   if (decision !== "accepted" && decision !== "rejected") {
     return { ok: false, errors: { _form: "Choose to accept or reject." } };
@@ -438,10 +529,10 @@ export async function recordApprovalAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("buyer", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
-  await assertDealAccess(dealId);
+  const guard = await guardForm(["buyer", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
   const decision = field(formData, "decision");
   const note = field(formData, "note").trim();
 
@@ -472,13 +563,7 @@ export async function recordApprovalAction(
     };
   }
 
-  const provider = getPaymentProvider();
-  if (provider.mode === "sandbox" && !isPostgresConfigured()) {
-    return {
-      ok: false,
-      errors: { _form: "Real PayPal actions require PostgreSQL-backed durable payment accounting." },
-    };
-  }
+  const { provider } = paymentRuntime();
   let providerReference: string | null = null;
   let providerName: string | null = null;
   let simulated = false;
@@ -506,17 +591,29 @@ export async function recordApprovalAction(
       };
     }
     const idempotencyKey = `capture:${dealId}:${milestoneId}`;
-    await beginPaymentOperation({
-      dealId,
-      milestoneId,
-      authorizationReference: deal.authorization?.providerReference ?? null,
-      action: "CAPTURE",
-      requestedAmountCents: milestone.amountCents,
-      currency: deal.currency,
-      idempotencyKey,
-      providerName: provider.name,
-      finalCapture: capturePlan.finalCapture,
-    });
+    try {
+      await beginPaymentOperation({
+        dealId,
+        milestoneId,
+        authorizationReference: deal.authorization?.providerReference ?? null,
+        action: "CAPTURE",
+        requestedAmountCents: milestone.amountCents,
+        currency: deal.currency,
+        idempotencyKey,
+        providerName: provider.name,
+        finalCapture: capturePlan.finalCapture,
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        errors: {
+          _form:
+            error instanceof Error
+              ? error.message
+              : "The payment operation could not be recorded. Nothing was captured.",
+        },
+      };
+    }
     const result = await provider.captureAuthorization({
       dealId,
       milestoneId,
@@ -530,6 +627,7 @@ export async function recordApprovalAction(
     await updatePaymentOperation(idempotencyKey, {
       status: result.status,
       providerReference: result.providerReference,
+      simulated: result.simulated,
     });
     if (!result.ok) return { ok: false, errors: { _form: result.message } };
     providerReference = result.providerReference;
@@ -538,16 +636,28 @@ export async function recordApprovalAction(
     paymentStatus = result.status;
   } else if (plan.action === "VOID") {
     const idempotencyKey = `void:${dealId}:${milestoneId}`;
-    await beginPaymentOperation({
-      dealId,
-      milestoneId,
-      authorizationReference: deal.authorization?.providerReference ?? null,
-      action: "VOID",
-      requestedAmountCents: null,
-      currency: deal.currency,
-      idempotencyKey,
-      providerName: provider.name,
-    });
+    try {
+      await beginPaymentOperation({
+        dealId,
+        milestoneId,
+        authorizationReference: deal.authorization?.providerReference ?? null,
+        action: "VOID",
+        requestedAmountCents: null,
+        currency: deal.currency,
+        idempotencyKey,
+        providerName: provider.name,
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        errors: {
+          _form:
+            error instanceof Error
+              ? error.message
+              : "The payment operation could not be recorded. Nothing was voided.",
+        },
+      };
+    }
     const result = await provider.voidAuthorization({
       dealId,
       milestoneId,
@@ -557,6 +667,7 @@ export async function recordApprovalAction(
     await updatePaymentOperation(idempotencyKey, {
       status: result.status,
       providerReference: result.providerReference,
+      simulated: result.simulated,
     });
     if (!result.ok) return { ok: false, errors: { _form: result.message } };
     providerReference = result.providerReference;

@@ -22,3 +22,16 @@
   are released only for definite provider rejection.
 - Real PayPal actions require PostgreSQL-backed durable accounting and are
   unavailable in JSON mode. JSON/demo simulation remains available.
+- Browser journeys run against a Playwright-managed dev server on a dedicated
+  port (3100) so an unrelated or wedged server on 3000 cannot produce invalid
+  evidence.
+- The deal access guard runs in the page component before the streamed shell is
+  returned. A not-found deal therefore renders the not-found UI even though the
+  Partial Prerender response status is already 200.
+- Evidence-download assertions verify the response status, attachment header
+  and exact bytes instead of `suggestedFilename()`, because emulated Chromium
+  ignores `Content-Disposition` for downloads.
+- PostgreSQL integration tests use isolated per-file schemas plus a migration
+  advisory lock, so the suite can run concurrently against one test database.
+- Payment and evidence simulation stay clearly labeled. A passing test suite is
+  not evidence of live PayPal sandbox execution.

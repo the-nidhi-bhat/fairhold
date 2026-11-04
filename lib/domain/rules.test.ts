@@ -136,6 +136,51 @@ test("rejected evidence -> DISPUTE", () => {
   assert.deepEqual(rec.reasonCodes, ["EVIDENCE_REJECTED"]);
 });
 
+test("a newer accepted submission resolves an earlier rejection", () => {
+  const rec = recommendMilestone({
+    deal: AUTHORIZED,
+    milestone: milestone(),
+    evidence: [
+      evidence({
+        id: "ev-rejected",
+        decision: "rejected",
+        submittedAt: "2026-02-01T00:00:00.000Z",
+      }),
+      evidence({
+        id: "ev-accepted",
+        decision: "accepted",
+        submittedAt: "2026-02-03T00:00:00.000Z",
+      }),
+    ],
+    now: NOW,
+  });
+  assert.equal(rec.action, "CAPTURE");
+  assert.ok(rec.reasonCodes.includes("EVIDENCE_ACCEPTED"));
+  assert.ok(!rec.reasonCodes.includes("EVIDENCE_REJECTED"));
+});
+
+test("a rejection newer than the accepted submission still blocks", () => {
+  const rec = recommendMilestone({
+    deal: AUTHORIZED,
+    milestone: milestone(),
+    evidence: [
+      evidence({
+        id: "ev-accepted",
+        decision: "accepted",
+        submittedAt: "2026-02-01T00:00:00.000Z",
+      }),
+      evidence({
+        id: "ev-rejected",
+        decision: "rejected",
+        submittedAt: "2026-02-03T00:00:00.000Z",
+      }),
+    ],
+    now: NOW,
+  });
+  assert.equal(rec.action, "DISPUTE");
+  assert.deepEqual(rec.reasonCodes, ["EVIDENCE_REJECTED"]);
+});
+
 test("deal not authorized -> HOLD DEAL_NOT_AUTHORIZED", () => {
   const rec = recommendMilestone({
     deal: { status: "Draft" },

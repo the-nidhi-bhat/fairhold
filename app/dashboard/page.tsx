@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { canAccessDeal, getDemoSession } from "@/lib/auth/session";
 import { listDeals } from "@/lib/data";
+import { isPostgresConfigured } from "@/lib/data/db";
 import { formatCents } from "@/lib/domain/format";
 import {
   computeProgress,
@@ -18,7 +19,9 @@ export const metadata = { title: "Dashboard" };
 export const instant = false;
 
 export default async function DashboardPage() {
-  if (!(await getDemoSession())) redirect("/login");
+  const session = await getDemoSession();
+  if (!session) redirect("/login");
+  const canCreate = session.role !== "reviewer";
   return (
     <div className="page-frame py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
@@ -30,12 +33,14 @@ export default async function DashboardPage() {
             Active deals and milestone progress.
           </p>
         </div>
-        <Link
-          href="/deals/new"
-          className="primary-button"
-        >
-          New deal
-        </Link>
+        {canCreate ? (
+          <Link
+            href="/deals/new"
+            className="primary-button"
+          >
+            New deal
+          </Link>
+        ) : null}
       </header>
 
       <Suspense fallback={<DashboardSkeleton />}>
@@ -54,21 +59,30 @@ async function DashboardContent() {
     : [];
 
   if (deals.length === 0) {
+    const canCreate = session?.role !== "reviewer";
     return (
       <section className="surface mt-10 p-10 text-center">
         <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
           No deals yet
         </h2>
         <p className="mx-auto mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">
-          Create a deal with an agreement and milestones to get started. Deals
-          use development-only storage while the database is being built.
+          {isPostgresConfigured()
+            ? "Create a deal with an agreement and milestones to get started. Deals are stored in the configured PostgreSQL database."
+            : "Create a deal with an agreement and milestones to get started. Deals use the development JSON store while no database is configured."}
         </p>
-        <Link
-          href="/deals/new"
-          className="primary-button mt-6"
-        >
-          Create your first deal
-        </Link>
+        {canCreate ? (
+          <Link
+            href="/deals/new"
+            className="primary-button mt-6"
+          >
+            Create your first deal
+          </Link>
+        ) : (
+          <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">
+            Ask a buyer or seller to create a deal, then grant your reviewer
+            identity access to it.
+          </p>
+        )}
       </section>
     );
   }

@@ -1,43 +1,46 @@
 # FairHold MVP task state
 
-## In progress
+Updated 2026-11-04.
 
-- Final canonical QA records, browser smoke execution, and branch delivery.
+## Verified in this pass
 
-## Verified
+- `npm run typecheck`, `npm run lint`, `npm run build`: pass.
+- `npm test` with `FAIRHOLD_TEST_DATABASE_URL` pointed at an isolated PostgreSQL
+  16 container: 172 tests, 172 pass, 0 skipped, 0 failed.
+- `npx playwright test`: 9 passed (3 journeys x desktop, mobile, tablet).
+- Buyer/seller lifecycle: authorization hold, evidence upload and download,
+  rejection with note, revision and resubmission, acceptance, simulated capture,
+  payment history, reload persistence, and double-payment prevention.
+- Access control: anonymous download 404, unknown identity rejected at login,
+  non-participant deal access shows not-found, role-gated controls.
+- Deal creation and milestone authoring across both roles, with dashboard
+  visibility.
+- Not-found rendering after hoisting the deal guard out of the Suspense
+  boundary (previously blank in the browser).
+- PostgreSQL approval/capture ledger fixes, revision supersession, migration
+  advisory locking, and webhook reconciliation regression tests.
 
-- Migration 0004 UUID compatibility, operation relationship validation, capture
-  reservation allocation, operation-correlation webhook reconciliation, and
-  fail-closed demo allowlists are implemented and locally verified.
+## Remaining, executable in this workspace
 
-- Dashboard payment summary uses the five payment status keys.
-- PostgreSQL milestone and evidence SQL has been corrected.
-- Payment adapter unit tests are present.
-- Signed demo sessions and server-side buyer/seller/reviewer access checks.
-- Protected PayPal worktree files remain uncommitted.
-- PayPal sandbox adapter hardening committed as `248b9c4`.
-- AI advisory UI and deterministic fallback committed as `a8c2c02`.
-- Payment-history UI and responsive loading states committed as `b712448`.
-- Demo authentication is restricted by server allowlists (`a75a9f1`).
-- Durable payment operations, capture limits, and webhook reconciliation were
-  added (`1e921a5`).
+- Optional: Firefox/WebKit runs and a Lighthouse/axe accessibility pass
+  (Chromium-only today).
+- Optional: verify PostgreSQL behaviour across a physical server restart.
+- Optional: add a production authentication story; demo login remains
+  name+role only.
 
-## Blocked by infrastructure
+## Blocked by external configuration
 
-- PostgreSQL integration suite: `FAIRHOLD_TEST_DATABASE_URL` is not configured.
-- Live PayPal sandbox execution requires sandbox credentials.
+- Live PayPal sandbox lifecycle (authorization, capture, partial capture, void,
+  webhook verification, duplicate delivery): requires `DATABASE_URL` so the app
+  uses PostgreSQL-backed accounting, a public HTTPS webhook endpoint, and
+  `PAYPAL_WEBHOOK_ID`. The app currently uses the demo provider by design, and
+  real sandbox actions are refused without PostgreSQL.
+- Live AI provider calls: require non-placeholder `AI_API_KEY` and `AI_MODEL`.
+  The deterministic fallback is what is verified today.
 
-## Remaining MVP work
+## Not claimed
 
-1. Run and assess the complete baseline independently.
-2. Complete PostgreSQL integration execution when a test database is available.
-3. Finish and commit the existing PayPal adapter work safely.
-4. Complete payment capture, void, ledger and webhook reconciliation.
-5. Complete buyer/seller roles and server-side authorization.
-6. Complete JSON/PostgreSQL behavior parity.
-7. Complete AI advisory proposal and evidence flows.
-8. Complete responsive fintech UI and payment states.
-9. Perform security, reliability and browser QA.
-10. Push the verified feature branch without pushing secrets.
-11. Execute live PostgreSQL integration tests when infrastructure is available.
-12. Exercise live PayPal sandbox and browser flows when credentials/tools are available.
+- Production readiness. This remains a demo-grade application with simulated
+  payments unless the sandbox configuration above is supplied.
+- PayPal escrow. An authorization is a provider hold, never escrow or
+  settlement.

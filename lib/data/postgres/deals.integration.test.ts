@@ -18,8 +18,13 @@ import pg from "pg";
 
 import { runMigrations } from "./migrate.ts";
 import {
+  prepareIntegrationDatabase,
+  type IntegrationDatabase,
+} from "./integration-database.ts";
+import {
   addEvidence,
   addMilestone,
+  beginPaymentOperation,
   createDeal,
   getDeal,
   listDeals,
@@ -28,36 +33,35 @@ import {
   reviewEvidence,
   setDealStatus,
   updateMilestone,
+  updatePaymentOperation,
 } from "./deals.ts";
 import type { Deal } from "../../domain/types.ts";
 
 const TEST_URL = process.env.FAIRHOLD_TEST_DATABASE_URL;
 const live = Boolean(TEST_URL);
 
-// The implementation reads DATABASE_URL lazily on first use; point it at the
-// test database before any call.
-if (TEST_URL) process.env.DATABASE_URL = TEST_URL;
-
 const skipReason = live
   ? false
   : "set FAIRHOLD_TEST_DATABASE_URL (isolated Postgres) to run these tests";
 
-const pool = new pg.Pool({
-  connectionString: TEST_URL ?? "postgresql://unused:unused@localhost:5432/unused",
-  max: 2,
-});
+let pool: pg.Pool;
+let database: IntegrationDatabase | null = null;
 
 test.before(async () => {
-  if (!live) return;
+  if (!TEST_URL) return;
+  // Each test file gets its own schema so parallel files cannot interfere.
+  database = await prepareIntegrationDatabase(TEST_URL, "deals");
+  // The implementation reads DATABASE_URL lazily on first use; point it at the
+  // isolated schema before any call.
+  process.env.DATABASE_URL = database.connectionString;
+  pool = new pg.Pool({ connectionString: database.connectionString, max: 2 });
   await runMigrations(pool);
-  // Isolate the suite from prior data.
-  await pool.query(
-    "TRUNCATE deals, milestones, evidence, milestone_approvals, audit_events, payment_orders, payment_authorizations, payment_captures, webhook_events RESTART IDENTITY CASCADE",
-  );
 });
 
 test.after(async () => {
-  await pool.end();
+  if (pool) await pool.end();
+  await database?.drop();
+  database = null;
 });
 
 function newDealInput() {
@@ -200,7 +204,7 @@ test("postgres: approval is recorded atomically with audit events", { skip: skip
   assert.equal(loaded.milestones[0].approval?.decision, "approve");
 });
 
-test("postgres: a second approval for the same milestone is rejected", { skip: skipReason }, async () => {
+test("postgres: a held approval may be revised but one decision records the payment", { skip: skipReason }, async () => {
   const { deal, milestoneId } = await seedDealWithMilestone();
   const base = {
     decision: "approve" as const,
@@ -218,9 +222,21 @@ test("postgres: a second approval for the same milestone is rejected", { skip: s
   };
   const first = await recordMilestoneApproval(deal.id, milestoneId, { ...base, id: randomUUID() }, "system");
   assert.equal(first.ok, true);
-  const second = await recordMilestoneApproval(deal.id, milestoneId, { ...base, id: randomUUID() }, "system");
-  assert.equal(second.ok, false);
-  assert.match((second as { error: string }).error, /already been reviewed/);
+  // A hold records no payment, so a human may revise it while nothing moved.
+  const revised = await recordMilestoneApproval(deal.id, milestoneId, { ...base, id: randomUUID() }, "system");
+  assert.equal(revised.ok, true);
+  // A decision that records a payment is terminal.
+  await authorizeSeededDeal(deal.id);
+  const paid = await recordMilestoneApproval(
+    deal.id,
+    milestoneId,
+    approvalInput({ action: "CAPTURE", decision: "approve", simulated: true }),
+    "system",
+  );
+  assert.equal(paid.ok, true);
+  const overwrite = await recordMilestoneApproval(deal.id, milestoneId, { ...base, id: randomUUID() }, "system");
+  assert.equal(overwrite.ok, false);
+  assert.match((overwrite as { error: string }).error, /already been reviewed/);
 });
 
 test("postgres: concurrent authorizations — exactly one wins", { skip: skipReason }, async () => {
@@ -316,4 +332,160 @@ test("postgres: deal rows survive a transaction rollback", { skip: skipReason },
   const loaded = await getDeal(deal.id);
   assert.equal(loaded?.status, "Authorized");
   assert.equal(loaded?.authorization?.providerReference, (auth as { ok: true; deal: Deal }).deal.authorization?.providerReference);
+});
+
+/** Authorize a seeded deal and return the provider reference used. */
+async function authorizeSeededDeal(dealId: string): Promise<string> {
+  await readyForAuthorization(dealId);
+  const reference = `demo-auth-${randomUUID()}`;
+  const auth = await markDealAuthorized(
+    dealId,
+    {
+      providerName: "demo-payment-provider",
+      providerReference: reference,
+      simulated: true,
+      amountCents: 25000,
+    },
+    "system",
+  );
+  assert.equal(auth.ok, true);
+  return reference;
+}
+
+function approvalInput(overrides: {
+  action: "CAPTURE" | "VOID" | "NONE";
+  decision?: "approve" | "reject";
+  paymentStatus?: "COMPLETED" | "VOIDED" | "PENDING" | "FAILED";
+  providerReference?: string | null;
+  simulated?: boolean;
+}) {
+  return {
+    id: randomUUID(),
+    decision: overrides.decision ?? "approve",
+    action: overrides.action,
+    reasonCodes: ["EVIDENCE_ACCEPTED"],
+    explanation: "Decision recorded by the integration test.",
+    evidenceFingerprint: `fp-${randomUUID()}`,
+    evidenceReviewedCount: 1,
+    reviewedBy: "system",
+    reviewedAt: new Date().toISOString(),
+    providerReference:
+      overrides.providerReference === undefined
+        ? `demo-cap-${randomUUID()}`
+        : overrides.providerReference,
+    providerName: overrides.action === "NONE" ? null : "demo-payment-provider",
+    simulated: overrides.simulated ?? true,
+    paymentStatus: overrides.paymentStatus,
+    note: null,
+  } as {
+    id: string;
+    decision: "approve" | "reject";
+    action: "CAPTURE" | "VOID" | "NONE";
+    reasonCodes: string[];
+    explanation: string;
+    evidenceFingerprint: string;
+    evidenceReviewedCount: number;
+    reviewedBy: string;
+    reviewedAt: string;
+    providerReference: string | null;
+    providerName: string | null;
+    simulated: boolean;
+    paymentStatus?: "COMPLETED" | "VOIDED" | "PENDING" | "FAILED";
+    note: string | null;
+  };
+}
+
+test("postgres: a completed approval records the milestone amount in the capture ledger", { skip: skipReason }, async () => {
+  const { deal, milestoneId } = await seedDealWithMilestone();
+  const authorizationReference = await authorizeSeededDeal(deal.id);
+
+  const approval = await recordMilestoneApproval(
+    deal.id,
+    milestoneId,
+    approvalInput({
+      action: "CAPTURE",
+      paymentStatus: "COMPLETED",
+      providerReference: `demo-cap-${randomUUID()}`,
+    }),
+    "system",
+  );
+  assert.equal(approval.ok, true);
+
+  const captures = await pool.query(
+    `SELECT amount_cents, currency, simulated, authorization_reference, status
+     FROM payment_captures WHERE deal_id = $1`,
+    [deal.id],
+  );
+  assert.equal(captures.rowCount, 1);
+  assert.equal(Number(captures.rows[0].amount_cents), 25000);
+  assert.equal(captures.rows[0].currency, "USD");
+  assert.equal(captures.rows[0].simulated, true);
+  assert.equal(captures.rows[0].authorization_reference, authorizationReference);
+  assert.equal(captures.rows[0].status, "COMPLETED");
+});
+
+test("postgres: a held decision can be revised, a terminal decision cannot", { skip: skipReason }, async () => {
+  const { deal, milestoneId } = await seedDealWithMilestone();
+  await authorizeSeededDeal(deal.id);
+
+  const held = await recordMilestoneApproval(
+    deal.id,
+    milestoneId,
+    approvalInput({ action: "NONE", decision: "reject", simulated: false }),
+    "system",
+  );
+  assert.equal(held.ok, true);
+
+  const revised = await recordMilestoneApproval(
+    deal.id,
+    milestoneId,
+    approvalInput({ action: "CAPTURE", decision: "approve", simulated: true }),
+    "system",
+  );
+  assert.equal(revised.ok, true);
+  const loaded = await getDeal(deal.id);
+  assert.equal(loaded?.milestones[0].approval?.action, "CAPTURE");
+  assert.equal(loaded?.milestones[0].status, "Completed");
+
+  const overwrite = await recordMilestoneApproval(
+    deal.id,
+    milestoneId,
+    approvalInput({ action: "VOID", decision: "reject", simulated: true }),
+    "system",
+  );
+  assert.equal(overwrite.ok, false);
+  assert.match((overwrite as { error: string }).error, /already been reviewed/);
+});
+
+test("postgres: a simulated capture operation is recorded as simulated", { skip: skipReason }, async () => {
+  const { deal, milestoneId } = await seedDealWithMilestone();
+  await authorizeSeededDeal(deal.id);
+  const idempotencyKey = `capture:${deal.id}:${milestoneId}`;
+
+  const operation = await beginPaymentOperation({
+    dealId: deal.id,
+    milestoneId,
+    authorizationReference: `auth-${randomUUID()}`,
+    action: "CAPTURE",
+    requestedAmountCents: 25000,
+    currency: "USD",
+    idempotencyKey,
+    providerName: "demo-payment-provider",
+    finalCapture: true,
+  });
+  assert.equal(operation.status, "RESERVED");
+
+  await updatePaymentOperation(idempotencyKey, {
+    status: "COMPLETED",
+    providerReference: `demo-capture-${randomUUID()}`,
+    simulated: true,
+  });
+
+  const captures = await pool.query(
+    `SELECT amount_cents, simulated FROM payment_captures WHERE deal_id = $1`,
+    [deal.id],
+  );
+  assert.equal(captures.rowCount, 1);
+  assert.equal(Number(captures.rows[0].amount_cents), 25000);
+  assert.equal(captures.rows[0].simulated, true);
 });
