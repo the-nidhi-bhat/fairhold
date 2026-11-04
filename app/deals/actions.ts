@@ -67,9 +67,16 @@ function isMilestoneStatus(value: string): value is MilestoneStatus {
 
 async function currentSession(): Promise<DemoSession> {
   const session = await getDemoSession();
-  if (!session) throw new Error("Authentication required.");
+  if (!session) throw new AccessDeniedError("Sign in to make changes.");
   return session;
 }
+
+/**
+ * A guard failure (not signed in, wrong role, not your deal) is a normal
+ * outcome of a crafted or stale request. It is carried as a typed error so an
+ * action can answer with an inline message or a redirect instead of a 500.
+ */
+class AccessDeniedError extends Error {}
 
 async function currentActor(): Promise<string> {
   const session = await currentSession();
@@ -80,23 +87,68 @@ async function assertDealAccess(dealId: string): Promise<void> {
   const session = await currentSession();
   const deal = await getDeal(dealId);
   if (!deal || !canAccessDeal(session, deal)) {
-    throw new Error("Deal access denied.");
+    throw new AccessDeniedError(
+      "You do not have access to this deal. No changes were made.",
+    );
   }
 }
 
 async function requireRole(...roles: DemoSession["role"][]): Promise<DemoSession> {
   const session = await currentSession();
   if (!roles.includes(session.role)) {
-    throw new Error("This action is not allowed for the current role.");
+    throw new AccessDeniedError(
+      "This action is not allowed for your current role. No changes were made.",
+    );
   }
   return session;
+}
+
+/** Form-state actions: turn a denied guard into an inline error, not a 500. */
+function denialForm(error: unknown): FormState | null {
+  return error instanceof AccessDeniedError
+    ? { ok: false, errors: { _form: error.message } }
+    : null;
+}
+
+/** Redirect actions: turn a denied guard into a banner on the deal page. */
+async function requireDealAccessOrRedirect(dealId: string): Promise<void> {
+  try {
+    await assertDealAccess(dealId);
+  } catch (error) {
+    if (!(error instanceof AccessDeniedError)) throw error;
+    redirect(`/deals/${dealId}?actionError=forbidden`);
+  }
+}
+
+type FormGuard = { denied: FormState } | { session: DemoSession };
+
+/**
+ * Form-state guard: signs the caller in, checks the role, and (when a deal is
+ * given) checks deal ownership. A denied request returns an inline error, so a
+ * stale tab or a crafted post never produces a 500.
+ */
+async function guardForm(
+  roles: DemoSession["role"][],
+  dealId: string | null,
+): Promise<FormGuard> {
+  try {
+    const session = await requireRole(...roles);
+    if (dealId) await assertDealAccess(dealId);
+    return { session };
+  } catch (error) {
+    const denied = denialForm(error);
+    if (denied) return { denied };
+    throw error;
+  }
 }
 
 export async function createDealAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const session = await requireRole("buyer", "seller");
+  const guard = await guardForm(["buyer", "seller"], null);
+  if ("denied" in guard) return guard.denied;
+  const session = guard.session;
   const result = validateDealInput({
     title: field(formData, "title"),
     clientName: field(formData, "clientName"),
@@ -124,8 +176,9 @@ export async function addMilestoneAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
+  const guard = await guardForm(["seller", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
   const result = validateMilestoneInput({
     title: field(formData, "title"),
     description: field(formData, "description"),
@@ -135,7 +188,6 @@ export async function addMilestoneAction(
   });
   if (!result.ok) return { ok: false, errors: result.errors };
 
-  await assertDealAccess(dealId);
   const deal = await getDeal(dealId);
   if (!deal) return { ok: false, errors: { _form: "Deal not found." } };
   if (deal.authorization) {
@@ -159,10 +211,10 @@ export async function updateMilestoneAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
-  await assertDealAccess(dealId);
+  const guard = await guardForm(["seller", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
   const result = validateMilestoneInput({
     title: field(formData, "title"),
     description: field(formData, "description"),
@@ -227,7 +279,7 @@ export async function changeMilestoneStatusAction(
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
   }
 
-  await assertDealAccess(dealId);
+  await requireDealAccessOrRedirect(dealId);
   const response = await setMilestoneStatus(dealId, milestoneId, to, await currentActor());
   if (!response.ok) {
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
@@ -254,7 +306,7 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
   }
 
-  await assertDealAccess(dealId);
+  await requireDealAccessOrRedirect(dealId);
   const response = await setDealStatus(dealId, to, await currentActor());
   if (!response.ok) {
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
@@ -277,7 +329,7 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
-  await assertDealAccess(dealId);
+  await requireDealAccessOrRedirect(dealId);
   const deal = await getDeal(dealId);
   if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
   if (deal.status !== "Ready for Authorization") {
@@ -340,7 +392,7 @@ export async function confirmAuthorizationAction(formData: FormData): Promise<vo
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
-  await assertDealAccess(dealId);
+  await requireDealAccessOrRedirect(dealId);
   const deal = await getDeal(dealId);
   if (!deal) redirect(`/deals/${dealId}?actionError=not_found`);
   if (deal.status !== "Ready for Authorization") {
@@ -382,10 +434,10 @@ export async function submitEvidenceAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("seller", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
-  await assertDealAccess(dealId);
+  const guard = await guardForm(["seller", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
 
   const deal = await getDeal(dealId);
   if (!deal) return { ok: false, errors: { _form: "Deal not found." } };
@@ -443,10 +495,10 @@ export async function reviewEvidenceAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("buyer", "reviewer");
   const dealId = field(formData, "dealId");
   const submissionId = field(formData, "submissionId");
-  await assertDealAccess(dealId);
+  const guard = await guardForm(["buyer", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
   const decision = field(formData, "decision");
   if (decision !== "accepted" && decision !== "rejected") {
     return { ok: false, errors: { _form: "Choose to accept or reject." } };
@@ -477,10 +529,10 @@ export async function recordApprovalAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireRole("buyer", "reviewer");
   const dealId = field(formData, "dealId");
   const milestoneId = field(formData, "milestoneId");
-  await assertDealAccess(dealId);
+  const guard = await guardForm(["buyer", "reviewer"], dealId);
+  if ("denied" in guard) return guard.denied;
   const decision = field(formData, "decision");
   const note = field(formData, "note").trim();
 
@@ -575,6 +627,7 @@ export async function recordApprovalAction(
     await updatePaymentOperation(idempotencyKey, {
       status: result.status,
       providerReference: result.providerReference,
+      simulated: result.simulated,
     });
     if (!result.ok) return { ok: false, errors: { _form: result.message } };
     providerReference = result.providerReference;
@@ -614,6 +667,7 @@ export async function recordApprovalAction(
     await updatePaymentOperation(idempotencyKey, {
       status: result.status,
       providerReference: result.providerReference,
+      simulated: result.simulated,
     });
     if (!result.ok) return { ok: false, errors: { _form: result.message } };
     providerReference = result.providerReference;

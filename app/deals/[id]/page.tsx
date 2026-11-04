@@ -49,6 +49,7 @@ export const instant = false;
 
 const ACTION_ERROR_MESSAGES: Record<string, string> = {
   role: "This action is not allowed for your current role. No changes were made.",
+  forbidden: "You do not have access to this deal. No changes were made.",
   invalid_status:
     "That action is not available in the deal's current state. No changes were made.",
   invalid_transition:
@@ -77,6 +78,14 @@ export default async function DealPage({
       "That action could not be completed. No changes were made.")
     : null;
 
+  // Resolve existence and access before streaming any markup: `notFound()`
+  // thrown after the shell has flushed cannot replace the already-sent
+  // response, which left a blank page with HTTP 200.
+  const deal = await getDeal(id);
+  if (!deal) notFound();
+  const session = await getDemoSession();
+  if (!session || !canAccessDeal(session, deal)) notFound();
+
   return (
     <div className="page-frame py-10">
       <Link
@@ -86,24 +95,22 @@ export default async function DealPage({
         &larr; Dashboard
       </Link>
       <Suspense fallback={<DealSkeleton />}>
-        <DealDetail id={id} actionError={actionError} />
+        <DealDetail deal={deal} session={session} actionError={actionError} />
       </Suspense>
     </div>
   );
 }
 
 async function DealDetail({
-  id,
+  deal,
+  session,
   actionError,
 }: {
-  id: string;
+  deal: Deal;
+  session: NonNullable<Awaited<ReturnType<typeof getDemoSession>>>;
   actionError: string | null;
 }) {
   await connection();
-  const deal = await getDeal(id);
-  if (!deal) notFound();
-  const session = await getDemoSession();
-  if (!session || !canAccessDeal(session, deal)) notFound();
 
   const progress = computeProgress(deal);
   const payment = paymentStatusFor(deal);
