@@ -87,3 +87,8 @@ test-results/
 
 # PayPal kill-test run state (resource IDs only; never credentials)
 scripts/.paypal-kill-test-state.json
+
+# Vercel local project link and CLI-pulled environment files
+.vercel/
+.env*.local
+.env.vercel
