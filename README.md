@@ -1,169 +1,421 @@
+<div align="center">
+
+<img src="./public/fairhold-hero.svg" alt="FairHold — work moves forward, payments move with proof" width="100%" />
+
 # FairHold
 
-> **Status: under active development.** The Deal & Milestone foundation is in
-> place: you can create a deal, add milestones with amounts and acceptance
-> criteria, move through workflow states, and see an activity timeline. You can
-> also submit **evidence**, get a deterministic **rules recommendation**
-> (`CAPTURE` / `HOLD` / `VOID` / `DISPUTE` with reason codes), review the
-> evidence, and record a **human approval** decision. Persistence is a
-> **PostgreSQL backend** with a JSON dev-store default: run without
-> `DATABASE_URL` for zero-config JSON storage, or set `DATABASE_URL` and apply
-> `npm run db:migrate` / `npm run db:import` to use PostgreSQL (no silent
-> fallback — a configured-but-unreachable database fails loudly). A **PayPal
-> webhook endpoint** (`/api/paypal/webhook`) verifies signatures and durably
-> reconciles authorization and capture events against PostgreSQL (requires
-> `DATABASE_URL` + `PAYPAL_WEBHOOK_ID`). Payments are **simulated** by a demo
-> provider by default. Signed demo authentication supports buyer, seller and
-> reviewer flows. Structured AI advisory includes a deterministic fallback;
-> rules always remain authoritative.
+**Milestone-based payment coordination for buyers and sellers.**
 
-FairHold is an **AI-assisted conditional payment platform** built around PayPal,
-where:
+Work moves forward. Payments move with proof.
 
-> **AI proposes. Rules decide.**
+[![Next.js](https://img.shields.io/badge/Next.js-16.4.3-000000?style=flat-square)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19.3-000000?style=flat-square)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square)](https://www.typescriptlang.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square)](https://www.postgresql.org)
+[![Tests](https://img.shields.io/badge/tests-172%20passing-2f6f4f?style=flat-square)](#quality)
+[![E2E](https://img.shields.io/badge/playwright-9%20journeys-2f6f4f?style=flat-square)](#quality)
+[![PayPal](https://img.shields.io/badge/PayPal-sandbox%20adapter-0070ba?style=flat-square)](#payment-lifecycle)
 
-## Concept
+</div>
 
-Two parties — a buyer and a seller — agree on terms for a payment. The payment
-is authorized on PayPal and held pending satisfaction of agreed conditions.
-Evidence about whether those conditions were met is submitted, an AI model
-produces a *recommendation*, and a deterministic rules engine — not the model —
-makes the final decision.
+---
 
-The design principle is deliberate:
+## The philosophy
 
-- **AI proposes.** The model drafts analysis and recommendations, and explains
-  its reasoning.
-- **Rules decide.** Release, refund, escalation, or waiting is resolved by
-  deterministic, auditable application rules.
+> **AI proposes. Rules decide. Humans approve. PayPal executes. The audit trail records everything.**
 
-The AI layer is never allowed to move money, mutate payment state, or bypass
-authorization checks.
+Every design decision in FairHold follows that ordering. The language model can suggest a milestone breakdown or summarise submitted evidence, but it has no authority. A deterministic rules engine reads the deal state and recommends `CAPTURE`, `VOID`, `HOLD` or `DISPUTE`. A human buyer (or a reviewer explicitly granted that deal) makes the decision. Only then does the payment adapter speak to PayPal. Every step is written to an append-only audit trail.
 
-### Terminology note
+## The problem
 
-PayPal does not provide escrow in this design. Payments are handled with
-PayPal authorization and capture primitives under PayPal's own terms. Any
-user-facing wording must describe the mechanism accurately rather than calling
-it "escrow".
+Freelance and small-agency work is paid against trust rather than proof. Buyers hesitate to release money before delivery; sellers hesitate to deliver before payment. The usual workarounds — invoicing after the fact, informal "50% upfront" splits, screenshot-based promises — leave both sides without a shared record of what was agreed, what evidence was submitted, who approved it and what the payment state actually is.
 
-## Architecture
+## The solution
 
-| Layer | Intent | Status |
+FairHold makes the milestone itself the unit of coordination:
+
+1. A **deal** is created between a buyer and a seller with an agreed total.
+2. The work is split into **milestones**, each with an amount, due date and written acceptance criteria.
+3. The seller **submits evidence** (file, URL or note) against a milestone.
+4. The buyer **reviews** the evidence, accepts it or requests a revision.
+5. A **deterministic recommendation** is computed from the deal state.
+6. A **human approves** the milestone; that approval is what plans a payment operation.
+7. The **payment adapter** performs the PayPal authorisation or capture and records the provider-confirmed result.
+8. The **activity trail** keeps the full history, in order, including rejections and revisions.
+
+## What FairHold is not
+
+| Not this | Why it matters |
+| --- | --- |
+| **Escrow** | A PayPal authorization is a temporary hold. FairHold never calls it escrow, settlement or guaranteed protection. |
+| **An AI decision-maker** | The model is advisory only. It cannot approve evidence, authorize payment or capture funds. |
+| **Production identity verification** | The current build uses a signed demo session plus server-side allowlists. That is not KYC and not multi-tenant auth. |
+| **A refund system** | Voiding releases an authorization hold. Refunds are intentionally not modelled. |
+| **A live-money product** | The real adapter is restricted to the PayPal *sandbox*. Live credentials are refused by configuration. |
+
+---
+
+## Key features
+
+- **Role-aware workspaces** — distinct buyer and seller dashboards built around the actions each role actually owns, plus per-deal reviewer grants.
+- **Milestone timeline** — the signature screen: every milestone state, evidence submission, review decision, revision and payment outcome on one timeline.
+- **Evidence with real validation** — extension allowlist, 3 MB cap, magic-number type sniffing, sanitised filenames, authorised download route with `nosniff`.
+- **Deterministic decision engine** — pure functions produce recommendations with reason codes and a human-readable explanation.
+- **Human approval gate** — approving a `HOLD` or `DISPUTE` recommendation is refused; only `CAPTURE` and `VOID` can be approved.
+- **Idempotent payment operations** — reservations are claimed before the provider call, keyed by `capture:<dealId>:<milestoneId>`, so a double submit cannot double-capture.
+- **Honest ambiguity handling** — a timeout is recorded as `PENDING`, never as failure, and is surfaced to the user as an unsettled outcome to reconcile.
+- **Fail-closed webhooks** — signature verification, duplicate suppression and a durable inbox with sanitised quarantine reasons.
+- **Audit trail** — append-only events with actor, timestamp and payload; the UI renders recorded history only.
+- **Reduced-motion-safe motion system** — CSS-only reveal choreography with one owner per animated property.
+
+---
+
+## Buyer workflow
+
+```mermaid
+flowchart TD
+    A[Create or open a deal] --> B[Review milestone terms and criteria]
+    B --> C[Authorize the agreement<br/>demo or PayPal sandbox]
+    C --> D{Evidence submitted?}
+    D -- No --> D
+    D -- Yes --> E[Open and download evidence]
+    E --> F{Evidence suffices?}
+    F -- No --> G[Reject with revision notes]
+    G --> D
+    F -- Yes --> H[Accept evidence]
+    H --> I[Read deterministic recommendation]
+    I --> J{Human decision}
+    J -- Approve CAPTURE --> K[Capture reserved, provider called]
+    J -- Approve VOID --> L[Authorization voided]
+    J -- Reject --> M[No payment operation]
+    K --> N[Provider-confirmed result recorded<br/>COMPLETED or PENDING or FAILED]
+```
+
+## Seller workflow
+
+```mermaid
+flowchart TD
+    A[Sign in as seller] --> B[See assigned milestones and due dates]
+    B --> C[Work the milestone]
+    C --> D[Submit evidence<br/>file, URL or note]
+    D --> E[Await buyer review]
+    E --> F{Decision}
+    F -- Revision requested --> G[Read the rejection notes]
+    G --> C
+    F -- Accepted --> H[Await approval and capture]
+    H --> I[Track payment status on the deal]
+```
+
+## Milestone lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> InProgress: work starts
+    InProgress --> AwaitingReview: evidence submitted
+    AwaitingReview --> Completed: buyer accepts and approves
+    AwaitingReview --> InProgress: revision requested
+    InProgress --> Disputed: dispute raised
+    AwaitingReview --> Disputed: dispute raised
+    Completed --> Disputed
+    Disputed --> InProgress: resolved
+    Disputed --> Cancelled
+    Draft --> Cancelled
+    InProgress --> Cancelled
+    Completed --> [*]
+    Cancelled --> [*]
+```
+
+Deal states follow the same shape, with one deliberate exception: `Authorized` can never be set by hand. It is only entered by the payment adapter after a provider-confirmed authorization (`allowedManualDealTransitions` filters it out).
+
+## Payment lifecycle
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Buyer
+    participant App as FairHold (server action)
+    participant Led as payment_operations
+    participant P as Payment adapter
+    participant PayPal as PayPal sandbox
+
+    B->>App: Approve milestone
+    App->>App: recommendMilestone() then planApproval()
+    App->>App: planCapture(authorized, captured, requested)
+    App->>Led: beginPaymentOperation() — status RESERVED
+    Note over Led: claimed before any provider call,<br/>unique per capture:deal:milestone
+    App->>P: captureAuthorization(requestId = idempotency key)
+    P->>PayPal: POST /v2/payments/authorizations/{id}/capture
+    alt provider confirms COMPLETED with a capture id
+        PayPal-->>P: 201 COMPLETED
+        P-->>App: ok, COMPLETED, reference
+        App->>Led: updatePaymentOperation(COMPLETED)
+        App->>App: recordMilestoneApproval(paymentStatus COMPLETED)
+    else timeout or missing capture id
+        PayPal-->>P: no definitive answer
+        P-->>App: PENDING — outcome unknown
+        App->>Led: updatePaymentOperation(PENDING)
+        Note over App: surfaced as unsettled.<br/>Never reported as failure. Never retried blindly.
+    else explicit refusal
+        PayPal-->>P: 4xx / DECLINED
+        P-->>App: FAILED — no money moved
+        App->>Led: updatePaymentOperation(FAILED)
+        App->>App: no approval recorded
+    end
+```
+
+### Webhook and reconciliation
+
+```mermaid
+flowchart TD
+    A[PayPal POST /api/paypal/webhook] --> B{Config complete?}
+    B -- no --> B1[503 webhook not configured]
+    B -- yes --> C{PostgreSQL backend?}
+    C -- no --> C1[503 requires PostgreSQL]
+    C -- yes --> D{Body readable and under 1 MB?}
+    D -- no --> D1[400 / 413]
+    D -- yes --> E{All five transmission headers present?}
+    E -- no --> E1[400 missing transmission headers]
+    E -- yes --> F[verify-webhook-signature]
+    F -- verification error --> F1[500 — PayPal retries]
+    F -- invalid --> F2[400 invalid signature — never retried]
+    F -- valid --> G[processWebhookEvent]
+    G --> H{Outcome}
+    H -- processed --> H1[200 processed]
+    H -- duplicate --> H2[200 duplicate]
+    H -- unsupported --> H3[200 unsupported + reason]
+    H -- quarantined --> H4[200 quarantined + reason]
+    G -- throws --> G1[500 processing failed — PayPal retries]
+```
+
+A webhook never substitutes for human approval. It reconciles provider-reported facts against records a human already created; anything unmatched is quarantined with a reason and stops retrying.
+
+## AI advisory boundary
+
+```mermaid
+flowchart LR
+    subgraph Advisory["Advisory lane — no authority"]
+        A[Agreement text or milestone criteria] --> B[AI provider]
+        B --> C{Schema valid?}
+        C -- yes --> D[Structured proposal / summary]
+        C -- no --> E[Deterministic fallback]
+        B -. timeout or error .-> E
+    end
+    D --> F[Displayed to a human]
+    E --> F
+    F --> G[Human reads and decides]
+    subgraph Authority["Authority lane"]
+        G --> H[Deterministic rules engine]
+        H --> I[Human approval]
+        I --> J[Payment operation]
+    end
+    B -. never writes .-> H
+    B -. never writes .-> I
+    B -. never writes .-> J
+```
+
+---
+
+## Technology stack
+
+| Layer | Choice | Why |
 | --- | --- | --- |
-| Web app | Next.js + TypeScript | Deals, milestones, dashboard, workflow states |
-| Data | PostgreSQL | Schema + migrations + data-access layer implemented; JSON dev store (`.data/`, git-ignored) is the default when `DATABASE_URL` is unset |
-| Payments | PayPal APIs, server-side only | Interface + simulated demo provider (authorize/capture/void) + PayPal sandbox adapter + verified webhook endpoint (`/api/paypal/webhook`) with durable, idempotent reconciliation; no live call from the app |
-| Intelligence | Structured advisory plus deterministic rules | Validated AI-shaped output with deterministic fallback; payment decisions are never delegated to AI |
+| Framework | Next.js 16.4.3 (App Router, Turbopack, Cache Components) | Server actions keep state changes on the server; `connection()` marks dynamic reads explicitly. |
+| UI | React 19.3 + Tailwind CSS 4 | CSS-first tokens, small runtime, no component library to fight. |
+| Language | TypeScript 5, strict | Domain rules are shared by server, tests and UI. |
+| Data | PostgreSQL 16 (`pg`) with a JSON dev store | One data facade, two interchangeable backends with identical signatures. |
+| Payments | PayPal sandbox REST adapter | Same contract shape as the demo provider, so UI logic never branches on provider. |
+| Tests | `node:test` + Playwright | Native runner for units and PG integration; real browser journeys for the lifecycle. |
+| Motion | CSS transitions and keyframes | One owner per property, reduced-motion safe, zero animation runtime. |
+
+## System architecture
+
+```mermaid
+flowchart TB
+    subgraph Client
+        RSC[Server components] --> UI[Buyer / seller / reviewer UI]
+        UI --> SA[Server actions]
+        UI --> DL[GET /api/evidence/:dealId/:evidenceId]
+    end
+    SA --> AUTH[lib/auth<br/>signed demo session]
+    SA --> DOM[lib/domain<br/>status · rules · approval · evidence]
+    SA --> DATA[lib/data facade]
+    SA --> PAY[lib/payments<br/>runtime · provider · capture-state]
+    DL --> DATA
+    DATA --> PG[(PostgreSQL 16)]
+    DATA -. DATABASE_URL unset .-> JSON[(.data/fairhold.json)]
+    PAY --> DEMO[DemoPaymentProvider]
+    PAY --> PP[PayPalSandboxProvider]
+    PP --> API[PayPal sandbox REST]
+    API --> WH[POST /api/paypal/webhook]
+    WH --> DATA
+    AI[lib/ai advisory] -. never authoritative .-> DOM
+```
+
+| Path | Responsibility |
+| --- | --- |
+| `app/` | Routes, layouts, server actions, error/loading/not-found boundaries. |
+| `components/` | Status badge, progress bar, session navigation — the shared visual vocabulary. |
+| `lib/auth/` | HMAC-signed demo session token, allowlists, per-deal reviewer grants. |
+| `lib/domain/` | Pure state machine, recommendation rules, approval planning, evidence validation, formatting. |
+| `lib/data/` | Backend selection plus identical JSON and PostgreSQL implementations. |
+| `lib/payments/` | Provider contract, adapter selection, capture planning, HTTP transport, webhook endpoint. |
+| `lib/ai/` | Advisory calls with strict schema validation and deterministic fallbacks. |
+| `migrations/` | Four forward-only SQL migrations, checks and indexes. |
+| `tests/` | Playwright lifecycle, access-control and deal-creation journeys. |
+
+## Database overview
+
+Four migrations build the schema: `deals`, `milestones`, `evidence`, `milestone_approvals`, `audit_events`, `payment_orders`, `payment_authorizations`, `payment_captures`, `webhook_events` and `payment_operations`.
+
+Notable guarantees: currency is constrained to `USD`; milestone and capture amounts must be positive; evidence must carry a note, URL or stored file; capture status is constrained to `COMPLETED | VOIDED | PENDING | FAILED`; `payment_operations` has a unique index on `(provider_name, provider_reference)` and a unique invoice index so one provider fact cannot be booked twice.
+
+Full detail: [DATABASE.md](./DATABASE.md).
+
+## Security model
+
+```mermaid
+flowchart LR
+    S[Request] --> A{Signed session cookie<br/>httpOnly · sameSite=lax · 8h}
+    A -- invalid or expired --> A1[redirect /login]
+    A -- valid --> B{Allowlist still contains this<br/>name and role?}
+    B -- no --> A1
+    B -- yes --> C{Role allowed for this action?}
+    C -- no --> C1[refuse or redirect with actionError]
+    C -- yes --> D{Participant of this deal?}
+    D -- no --> D1[404 for direct fetches]
+    D -- yes --> E[Authorised server action]
+```
+
+- Sessions are HMAC-SHA256 signed and compared with `timingSafeEqual`; a missing `FAIRHOLD_SESSION_SECRET` in production is a startup error, not a silent default.
+- Allowlists are re-checked on every session read, so revoking a name invalidates live cookies.
+- Unauthorised evidence fetches return `404` rather than `403`, so the route does not leak whether a deal or file exists.
+- Evidence download pins the sniffed content type and sends `X-Content-Type-Options: nosniff` as an attachment.
+- Webhook verification errors return `5xx` (retryable) and only a definitively invalid signature returns `400`.
+- Provider secrets, tokens, signatures and payloads never reach logs; the webhook path logs one sanitised line.
+
+Full threat model: [SECURITY.md](./SECURITY.md).
+
+---
 
 ## Getting started
 
-Requires Node.js 24 and npm.
+### Prerequisites
+
+- Node.js 20+ (verified on 24.13.0)
+- npm
+- Optional: PostgreSQL 16 (required for integration tests and for webhook processing)
+- Optional: Docker (used here to run an isolated test database)
+
+### Install and run
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
-npm run lint
+npm run demo:reset      # seed the JSON dev store with the demo deal
+npm run dev             # http://localhost:3000
+```
+
+Open `/login` and sign in with an allowlisted demo identity. If you do not set the allowlist variables, the defaults in `.env.example` are the names to use: `Alex Buyer` (buyer), `Jamie Seller` (seller), `Morgan Reviewer` (reviewer, needs a per-deal grant).
+
+### Environment variables
+
+All variables are documented by name in [.env.example](./.env.example) and explained in [SETUP.md](./SETUP.md). Nothing below requires a value to be checked in.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `DATABASE_URL` | No (production: yes) | Switches the data facade to PostgreSQL. Unset means the JSON dev store. |
+| `FAIRHOLD_SESSION_SECRET` | Yes in production | HMAC secret for the demo session cookie. |
+| `FAIRHOLD_DEMO_BUYERS` / `_SELLERS` / `_REVIEWERS` | Yes for login | Comma-separated allowlists per role. |
+| `FAIRHOLD_REVIEWER_DEALS` | Only for reviewers | `reviewer-name:deal-id` grants. |
+| `PAYPAL_ENV` | Only for sandbox | Must be exactly `sandbox`; any other value keeps the demo adapter. |
+| `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | Only for sandbox | Sandbox app credentials; placeholders are rejected. |
+| `PAYPAL_WEBHOOK_ID` | Only for webhooks | Webhook listener id registered on developer.paypal.com. |
+| `AI_API_KEY` / `AI_MODEL` / `AI_API_URL` | No | Enables live advisory calls; otherwise deterministic fallbacks run. |
+| `NEXT_PUBLIC_APP_URL` | No | Canonical URL used for links and metadata. |
+
+### Database setup
+
+```bash
+# with DATABASE_URL set
+npm run db:migrate      # apply migrations/0001..0004
+npm run db:import       # optional: import an existing .data/fairhold.json
+```
+
+## Testing
+
+```bash
+npm test                # unit + integration (node:test)
+npm run test:e2e        # Playwright, desktop + mobile + tablet Chromium
 npm run typecheck
-npm test
+npm run lint
 npm run build
 ```
 
-### Optional: PostgreSQL persistence
+- Without a test database, PostgreSQL integration tests skip and the suite reports 148 passing / 24 skipped.
+- With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, the full 172 pass with zero skips.
+- `npm test` never touches the demo database file and never contacts PayPal.
 
-Without `DATABASE_URL`, the app uses the JSON dev store under `.data/`
-(git-ignored) — no database needed. To use PostgreSQL instead:
+Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./QA_REPORT.md).
 
-```bash
-# 1. Set DATABASE_URL (see .env.example; never commit .env)
-# 2. Apply migrations (idempotent, transactional)
-npm run db:migrate
-# 3. Optional: import existing JSON dev data (idempotent; never deletes the JSON)
-npm run db:import
-# 4. Integration tests (isolated Postgres required):
-#    FAIRHOLD_TEST_DATABASE_URL=postgresql://user:password@localhost:5432/fairhold_test npm test
-```
+## Deployment
 
-There is no silent fallback: once `DATABASE_URL` is set, a missing or
-unreachable database makes the app fail loudly.
+The application deploys to Vercel as a standard Next.js project. A full deployment needs `DATABASE_URL` (managed PostgreSQL), `FAIRHOLD_SESSION_SECRET` and the three demo allowlists; webhook processing additionally needs a public HTTPS endpoint and `PAYPAL_WEBHOOK_ID`.
 
-### Browser end-to-end tests
+Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is read-only on serverless hosts — so writes fail there by design rather than silently pretending to persist. Details and the exact required configuration: [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+## Demo
 
 ```bash
-npm run test:e2e
+npm run demo:reset
+npm run dev
 ```
 
-Playwright runs three journeys (evidence lifecycle, access control, deal
-creation) at desktop, mobile and tablet sizes. It starts its own dev server on
-port 3100 against the JSON demo store, so it never reuses an unrelated server
-and never touches PostgreSQL or PayPal. Install the browser once with
-`npx playwright install chromium` if needed. These tests require the demo
-payment provider; a real sandbox run fails loudly instead of passing silently.
+Then follow [DEMO_GUIDE.md](./DEMO_GUIDE.md): sign in as the seller, submit evidence, switch to the buyer, request a revision, resubmit, accept, and walk the approval through the simulated capture. Every simulated action is labelled as simulated in the UI.
 
-## Demo authentication configuration
+## Documentation
 
-Demo authentication is not production identity verification. Every buyer and
-seller identity must be configured explicitly in `FAIRHOLD_DEMO_BUYERS` and
-`FAIRHOLD_DEMO_SELLERS`. Reviewers require names in `FAIRHOLD_DEMO_REVIEWERS`
-plus deal grants in `FAIRHOLD_REVIEWER_DEALS`, formatted as
-`reviewer-name:deal-id`.
+| Document | Contents |
+| --- | --- |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Layers, request flows, decisions and trade-offs. |
+| [DATABASE.md](./DATABASE.md) | Tables, constraints, indexes, migrations and transactions. |
+| [API_REFERENCE.md](./API_REFERENCE.md) | The two HTTP routes and every server action. |
+| [PAYMENT_FLOW.md](./PAYMENT_FLOW.md) | Authorization, capture, void, idempotency, ambiguity and webhooks. |
+| [AI_DESIGN.md](./AI_DESIGN.md) | Prompts, schema validation, fallbacks and the authority boundary. |
+| [SECURITY.md](./SECURITY.md) | Threat model, controls and known limitations. |
+| [SETUP.md](./SETUP.md) | Prerequisites, environment, migrations, troubleshooting. |
+| [TESTING.md](./TESTING.md) | Test architecture, commands and verified results. |
+| [DEPLOYMENT.md](./DEPLOYMENT.md) | Vercel configuration and production requirements. |
+| [USER_GUIDE.md](./USER_GUIDE.md) | Buyer, seller and reviewer instructions. |
+| [DEMO_GUIDE.md](./DEMO_GUIDE.md) | A repeatable five-minute demonstration script. |
+| [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | Release acceptance checklist. |
+| [CHANGELOG.md](./CHANGELOG.md) | Implementation history. |
+| [QA_REPORT.md](./QA_REPORT.md) | Latest verification evidence. |
+| [HANDOFF.md](./HANDOFF.md) | Current state, blockers and next actions. |
 
-## Payment integrity
+## Limitations
 
-Capture operations are reserved durably before provider execution and remain
-pending or ambiguous until confirmed. Capture capacity includes completed and
-outstanding reservations. Capture webhooks reconcile by operation correlation
-and validate deal, milestone, amount and currency before completion. Duplicate
-deliveries are idempotent. PayPal authorization is a provider hold, not escrow.
-JSON webhooks remain unsupported.
+- Demo authentication only — signed names, not verified identities.
+- PayPal **sandbox** only; live credentials are refused by design. Live sandbox verification is not claimed (no credentials were configured in this environment).
+- No refunds, no partial refunds, no dispute arbitration, no multi-currency (USD only).
+- No email or push notifications; the activity trail is the record.
+- The JSON store is single-process and not safe for concurrent multi-user writes.
+- Live AI provider calls are optional and unverified here; the deterministic fallback is what the tests exercise.
+- Ambiguous payment outcomes are surfaced and preserved, but automatic reconciliation is a manual operator step.
 
-### Optional: PayPal webhook
+## Future improvements
 
-The webhook endpoint lives at `/api/paypal/webhook`. It is **fail-closed**:
-without a configured `PAYPAL_WEBHOOK_ID` or without the PostgreSQL backend it
-responds `503` and never processes events. Setup:
+- Production identity (OIDC or SSO) replacing the demo session.
+- Automated reconciliation job for `PENDING` captures against provider reports.
+- Refund modelling and partial-capture accounting across currencies.
+- Notification delivery on review and payment transitions.
+- Read replicas and row-level access policies per tenant.
 
-1. Configure `DATABASE_URL` (webhook processing requires PostgreSQL — the JSON
-   dev store has no webhook inbox) and apply migrations:
-   `npm run db:migrate`
-2. Register this app's listener URL in the PayPal Developer Dashboard (App
-   settings → Webhooks). PayPal only delivers to **HTTPS on port 443**; use a
-   tunnel (e.g. `ngrok http 3000`) for local development.
-3. Copy the **Webhook ID** shown in the dashboard into `PAYPAL_WEBHOOK_ID` in
-   `.env` alongside the sandbox `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`.
-4. Restart the app. Payment events (authorization created/voided, capture
-   completed/pending) are verified via PayPal's
-   `/v1/notifications/verify-webhook-signature` API before any state change.
+---
 
-Delivery semantics, matching official PayPal behavior:
+<div align="center">
 
-- A `2xx` receipt acknowledges the event; a `5xx` (transient database or
-  verification outage) makes PayPal retry the delivery.
-- Events are written to the `webhook_events` table with a unique
-  `(provider, event_id)` key, so duplicate or concurrent deliveries are
-  applied exactly once.
-- Events that cannot be reconciled (unknown order/authorization, amount or
-  currency mismatch, capture without a matching human approval) are
-  **quarantined**: recorded as `failed` with a safe reason and acknowledged,
-  so PayPal stops retrying while operators can inspect and, when appropriate,
-  re-deliver corrected state (the row is claimed again on redelivery).
+**FairHold** — work moves forward, payments move with proof.
 
-Webhooks are **payment-lifecycle evidence, never permission**: a
-`PAYMENT.CAPTURE.COMPLETED` event is only recorded once a human approval
-already exists for that capture, and it never triggers a capture, milestone
-completion, or any other payment action by itself. Authorization and capture
-remain distinct concepts — a 29-day authorization hold is not a capture, and a
-capture is not a refund.
+<a href="./public/fairhold-hero.svg">Brand asset</a> · <a href="./SECURITY.md">Security</a> · <a href="./DEMO_GUIDE.md">Demo script</a>
 
-`npm run typecheck` runs `next typegen` first, because `PageProps` /
-`LayoutProps` are globals generated into `.next/types`.
-
-## Security
-
-- Secrets live only in `.env`, which is git-ignored. `.env.example` lists the
-  expected variable names with placeholder values.
-- PayPal and AI credentials must remain server-side.
-
-## License
-
-See the repository's license file.
+</div>

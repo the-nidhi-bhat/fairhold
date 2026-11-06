@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="title desc">
+  <title id="title">FairHold — work moves forward, payments move with proof</title>
+  <desc id="desc">Abstract obsidian banner: five milestone nodes connected by a thin engraved line, with a restrained crimson node at the centre, layered graphite panels and a warm white horizon.</desc>
+
+  <defs>
+    <radialGradient id="crimsonGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#9f1d2f" stop-opacity="0.55"/>
+      <stop offset="0.55" stop-color="#9f1d2f" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#9f1d2f" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="canvas" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#101217"/>
+      <stop offset="0.55" stop-color="#0a0b0e"/>
+      <stop offset="1" stop-color="#050607"/>
+    </linearGradient>
+    <linearGradient id="horizon" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f4f1ec" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#f4f1ec" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#f4f1ec" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f4f1ec" stop-opacity="0.06"/>
+      <stop offset="0.28" stop-color="#f4f1ec" stop-opacity="0.35"/>
+      <stop offset="0.62" stop-color="#d76a79" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#f4f1ec" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.055"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.012"/>
+    </linearGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" fill="none" stroke="#ffffff" stroke-opacity="0.028" stroke-width="1"/>
+    </pattern>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="26"/>
+    </filter>
+    <filter id="nodeGlow" x="-120%" y="-120%" width="340%" height="340%">
+      <feGaussianBlur stdDeviation="10" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#canvas)"/>
+  <rect width="1600" height="900" fill="url(#grid)" opacity="0.9"/>
+
+  <!-- soft depth washes -->
+  <ellipse cx="330" cy="120" rx="620" ry="380" fill="url(#crimsonGlow)" opacity="0.5"/>
+  <ellipse cx="1320" cy="120" rx="520" ry="320" fill="#ffffff" opacity="0.03" filter="url(#soft)"/>
+
+  <!-- layered graphite panels -->
+  <g opacity="0.9">
+    <rect x="980" y="150" width="470" height="270" rx="26" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.09"/>
+    <rect x="1052" y="222" width="470" height="270" rx="26" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.07"/>
+    <rect x="1124" y="294" width="470" height="270" rx="26" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.05"/>
+  </g>
+
+  <!-- agreement block, left -->
+  <g opacity="0.75">
+    <rect x="150" y="392" width="330" height="14" rx="7" fill="#f4f1ec" fill-opacity="0.14"/>
+    <rect x="150" y="430" width="262" height="10" rx="5" fill="#f4f1ec" fill-opacity="0.09"/>
+    <rect x="150" y="456" width="300" height="10" rx="5" fill="#f4f1ec" fill-opacity="0.07"/>
+    <rect x="150" y="482" width="196" height="10" rx="5" fill="#f4f1ec" fill-opacity="0.05"/>
+  </g>
+
+  <!-- the milestone rail: the single narrative idea -->
+  <line x1="220" y1="560" x2="1380" y2="560" stroke="url(#rail)" stroke-width="2"/>
+  <line x1="220" y1="560" x2="1380" y2="560" stroke="#f4f1ec" stroke-opacity="0.05" stroke-width="10" filter="url(#soft)"/>
+
+  <!-- milestone nodes -->
+  <g>
+    <circle cx="220" cy="560" r="16" fill="#0a0b0e" stroke="#f4f1ec" stroke-opacity="0.35"/>
+    <circle cx="220" cy="560" r="5" fill="#f4f1ec" fill-opacity="0.5"/>
+
+    <circle cx="510" cy="560" r="16" fill="#0a0b0e" stroke="#f4f1ec" stroke-opacity="0.45"/>
+    <circle cx="510" cy="560" r="5" fill="#f4f1ec" fill-opacity="0.65"/>
+
+    <!-- proof node, crimson -->
+    <circle cx="800" cy="560" r="86" fill="url(#crimsonGlow)" filter="url(#soft)"/>
+    <circle cx="800" cy="560" r="30" fill="#0b0c0f" stroke="#d76a79" stroke-opacity="0.95" stroke-width="1.5" filter="url(#nodeGlow)"/>
+    <circle cx="800" cy="560" r="9" fill="#d76a79"/>
+    <path d="M800 530v-64" stroke="#d76a79" stroke-opacity="0.35" stroke-width="1"/>
+    <rect x="744" y="438" width="112" height="26" rx="13" fill="#9f1d2f" fill-opacity="0.18" stroke="#d76a79" stroke-opacity="0.35"/>
+    <circle cx="762" cy="451" r="3" fill="#d76a79"/>
+    <rect x="774" y="447" width="64" height="8" rx="4" fill="#f4f1ec" fill-opacity="0.22"/>
+
+    <circle cx="1090" cy="560" r="16" fill="#0a0b0e" stroke="#f4f1ec" stroke-opacity="0.45"/>
+    <circle cx="1090" cy="560" r="5" fill="#f4f1ec" fill-opacity="0.65"/>
+
+    <circle cx="1380" cy="560" r="16" fill="#0a0b0e" stroke="#f4f1ec" stroke-opacity="0.25"/>
+    <circle cx="1380" cy="560" r="5" fill="#f4f1ec" fill-opacity="0.3"/>
+  </g>
+
+  <!-- evidence / approval ticks -->
+  <g stroke="#6fbf9a" stroke-opacity="0.55" stroke-width="2" fill="none">
+    <path d="M496 596l8 8 16-18"/>
+    <path d="M1076 596l8 8 16-18"/>
+  </g>
+
+  <!-- horizon light -->
+  <line x1="0" y1="742" x2="1600" y2="742" stroke="url(#horizon)" stroke-width="1" opacity="0.5"/>
+  <rect x="0" y="742" width="1600" height="158" fill="#050607" opacity="0.55"/>
+
+  <!-- wordmark -->
+  <g transform="translate(150 148)">
+    <circle cx="14" cy="14" r="13" fill="none" stroke="#d76a79" stroke-opacity="0.8" stroke-width="1.5"/>
+    <circle cx="14" cy="14" r="4" fill="#d76a79"/>
+    <text x="44" y="21" font-family="Georgia, 'Times New Roman', serif" font-size="26" letter-spacing="1" fill="#f4f1ec" fill-opacity="0.92">FairHold</text>
+    <text x="44" y="48" font-family="Consolas, monospace" font-size="11" letter-spacing="4.4" fill="#a2a2ab">PROOF-BACKED PAYMENT WORKFLOW</text>
+  </g>
+</svg>

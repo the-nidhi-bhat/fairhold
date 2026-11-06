@@ -18,26 +18,40 @@ import { summarizeDashboardWorkflow } from "@/lib/domain/workflow";
 export const metadata = { title: "Dashboard" };
 export const instant = false;
 
+const ROLE_FRAMING: Record<string, { eyebrow: string; line: string }> = {
+  buyer: {
+    eyebrow: "Buyer workspace",
+    line: "Review evidence, record decisions and approve payment progress.",
+  },
+  seller: {
+    eyebrow: "Seller workspace",
+    line: "Deliver against agreed criteria and keep every submission documented.",
+  },
+  reviewer: {
+    eyebrow: "Reviewer workspace",
+    line: "Review only the deals explicitly granted to you.",
+  },
+};
+
 export default async function DashboardPage() {
   const session = await getDemoSession();
   if (!session) redirect("/login");
   const canCreate = session.role !== "reviewer";
+  const framing = ROLE_FRAMING[session.role] ?? ROLE_FRAMING.reviewer;
   return (
     <div className="page-frame py-10">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-semibold tracking-[-0.035em] text-[var(--foreground)]">
+          <p className="eyebrow">{framing.eyebrow}</p>
+          <h1 className="headline mt-3 text-[clamp(2rem,4vw,2.75rem)]">
             Dashboard
           </h1>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Active deals and milestone progress.
+          <p className="mt-2 max-w-[52ch] text-sm leading-6 text-muted">
+            {framing.line}
           </p>
         </div>
         {canCreate ? (
-          <Link
-            href="/deals/new"
-            className="primary-button"
-          >
+          <Link href="/deals/new" className="primary-button">
             New deal
           </Link>
         ) : null}
@@ -61,24 +75,22 @@ async function DashboardContent() {
   if (deals.length === 0) {
     const canCreate = session?.role !== "reviewer";
     return (
-      <section className="surface mt-10 p-10 text-center">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+      <section className="surface mt-10 p-8 sm:p-10">
+        <p className="section-label">Empty workspace</p>
+        <h2 className="mt-3 text-xl font-semibold tracking-[-0.02em]">
           No deals yet
         </h2>
-        <p className="mx-auto mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">
+        <p className="mt-2 max-w-lg text-sm leading-6 text-muted">
           {isPostgresConfigured()
             ? "Create a deal with an agreement and milestones to get started. Deals are stored in the configured PostgreSQL database."
             : "Create a deal with an agreement and milestones to get started. Deals use the development JSON store while no database is configured."}
         </p>
         {canCreate ? (
-          <Link
-            href="/deals/new"
-            className="primary-button mt-6"
-          >
+          <Link href="/deals/new" className="primary-button mt-6">
             Create your first deal
           </Link>
         ) : (
-          <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-6 max-w-lg text-sm leading-6 text-muted">
             Ask a buyer or seller to create a deal, then grant your reviewer
             identity access to it.
           </p>
@@ -103,60 +115,96 @@ async function DashboardContent() {
 
   return (
     <>
-      {(session!.role === "buyer" || session!.role === "seller") ? (
-        <section className="surface mt-8 p-5" aria-labelledby="workflow-heading">
-          <div>
-            <p className="text-xs font-semibold text-accent">
-              {session!.role === "buyer" ? "Buyer queue" : "Seller queue"}
-            </p>
-            <h2 id="workflow-heading" className="mt-1 text-lg font-semibold">
-              {session!.role === "buyer"
-                ? "What needs your review"
-                : "Work that needs attention"}
-            </h2>
+      {session!.role === "buyer" || session!.role === "seller" ? (
+        <section className="surface mt-8 p-5 sm:p-6" aria-labelledby="workflow-heading">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="section-label text-[var(--accent)]">
+                {session!.role === "buyer" ? "Buyer queue" : "Seller queue"}
+              </p>
+              <h2
+                id="workflow-heading"
+                className="mt-2 text-xl font-semibold tracking-[-0.02em]"
+              >
+                {session!.role === "buyer"
+                  ? "What needs your review"
+                  : "Work that needs attention"}
+              </h2>
+            </div>
+            <span className="chip hidden sm:inline-flex">
+              {session!.role === "buyer" ? "Decision required" : "Next action"}
+            </span>
           </div>
           {session!.role === "buyer" ? (
             workflow.pendingReviews.length === 0 ? (
-              <p className="mt-4 text-sm text-muted">No submitted evidence is waiting for your review.</p>
+              <p className="mt-5 text-sm text-muted">
+                No submitted evidence is waiting for your review.
+              </p>
             ) : (
-              <ul className="mt-4 divide-y divide-[var(--border)]">
+              <ul className="mt-4 divide-y divide-[var(--hairline)]">
                 {workflow.pendingReviews.slice(0, 5).map((item) => (
-                  <li key={item.evidenceId} className="flex items-center justify-between gap-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium">{item.milestoneTitle}</p>
+                  <li
+                    key={item.evidenceId}
+                    className="flex flex-wrap items-center justify-between gap-3 py-3.5"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{item.milestoneTitle}</p>
                       <p className="mt-1 text-xs text-muted">{item.deal.title}</p>
                     </div>
-                    <Link href={`/deals/${item.deal.id}`} className="secondary-button shrink-0">
+                    <Link
+                      href={`/deals/${item.deal.id}`}
+                      className="secondary-button shrink-0"
+                    >
                       Review evidence
                     </Link>
                   </li>
                 ))}
               </ul>
             )
-          ) : workflow.assignedMilestones.length === 0 && workflow.rejectedEvidence.length === 0 ? (
-            <p className="mt-4 text-sm text-muted">No active milestones or rejected evidence need attention.</p>
+          ) : workflow.assignedMilestones.length === 0 &&
+            workflow.rejectedEvidence.length === 0 ? (
+            <p className="mt-5 text-sm text-muted">
+              No active milestones or rejected evidence need attention.
+            </p>
           ) : (
-            <ul className="mt-4 divide-y divide-[var(--border)]">
+            <ul className="mt-4 divide-y divide-[var(--hairline)]">
               {workflow.rejectedEvidence.slice(0, 3).map((item) => (
-                <li key={item.evidenceId} className="flex items-center justify-between gap-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium text-[var(--foreground)]">{item.milestoneTitle}</p>
-                    <p className="mt-1 text-xs text-muted">Buyer feedback on {item.deal.title}</p>
+                <li
+                  key={item.evidenceId}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[var(--foreground)]">
+                      {item.milestoneTitle}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--danger)]">
+                      Buyer feedback on {item.deal.title}
+                    </p>
                   </div>
-                  <Link href={`/deals/${item.deal.id}`} className="secondary-button shrink-0">
+                  <Link
+                    href={`/deals/${item.deal.id}`}
+                    className="secondary-button shrink-0"
+                  >
                     View feedback
                   </Link>
                 </li>
               ))}
               {workflow.assignedMilestones.slice(0, 5).map((item) => (
-                <li key={item.milestoneId} className="flex items-center justify-between gap-4 py-3">
-                  <div>
-                    <p className="text-sm font-medium">{item.milestoneTitle}</p>
+                <li
+                  key={item.milestoneId}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{item.milestoneTitle}</p>
                     <p className="mt-1 text-xs text-muted">
-                      {item.status}{item.dueDate ? ` · Due ${item.dueDate}` : ""}
+                      {item.status}
+                      {item.dueDate ? ` · Due ${item.dueDate}` : ""}
                     </p>
                   </div>
-                  <Link href={`/deals/${item.deal.id}`} className="secondary-button shrink-0">
+                  <Link
+                    href={`/deals/${item.deal.id}`}
+                    className="secondary-button shrink-0"
+                  >
                     Open milestone
                   </Link>
                 </li>
@@ -165,35 +213,33 @@ async function DashboardContent() {
           )}
         </section>
       ) : null}
-      <dl className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+
+      <dl className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         <SummaryStat label="Deals" value={String(deals.length)} />
         <SummaryStat label="Active" value={String(active.length)} />
-        <SummaryStat
-          label="Total value"
-          value={formatCents(totalValueCents)}
-        />
-        <SummaryStat
-          label="Milestones done"
-          value={String(completedMilestones)}
-        />
+        <SummaryStat label="Total value" value={formatCents(totalValueCents)} />
+        <SummaryStat label="Milestones done" value={String(completedMilestones)} />
       </dl>
 
       <section
-        className="surface mt-6 p-5"
+        className="surface mt-6 p-5 sm:p-6"
         aria-labelledby="payment-summary-heading"
       >
-        <div>
-          <h2
-            id="payment-summary-heading"
-            className="text-sm font-semibold text-slate-900 dark:text-slate-50"
-          >
-            Payment summary
-          </h2>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Current authorization state across all deals.
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2
+              id="payment-summary-heading"
+              className="text-sm font-semibold text-[var(--foreground)]"
+            >
+              Payment summary
+            </h2>
+            <p className="mt-1 text-sm text-muted">
+              Current authorization state across all deals.
+            </p>
+          </div>
+          <span className="code-chip">Holds, not escrow</span>
         </div>
-        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <dl className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
           <PaymentSummaryStat
             label="Needs authorization"
             value={paymentSummary.not_authorized}
@@ -222,10 +268,13 @@ async function DashboardContent() {
         </dl>
       </section>
 
-      <h2 className="mt-10 text-sm font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-        All deals
-      </h2>
-      <ul className="mt-4 space-y-4">
+      <div className="mt-10 flex items-end justify-between gap-4">
+        <h2 className="section-label">All deals</h2>
+        <p className="text-xs text-muted">
+          {deals.length} {deals.length === 1 ? "record" : "records"}
+        </p>
+      </div>
+      <ul className="mt-4 space-y-3">
         {deals.map((deal) => {
           const progress = computeProgress(deal);
           const payment = paymentStatusFor(deal);
@@ -233,14 +282,14 @@ async function DashboardContent() {
             <li key={deal.id}>
               <Link
                 href={`/deals/${deal.id}`}
-                className="surface-subtle block p-5 transition hover:border-[var(--accent)] hover:shadow-[0_12px_32px_rgb(0_0_0_/_.05)]"
+                className="panel panel-hover block p-5 sm:p-6"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="truncate text-base font-semibold text-slate-900 dark:text-slate-50">
+                    <h3 className="truncate text-base font-semibold tracking-[-0.015em] text-[var(--foreground)]">
                       {deal.title}
                     </h3>
-                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                    <p className="mt-1 text-sm text-muted">
                       {deal.clientName} &rarr; {deal.freelancerName}
                     </p>
                   </div>
@@ -250,20 +299,20 @@ async function DashboardContent() {
                   />
                 </div>
 
-                <div className="mt-4 flex items-center gap-3">
+                <div className="mt-5 flex items-center gap-3">
                   <ProgressBar
                     percent={progress.percent}
                     label={`${deal.title} milestone progress`}
                   />
-                  <span className="shrink-0 text-xs tabular-nums text-slate-600 dark:text-slate-400">
+                  <span className="shrink-0 font-mono text-xs tabular-nums text-muted">
                     {progress.completed}/{progress.total} · {progress.percent}%
                   </span>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
                   <span>
                     Total{" "}
-                    <span className="font-medium tabular-nums text-slate-800 dark:text-slate-200">
+                    <span className="font-medium tabular-nums text-[var(--foreground-soft)]">
                       {formatCents(progress.totalCents, deal.currency)}
                     </span>
                   </span>
@@ -271,7 +320,7 @@ async function DashboardContent() {
                   <span
                     className={
                       payment.tone === "warning"
-                        ? "text-amber-700 dark:text-amber-400"
+                        ? "text-[var(--warning)]"
                         : undefined
                     }
                   >
@@ -289,11 +338,11 @@ async function DashboardContent() {
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-      <dt className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+    <div className="surface-subtle p-4 sm:p-5">
+      <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">
         {label}
       </dt>
-      <dd className="mt-1 text-xl font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+      <dd className="mt-2 text-xl font-semibold tabular-nums tracking-[-0.02em] text-[var(--foreground)] sm:text-2xl">
         {value}
       </dd>
     </div>
@@ -310,18 +359,18 @@ function PaymentSummaryStat({
   tone: "neutral" | "warning" | "success";
 }) {
   const dotTone = {
-    neutral: "bg-slate-400 dark:bg-slate-500",
-    warning: "bg-amber-500",
-    success: "bg-emerald-500",
+    neutral: "bg-[var(--muted)]",
+    warning: "bg-[var(--warning)]",
+    success: "bg-[var(--success)]",
   }[tone];
 
   return (
-    <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
-      <dt className="flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-400">
-        <span className={`h-2 w-2 rounded-full ${dotTone}`} aria-hidden="true" />
+    <div className="surface-inset p-3.5">
+      <dt className="flex items-center gap-2 text-[11px] font-medium leading-4 text-muted">
+        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dotTone}`} aria-hidden="true" />
         {label}
       </dt>
-      <dd className="mt-2 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+      <dd className="mt-2 text-xl font-semibold tabular-nums text-[var(--foreground)]">
         {value}
       </dd>
     </div>
@@ -330,17 +379,15 @@ function PaymentSummaryStat({
 
 function DashboardSkeleton() {
   return (
-    <div className="mt-8 animate-pulse space-y-4" aria-hidden="true">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+    <div className="mt-8 space-y-4" aria-hidden="true">
+      <div className="surface h-28 animate-pulse" />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
         {[0, 1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className="h-20 rounded-xl bg-slate-100 dark:bg-slate-800"
-          />
+          <div key={i} className="surface h-24 animate-pulse" />
         ))}
       </div>
-      <div className="h-28 rounded-xl bg-slate-100 dark:bg-slate-800" />
-      <div className="h-28 rounded-xl bg-slate-100 dark:bg-slate-800" />
+      <div className="surface h-28 animate-pulse" />
+      <div className="surface h-32 animate-pulse" />
     </div>
   );
 }

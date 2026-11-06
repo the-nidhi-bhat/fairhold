@@ -11,12 +11,12 @@ import type { Milestone } from "@/lib/domain/types";
 const initialState: FormState = { ok: false, errors: {} };
 
 const inputClass =
-  "mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100";
+  "mt-1 block w-full rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] px-3 py-2 text-sm text-[var(--foreground)] shadow-sm focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]  dark:bg-[var(--surface-inset)] dark:text-[var(--foreground)]";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="mt-1 text-sm text-rose-600 dark:text-rose-400">
+    <p role="alert" className="mt-1 text-sm text-[var(--danger)]">
       {message}
     </p>
   );
@@ -40,7 +40,7 @@ function MilestoneFields({
       <div className="sm:col-span-2">
         <label
           htmlFor="ms-title"
-          className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+          className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Title
         </label>
@@ -61,7 +61,7 @@ function MilestoneFields({
       <div>
         <label
           htmlFor="ms-amount"
-          className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+          className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Amount (USD)
         </label>
@@ -82,7 +82,7 @@ function MilestoneFields({
       <div>
         <label
           htmlFor="ms-dueDate"
-          className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+          className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Due date (optional)
         </label>
@@ -100,7 +100,7 @@ function MilestoneFields({
       <div className="sm:col-span-2">
         <label
           htmlFor="ms-description"
-          className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+          className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Description
         </label>
@@ -119,7 +119,7 @@ function MilestoneFields({
       <div className="sm:col-span-2">
         <label
           htmlFor="ms-acceptanceCriteria"
-          className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+          className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Acceptance criteria
         </label>
@@ -153,22 +153,22 @@ export function AddMilestoneForm({ dealId }: { dealId: string }) {
   }, [state.ok]);
 
   return (
-    <details className="rounded-xl border border-slate-200 p-5 dark:border-slate-800">
-      <summary className="cursor-pointer text-sm font-semibold text-slate-900 dark:text-slate-50">
+    <details className="surface-subtle p-5">
+      <summary className="cursor-pointer text-sm font-semibold text-[var(--foreground)]">
         Add a milestone
       </summary>
       <form ref={formRef} action={formAction} className="mt-4" noValidate>
         <input type="hidden" name="dealId" value={dealId} />
         <MilestoneFields errors={state.errors} />
         {state.errors._form ? (
-          <p role="alert" className="mt-2 text-sm text-rose-600 dark:text-rose-400">
+          <p role="alert" className="mt-2 text-sm text-[var(--danger)]">
             {state.errors._form}
           </p>
         ) : null}
         <button
           type="submit"
           disabled={pending}
-          className="mt-4 rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
+          className="primary-button mt-4 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending ? "Adding…" : "Add milestone"}
         </button>
@@ -204,14 +204,14 @@ export function EditMilestoneForm({
         }}
       />
       {state.errors._form ? (
-        <p role="alert" className="mt-2 text-sm text-rose-600 dark:text-rose-400">
+        <p role="alert" className="mt-2 text-sm text-[var(--danger)]">
           {state.errors._form}
         </p>
       ) : null}
       <button
         type="submit"
         disabled={pending}
-        className="mt-4 rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+        className="secondary-button mt-4 px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Saving…" : "Save changes"}
       </button>

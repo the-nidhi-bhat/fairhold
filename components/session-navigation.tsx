@@ -6,7 +6,10 @@ export async function SessionNavigation() {
   const session = await getDemoSession();
   if (!session) {
     return (
-      <Link href="/login" className="font-medium text-accent">
+      <Link
+        href="/login"
+        className="inline-flex min-h-10 items-center rounded-lg px-2 font-medium text-accent hover:bg-white/5"
+      >
         Demo sign in
       </Link>
     );

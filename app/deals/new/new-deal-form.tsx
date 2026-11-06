@@ -8,7 +8,7 @@ const initialState: FormState = { ok: false, errors: {} };
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="mt-1 text-sm text-rose-600 dark:text-rose-400">
+    <p role="alert" className="mt-1 text-sm text-[var(--danger)]">
       {message}
     </p>
   );
@@ -29,7 +29,7 @@ export function NewDealForm() {
         <div className="sm:col-span-2">
           <label
             htmlFor="title"
-            className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+            className="block text-sm font-medium text-[var(--foreground-soft)]"
           >
             Deal title
           </label>
@@ -50,7 +50,7 @@ export function NewDealForm() {
         <div>
           <label
             htmlFor="clientName"
-            className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+            className="block text-sm font-medium text-[var(--foreground-soft)]"
           >
             Client
           </label>
@@ -70,7 +70,7 @@ export function NewDealForm() {
         <div>
           <label
             htmlFor="freelancerName"
-            className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+            className="block text-sm font-medium text-[var(--foreground-soft)]"
           >
             Freelancer
           </label>
@@ -90,7 +90,7 @@ export function NewDealForm() {
         <div>
           <label
             htmlFor="currency"
-            className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+            className="block text-sm font-medium text-[var(--foreground-soft)]"
           >
             Currency
           </label>
@@ -109,11 +109,11 @@ export function NewDealForm() {
         <div className="sm:col-span-2">
           <label
             htmlFor="agreement"
-            className="block text-sm font-medium text-slate-800 dark:text-slate-200"
+            className="block text-sm font-medium text-[var(--foreground-soft)]"
           >
             Agreement
           </label>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-xs text-muted">
             Paste the agreed scope of work. Milestones and acceptance criteria
             will be added on the deal page.
           </p>
@@ -133,7 +133,7 @@ export function NewDealForm() {
       </div>
 
       {state.errors._form ? (
-        <p role="alert" className="text-sm text-rose-600 dark:text-rose-400">
+        <p role="alert" className="text-sm text-[var(--danger)]">
           {state.errors._form}
         </p>
       ) : null}
