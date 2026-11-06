@@ -9,17 +9,18 @@ export const instant = false;
 export default async function NewDealPage() {
   if (!(await getDemoSession())) redirect("/login");
   return (
-    <div className="page-frame py-10">
+    <div className="page-frame py-12 md:py-16">
       <Link
         href="/dashboard"
-        className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+        className="text-sm font-medium text-[var(--accent)] hover:text-[var(--foreground)]"
       >
         &larr; Dashboard
       </Link>
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+      <p className="eyebrow mt-8">New record</p>
+      <h1 className="headline mt-3 text-[clamp(1.9rem,3.4vw,2.6rem)]">
         Create a deal
       </h1>
-      <p className="mt-2 max-w-2xl text-sm text-slate-600 dark:text-slate-400">
+      <p className="lede mt-4 max-w-2xl">
         Record the parties and the agreement. After creating the deal you can
         add milestones with amounts, deadlines, and acceptance criteria.
       </p>
