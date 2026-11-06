@@ -17,11 +17,18 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "FairHold — AI proposes. Rules decide.",
+    default: "FairHold — Work moves forward. Payments move with proof.",
     template: "%s | FairHold",
   },
   description:
-    "FairHold is an AI-assisted conditional payment platform for buyer-seller transactions, in active development. AI interprets agreements and evidence; deterministic rules make the final decision.",
+    "FairHold coordinates agreements, milestones, evidence and payment progress for buyer-seller work. AI advises; deterministic rules decide; people approve.",
+  applicationName: "FairHold",
+  openGraph: {
+    title: "FairHold — Work moves forward. Payments move with proof.",
+    description:
+      "Coordinate milestones, review evidence and manage payment progress with clarity at every step.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -29,45 +36,106 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
     >
       <body className="site-shell flex min-h-full flex-col bg-background text-foreground">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--surface-raised)] focus:px-4 focus:py-2 focus:text-sm focus:text-[var(--foreground)]"
+        >
+          Skip to content
+        </a>
         <header className="site-header sticky top-0 z-40">
-          <div className="page-frame flex h-[68px] items-center justify-between gap-4">
+          <div className="page-frame flex h-[70px] items-center justify-between gap-4">
             <Link
               href="/"
-              className="text-lg font-semibold tracking-[-0.04em] text-[var(--foreground)]"
+              className="group flex items-center gap-2.5"
+              aria-label="FairHold home"
             >
-              FairHold
+              <span
+                aria-hidden="true"
+                className="relative flex h-7 w-7 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--accent)_60%,transparent)]"
+              >
+                <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
+                <span className="absolute inset-0 rounded-full shadow-[0_0_18px_var(--accent-glow)]" />
+              </span>
+              <span className="text-[17px] font-semibold tracking-[-0.045em] text-[var(--foreground)]">
+                FairHold
+              </span>
             </Link>
             <nav
-              className="flex items-center gap-3 text-sm sm:gap-4"
+              className="flex items-center gap-1.5 text-sm sm:gap-3"
               aria-label="Primary"
             >
               <Link
                 href="/dashboard"
-                className="hidden font-medium text-muted transition hover:text-[var(--foreground)] sm:inline"
+                className="hidden min-h-10 items-center rounded-lg px-3 font-medium text-muted transition hover:bg-white/5 hover:text-[var(--foreground)] sm:inline-flex"
               >
                 Dashboard
               </Link>
               <Link
                 href="/deals/new"
-                className="primary-button min-h-9 px-3.5 py-2"
+                className="primary-button min-h-9 px-3.5 py-2 text-[13px]"
               >
                 New deal
               </Link>
-              <Suspense fallback={<span className="text-sm text-slate-500">Account</span>}>
+              <Suspense
+                fallback={
+                  <span className="px-1 text-sm text-muted" aria-hidden="true">
+                    Account
+                  </span>
+                }
+              >
                 <SessionNavigation />
               </Suspense>
             </nav>
           </div>
         </header>
 
-        <main className="flex-1">{children}</main>
+        <main id="main" className="relative flex-1">
+          {children}
+        </main>
 
-        <footer className="border-t border-[var(--border)]">
-          <div className="page-frame grid gap-2 py-7 text-xs leading-5 text-muted sm:grid-cols-[1fr_auto]">
-            <p>Demo workspace. Payment actions may be simulated and are not escrow.</p>
-            <p>FairHold does not provide investment, legal, or financial advice.</p>
+        <footer className="site-footer">
+          <div className="page-frame grid gap-6 py-10 text-xs leading-5 text-muted sm:grid-cols-[1.4fr_1fr_1fr]">
+            <div>
+              <p className="text-[13px] font-semibold tracking-[-0.02em] text-[var(--foreground-soft)]">
+                FairHold
+              </p>
+              <p className="mt-2 max-w-sm">
+                A proof-backed workflow for buyer-seller work. Demo workspace:
+                payment actions may be simulated, and an authorization is a
+                provider hold, never escrow.
+              </p>
+            </div>
+            <div>
+              <p className="section-label">Product</p>
+              <ul className="mt-2 space-y-1.5">
+                <li>
+                  <Link className="hover:text-[var(--foreground)]" href="/dashboard">
+                    Dashboard
+                  </Link>
+                </li>
+                <li>
+                  <Link className="hover:text-[var(--foreground)]" href="/deals/new">
+                    Create a deal
+                  </Link>
+                </li>
+                <li>
+                  <Link className="hover:text-[var(--foreground)]" href="/login">
+                    Demo sign in
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <p className="section-label">Boundaries</p>
+              <ul className="mt-2 space-y-1.5">
+                <li>AI proposes; people approve.</li>
+                <li>Rules decide; code records why.</li>
+                <li>No investment, legal or financial advice.</li>
+              </ul>
+            </div>
           </div>
         </footer>
       </body>
