@@ -90,7 +90,7 @@ export default async function DealPage({
     <div className="page-frame py-10">
       <Link
         href="/dashboard"
-        className="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+        className="text-sm font-medium text-[var(--accent)] hover:text-[var(--foreground)]"
       >
         &larr; Dashboard
       </Link>
@@ -138,19 +138,21 @@ async function DealDetail({
       {actionError ? (
         <div
           role="alert"
-          className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+          className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] px-4 py-3 text-sm text-[var(--warning)]"
         >
           {actionError}
         </div>
       ) : null}
-      <header className="surface mt-4 p-6 sm:p-8">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <header className="deal-hero mt-4 p-6 sm:p-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-50">
+            <p className="section-label">Deal workspace</p>
+            <h1 className="mt-3 text-[clamp(1.8rem,3.4vw,2.6rem)] font-semibold tracking-[-0.035em] text-[var(--foreground)]">
               {deal.title}
             </h1>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              {deal.clientName} &rarr; {deal.freelancerName}
+            <p className="mt-2 text-sm text-muted">
+              {deal.clientName} <span aria-hidden="true">&rarr;</span>{" "}
+              {deal.freelancerName}
             </p>
           </div>
           <StatusBadge
@@ -159,46 +161,46 @@ async function DealDetail({
           />
         </div>
 
-        <div className="mt-6 flex items-center gap-3">
+        <div className="mt-7 flex items-center gap-3">
           <ProgressBar
             percent={progress.percent}
             label={`${deal.title} milestone progress`}
           />
-          <span className="shrink-0 text-xs tabular-nums text-slate-600 dark:text-slate-400">
+          <span className="shrink-0 font-mono text-xs tabular-nums text-muted">
             {progress.completed}/{progress.total} · {progress.percent}%
           </span>
         </div>
 
-        <dl className="mt-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <dl className="mt-7 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--hairline)] sm:grid-cols-4">
+          <div className="bg-[var(--surface-inset)] p-3.5 sm:p-4">
+            <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
               Total
             </dt>
-            <dd className="mt-0.5 font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+            <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
               {formatCents(progress.totalCents, deal.currency)}
             </dd>
           </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <div className="bg-[var(--surface-inset)] p-3.5 sm:p-4">
+            <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
               Completed
             </dt>
-            <dd className="mt-0.5 font-semibold tabular-nums text-slate-900 dark:text-slate-50">
+            <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
               {formatCents(progress.completedCents, deal.currency)}
             </dd>
           </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <div className="bg-[var(--surface-inset)] p-3.5 sm:p-4">
+            <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
               Created
             </dt>
-            <dd className="mt-0.5 text-slate-700 dark:text-slate-300">
+            <dd className="mt-1 text-sm text-[var(--foreground-soft)]">
               {formatDate(deal.createdAt)}
             </dd>
           </div>
-          <div>
-            <dt className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <div className="bg-[var(--surface-inset)] p-3.5 sm:p-4">
+            <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
               Currency
             </dt>
-            <dd className="mt-0.5 text-slate-700 dark:text-slate-300">
+            <dd className="mt-1 text-sm text-[var(--foreground-soft)]">
               {deal.currency}
             </dd>
           </div>
@@ -209,10 +211,10 @@ async function DealDetail({
       <section className="surface mt-6 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+            <h2 className="text-sm font-semibold text-[var(--foreground)]">
               Payment
             </h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+            <p className="mt-1 text-sm text-muted">
               {payment.detail}
             </p>
           </div>
@@ -220,7 +222,7 @@ async function DealDetail({
         </div>
 
         {sandboxRequiresPostgres ? (
-          <p className="mt-3 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <p className="mt-3 rounded-lg border border-[var(--border-strong)] bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--foreground-soft)]  dark:bg-[var(--surface-inset)] dark:text-[var(--foreground-soft)]">
             PayPal sandbox credentials are configured, but real payment actions
             require PostgreSQL-backed accounting. This session uses the simulated
             provider — no PayPal request is made and no money moves.
@@ -228,11 +230,11 @@ async function DealDetail({
         ) : null}
 
         {canAuthorize && deal.pendingAuthorization ? (
-          <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/40">
-            <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+          <div className="mt-4 rounded-lg border border-[color-mix(in_srgb,var(--warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] p-4 ">
+            <p className="text-sm font-medium text-[var(--warning)]">
               Waiting for buyer approval in PayPal
             </p>
-            <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
+            <p className="mt-1 text-xs text-[var(--warning)]">
               A PayPal sandbox order was created via{" "}
               {deal.pendingAuthorization.providerName}. No authorization exists
               yet — approve the order in PayPal, then confirm below.
@@ -247,7 +249,7 @@ async function DealDetail({
                 Open PayPal sandbox approval
               </a>
             ) : (
-              <p className="mt-2 text-xs text-amber-800 dark:text-amber-300">
+              <p className="mt-2 text-xs text-[var(--warning)]">
                 PayPal did not return an approval URL; approve the order from the
                 sandbox dashboard.
               </p>
@@ -256,7 +258,7 @@ async function DealDetail({
               <input type="hidden" name="dealId" value={deal.id} />
               <button
                 type="submit"
-                className="rounded-md border border-amber-600 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:text-amber-200 dark:hover:bg-amber-900/40"
+                className="rounded-md border border-[color-mix(in_srgb,var(--warning)_45%,transparent)] px-4 py-2 text-sm font-medium text-[var(--warning)] hover:bg-[color-mix(in_srgb,var(--warning)_12%,transparent)]  "
               >
                 I approved it — confirm authorization
               </button>
@@ -274,13 +276,13 @@ async function DealDetail({
                 : "Simulate authorization hold"}
             </button>
             {sandboxConfigured ? (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+              <p className="mt-2 text-xs text-[var(--warning)]">
                 Creates a real order in the PayPal sandbox (no live money). The
                 buyer must approve it, then confirm; this is an authorization
                 hold, not a capture or settlement.
               </p>
             ) : (
-              <p className="mt-2 text-xs text-amber-700 dark:text-amber-400">
+              <p className="mt-2 text-xs text-[var(--warning)]">
                 Demo only: this records a simulated hold. No PayPal request is
                 made, and no money moves.
               </p>
@@ -289,19 +291,19 @@ async function DealDetail({
         ) : null}
       </section>
 
-      <section className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+      <section className="surface mt-6 p-5 sm:p-6">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">
           Payment history
         </h2>
         {deal.milestones.some((milestone) => milestone.approval?.action !== undefined) ? (
-          <div className="mt-4 divide-y divide-slate-200 dark:divide-slate-800">
+          <div className="mt-4 divide-y divide-[var(--hairline)] ">
             {deal.milestones.filter((milestone) => milestone.approval).map((milestone) => {
               const approval = milestone.approval!;
               return (
                 <div key={milestone.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div>
                     <p className="text-sm font-medium">{milestone.title}</p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-muted">
                       {approval.action} · {approval.paymentStatus ?? "No payment operation"}
                     </p>
                   </div>
@@ -314,16 +316,16 @@ async function DealDetail({
             })}
           </div>
         ) : (
-          <p className="mt-3 text-sm text-slate-500">No payment operations recorded for this deal.</p>
+          <p className="mt-3 text-sm text-muted">No payment operations recorded for this deal.</p>
         )}
       </section>
 
       {/* Agreement */}
-      <section className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+      <section className="surface mt-6 p-5 sm:p-6">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">
           Agreement
         </h2>
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700 dark:text-slate-300">
+        <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--foreground-soft)]">
           {deal.agreement}
         </p>
       </section>
@@ -331,11 +333,11 @@ async function DealDetail({
       {/* Deal status controls */}
       {dealTransitions.length > 0 &&
       (session.role === "seller" || session.role === "reviewer") ? (
-        <section className="mt-6 rounded-xl border border-slate-200 p-5 dark:border-slate-800">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+        <section className="surface mt-6 p-5 sm:p-6">
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">
             Move this deal
           </h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-xs text-muted">
             Only valid transitions are offered. Payment authorization is handled
             separately above.
           </p>
@@ -351,7 +353,7 @@ async function DealDetail({
               id="deal-status"
               name="status"
               defaultValue=""
-              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] px-3 py-2 text-sm  "
             >
               <option value="" disabled>
                 Choose status…
@@ -364,7 +366,7 @@ async function DealDetail({
             </select>
             <button
               type="submit"
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="rounded-md border border-[var(--border-strong)] px-4 py-2 text-sm font-medium text-[var(--foreground-soft)] hover:bg-white/[0.06]  "
             >
               Update status
             </button>
@@ -377,16 +379,16 @@ async function DealDetail({
         {deal.milestones.length === 0 ? (
           <MilestoneAdvisory agreement={deal.agreement} />
         ) : null}
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">
           Milestones
         </h2>
 
         {deal.milestones.length === 0 ? (
-          <p className="mt-3 rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-600 dark:border-slate-700 dark:text-slate-400">
+          <p className="mt-3 rounded-xl border border-dashed border-[var(--border-strong)] p-6 text-center text-sm text-muted  ">
             No milestones yet. Add the first one below.
           </p>
         ) : (
-          <ul className="mt-3 space-y-4">
+          <ul className="milestone-rail mt-5 space-y-4">
             {deal.milestones.map((milestone) => {
               const transitions = allowedMilestoneTransitions(
                 milestone.status,
@@ -394,15 +396,15 @@ async function DealDetail({
               return (
                 <li
                   key={milestone.id}
-                  className="rounded-xl border border-slate-200 p-5 dark:border-slate-800"
+                  className="milestone-card"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <h3 className="text-base font-semibold text-slate-900 dark:text-slate-50">
+                      <h3 className="text-base font-semibold text-[var(--foreground)]">
                         {milestone.title}
                       </h3>
                       {milestone.description ? (
-                        <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                        <p className="mt-1 text-sm text-muted">
                           {milestone.description}
                         </p>
                       ) : null}
@@ -413,16 +415,16 @@ async function DealDetail({
                     />
                   </div>
 
-                  <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
+                  <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted">
                     <span>
                       Amount{" "}
-                      <span className="font-medium tabular-nums text-slate-800 dark:text-slate-200">
+                      <span className="font-medium tabular-nums text-[var(--foreground-soft)]">
                         {formatCents(milestone.amountCents, deal.currency)}
                       </span>
                     </span>
                     <span>
                       Due{" "}
-                      <span className="font-medium text-slate-800 dark:text-slate-200">
+                      <span className="font-medium text-[var(--foreground-soft)]">
                         {milestone.dueDate
                           ? formatDate(milestone.dueDate)
                           : "not set"}
@@ -430,11 +432,11 @@ async function DealDetail({
                     </span>
                   </div>
 
-                  <div className="mt-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                  <div className="surface-inset mt-3 p-3.5">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted">
                       Acceptance criteria
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                    <p className="mt-1 whitespace-pre-wrap text-sm text-[var(--foreground-soft)]">
                       {milestone.acceptanceCriteria}
                     </p>
                   </div>
@@ -478,7 +480,7 @@ async function DealDetail({
                         id={`ms-status-${milestone.id}`}
                         name="status"
                         defaultValue=""
-                        className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                        className="rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] px-3 py-1.5 text-sm  "
                       >
                         <option value="" disabled>
                           Change status…
@@ -491,7 +493,7 @@ async function DealDetail({
                       </select>
                       <button
                         type="submit"
-                        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                        className="rounded-md border border-[var(--border-strong)] px-3 py-1.5 text-sm font-medium text-[var(--foreground-soft)] hover:bg-white/[0.06]  "
                       >
                         Update
                       </button>
@@ -501,7 +503,7 @@ async function DealDetail({
                   {(session.role === "seller" || session.role === "reviewer") &&
                   canEditMilestone(milestone) ? (
                     <details className="mt-4">
-                      <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
+                      <summary className="cursor-pointer text-sm font-medium text-[var(--foreground-soft)]">
                         Edit milestone
                       </summary>
                       <EditMilestoneForm dealId={deal.id} milestone={milestone} />
@@ -523,15 +525,15 @@ async function DealDetail({
 
       {/* Activity timeline */}
       <section className="mt-8">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+        <h2 className="text-sm font-semibold text-[var(--foreground)]">
           Activity
         </h2>
         {timeline.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-3 text-sm text-muted">
             No activity yet.
           </p>
         ) : (
-          <ol className="mt-3 space-y-3 border-l border-slate-200 pl-4 dark:border-slate-800">
+          <ol className="activity-rail mt-4 space-y-4">
             {timeline.map((event) => (
               <TimelineItem key={event.id} event={event} />
             ))}
@@ -545,23 +547,23 @@ async function DealDetail({
 async function MilestoneAdvisory({ agreement }: { agreement: string }) {
   const { proposal, source } = await resolveMilestoneProposal(agreement);
   return (
-    <section className="mb-4 rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 dark:border-indigo-900 dark:bg-indigo-950/20">
-      <p className="text-xs font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+    <section className="mb-4 rounded-xl border border-[color-mix(in_srgb,var(--accent)_30%,transparent)] bg-[var(--accent-soft)] p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-[var(--accent)]">
         AI-shaped milestone advisory
       </p>
-      <h3 className="mt-1 text-base font-semibold text-slate-900 dark:text-slate-50">
+      <h3 className="mt-1 text-base font-semibold text-[var(--foreground)]">
         {proposal.title}
       </h3>
-      <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+      <p className="mt-1 text-sm text-[var(--foreground-soft)]">
         {proposal.description}
       </p>
-      <p className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+      <p className="mt-2 text-xs text-muted">
         Suggested acceptance criteria: {proposal.acceptanceCriteria}
       </p>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-1 text-xs text-muted">
         Source: {source === "ai" ? "configured AI provider" : "deterministic fallback"}
       </p>
-      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-2 text-xs text-muted">
         Advisory only. A human creates milestones and deterministic rules decide
         payment.
       </p>
@@ -578,24 +580,24 @@ async function EvidenceAdvisoryPanel({
 }) {
   const { advisory, source } = await resolveEvidenceAdvisory(criteria, evidence);
   return (
-    <div className="mt-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
+    <div className="surface-inset mt-3 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-muted">
         Evidence advisory
       </p>
-      <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+      <p className="mt-1 text-sm text-[var(--foreground-soft)]">
         {advisory.summary}
       </p>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-1 text-xs text-muted">
         Source: {source === "ai" ? "configured AI provider" : "deterministic fallback"}
       </p>
       {advisory.concerns.length > 0 ? (
-        <ul className="mt-2 list-disc pl-5 text-xs text-amber-700 dark:text-amber-300">
+        <ul className="mt-2 list-disc pl-5 text-xs text-[var(--warning)]">
           {advisory.concerns.map((concern) => (
             <li key={concern}>{concern}</li>
           ))}
         </ul>
       ) : null}
-      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-2 text-xs text-muted">
         Advisory only; it cannot approve evidence or execute payment.
       </p>
     </div>
@@ -640,13 +642,13 @@ function MilestoneEvidence({
     milestone.status !== "Completed" && milestone.status !== "Cancelled";
 
   return (
-    <div className="mt-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
+    <div className="surface-inset mt-4 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
             Evidence &amp; recommendation
           </h4>
-          <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+          <p className="mt-1 text-sm text-[var(--foreground-soft)]">
             {recommendation.explanation}
           </p>
         </div>
@@ -660,7 +662,7 @@ function MilestoneEvidence({
         {recommendation.reasonCodes.map((code) => (
           <li
             key={code}
-            className="rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+            className="rounded border border-[var(--hairline)] bg-white/[0.03] px-1.5 py-0.5 font-mono text-[10px] text-muted"
           >
             {code}
           </li>
@@ -668,7 +670,7 @@ function MilestoneEvidence({
       </ul>
 
       {recommendation.requiresHumanReview ? (
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+        <p className="mt-2 text-xs text-muted">
           A human decision is required before any payment action. Code does not
           verify free-text acceptance criteria.
         </p>
@@ -689,11 +691,11 @@ function MilestoneEvidence({
       )}
 
       <div className="mt-4">
-        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
           Evidence history ({evidence.length})
         </h4>
         {evidence.length === 0 ? (
-          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mt-2 text-sm text-muted">
             No evidence submitted yet.
           </p>
         ) : (
@@ -701,10 +703,10 @@ function MilestoneEvidence({
             {evidence.map((sub) => (
               <li
                 key={sub.id}
-                className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900"
+                className="rounded-lg border border-[var(--hairline)] bg-black/20 p-3"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                  <span className="text-xs text-muted">
                     {formatDateTime(sub.submittedAt)} · {sub.submittedBy}
                   </span>
                   <StatusBadge
@@ -713,7 +715,7 @@ function MilestoneEvidence({
                   />
                 </div>
                 {sub.note ? (
-                  <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--foreground-soft)]">
                     {sub.note}
                   </p>
                 ) : null}
@@ -723,27 +725,27 @@ function MilestoneEvidence({
                       href={sub.url}
                       target="_blank"
                       rel="noopener noreferrer nofollow"
-                      className="text-indigo-600 underline dark:text-indigo-400"
+                      className="text-[var(--accent)] underline underline-offset-2"
                     >
                       {sub.url}
                     </a>
                   </p>
                 ) : null}
                 {sub.file ? (
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                  <p className="mt-1 text-xs text-muted">
                     File: {sub.file.name} ({sub.file.type},{" "}
                     {formatBytes(sub.file.size)})
                     {" "}
                     <a
                       href={`/api/evidence/${deal.id}/${sub.id}`}
-                      className="font-medium text-indigo-600 underline dark:text-indigo-400"
+                      className="font-medium text-[var(--accent)] underline underline-offset-2"
                     >
                       Download
                     </a>
                   </p>
                 ) : null}
                 {sub.reviewNote ? (
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  <p className="mt-1 text-xs text-muted">
                     Review: {sub.reviewNote}
                   </p>
                 ) : null}
@@ -776,12 +778,12 @@ function TimelineItem({ event }: { event: DealEvent }) {
     <li className="relative">
       <span
         aria-hidden="true"
-        className="absolute -left-[1.4rem] top-1.5 h-2 w-2 rounded-full bg-slate-300 dark:bg-slate-600"
+        className="absolute -left-[1.42rem] top-1.5 h-2 w-2 rounded-full border border-[var(--accent)] bg-[var(--background)]"
       />
-      <p className="text-sm text-slate-800 dark:text-slate-200">
+      <p className="text-sm text-[var(--foreground-soft)]">
         {event.message}
       </p>
-      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+      <p className="mt-1 font-mono text-[11px] text-muted">
         {formatDateTime(event.createdAt)} · {event.actor}
       </p>
     </li>
@@ -813,9 +815,9 @@ function formatDateTime(value: string): string {
 function DealSkeleton() {
   return (
     <div className="mt-4 animate-pulse space-y-4" aria-hidden="true">
-      <div className="h-48 rounded-xl bg-slate-100 dark:bg-slate-800" />
-      <div className="h-24 rounded-xl bg-slate-100 dark:bg-slate-800" />
-      <div className="h-40 rounded-xl bg-slate-100 dark:bg-slate-800" />
+      <div className="surface h-48" />
+      <div className="surface h-24" />
+      <div className="surface h-40" />
     </div>
   );
 }

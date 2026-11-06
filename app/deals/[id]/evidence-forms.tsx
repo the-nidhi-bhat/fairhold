@@ -26,7 +26,7 @@ const inputClass =
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
+    <p role="alert" className="mt-1 text-xs text-[var(--danger)]">
       {message}
     </p>
   );
@@ -50,8 +50,8 @@ export function AddEvidenceForm({
   }, [state.ok]);
 
   return (
-    <details className="mt-4 rounded-lg border border-slate-200 p-4 dark:border-slate-800">
-      <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300">
+    <details className="surface-subtle mt-4 p-4">
+      <summary className="cursor-pointer text-sm font-medium text-[var(--foreground-soft)]">
         Submit evidence
       </summary>
       <form ref={formRef} action={formAction} className="mt-3 space-y-3">
@@ -60,7 +60,7 @@ export function AddEvidenceForm({
         <div>
           <label
             htmlFor={`ev-note-${milestoneId}`}
-            className="text-xs font-medium text-slate-700 dark:text-slate-300"
+            className="text-xs font-medium text-[var(--foreground-soft)]"
           >
             Note
           </label>
@@ -78,7 +78,7 @@ export function AddEvidenceForm({
         <div>
           <label
             htmlFor={`ev-url-${milestoneId}`}
-            className="text-xs font-medium text-slate-700 dark:text-slate-300"
+            className="text-xs font-medium text-[var(--foreground-soft)]"
           >
             Link (http/https)
           </label>
@@ -97,7 +97,7 @@ export function AddEvidenceForm({
         <div>
           <label
             htmlFor={`ev-file-${milestoneId}`}
-            className="text-xs font-medium text-slate-700 dark:text-slate-300"
+            className="text-xs font-medium text-[var(--foreground-soft)]"
           >
             File (PNG, JPEG, PDF, or text; max 3 MB)
           </label>
@@ -106,14 +106,14 @@ export function AddEvidenceForm({
             name="file"
             type="file"
             accept=".png,.jpg,.jpeg,.pdf,.txt,.md,.csv"
-            className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-slate-700 hover:file:bg-slate-200 dark:text-slate-300 dark:file:bg-slate-800 dark:file:text-slate-200"
+            className="mt-1 block w-full text-sm text-[var(--foreground-soft)] file:mr-3 file:rounded-md file:border-0 file:bg-white/[0.06] file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-[var(--foreground-soft)] hover:file:bg-white/[0.08]"
             aria-invalid={state.errors.file ? true : undefined}
           />
           <FieldError message={state.errors.file} />
         </div>
         <FieldError message={state.errors._form} />
         {state.ok ? (
-          <p className="text-xs text-emerald-600 dark:text-emerald-400">
+          <p className="text-xs text-[var(--success)]">
             Evidence recorded.
           </p>
         ) : null}
@@ -147,7 +147,7 @@ export function ReviewEvidenceForm({
       <input type="hidden" name="submissionId" value={submissionId} />
       <label
         htmlFor={`rv-note-${submissionId}`}
-        className="text-xs font-medium text-slate-700 dark:text-slate-300"
+        className="text-xs font-medium text-[var(--foreground-soft)]"
       >
         Review note (optional)
       </label>
@@ -165,7 +165,7 @@ export function ReviewEvidenceForm({
           name="decision"
           value="accepted"
           disabled={pending}
-          className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-60"
+          className="rounded-md bg-[var(--success)] px-3 py-1.5 text-sm font-semibold text-[#06120c] hover:brightness-105 disabled:opacity-60"
         >
           Accept evidence
         </button>
@@ -174,7 +174,7 @@ export function ReviewEvidenceForm({
           name="decision"
           value="rejected"
           disabled={pending}
-          className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+          className="rounded-md border border-[color-mix(in_srgb,var(--danger)_40%,transparent)] px-3 py-1.5 text-sm font-medium text-[var(--danger)] hover:bg-[color-mix(in_srgb,var(--danger)_10%,transparent)] disabled:opacity-60"
         >
           Reject evidence
         </button>
@@ -206,24 +206,24 @@ export function ApprovalPanel({
   return (
     <div className="mt-4">
       {approval ? (
-        <div className="rounded-lg bg-slate-50 p-3 text-xs dark:bg-slate-900">
-          <p className="font-medium text-slate-700 dark:text-slate-300">
+        <div className="surface-inset p-3 text-xs">
+          <p className="font-medium text-[var(--foreground-soft)]">
             Last decision: {approval.decision} → {approval.action}
             {stale ? " (stale)" : ""}
           </p>
-          <p className="mt-1 text-slate-500 dark:text-slate-400">
+          <p className="mt-1 text-muted">
             {approval.reviewedAt} · {approval.reviewedBy}
             {approval.providerReference
               ? ` · ${approval.providerName}: ${approval.providerReference}`
               : ""}
           </p>
           {approval.providerReference && approval.simulated ? (
-            <p className="mt-1 text-amber-700 dark:text-amber-400">
+            <p className="mt-1 text-[var(--warning)]">
               Simulated action — no PayPal request was made.
             </p>
           ) : null}
           {stale ? (
-            <p className="mt-1 text-amber-700 dark:text-amber-400">
+            <p className="mt-1 text-[var(--warning)]">
               Evidence changed after this decision, so it no longer applies.
             </p>
           ) : null}
@@ -235,7 +235,7 @@ export function ApprovalPanel({
         <input type="hidden" name="milestoneId" value={milestoneId} />
         <label
           htmlFor={`ap-note-${milestoneId}`}
-          className="text-xs font-medium text-slate-700 dark:text-slate-300"
+          className="text-xs font-medium text-[var(--foreground-soft)]"
         >
           Decision note (optional)
         </label>
@@ -253,7 +253,7 @@ export function ApprovalPanel({
             name="decision"
             value="approve"
             disabled={pending || !canApprove}
-            className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+            className="rounded-md bg-[var(--accent-strong)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--accent-hover)] disabled:opacity-50"
           >
             Approve recommendation
           </button>
@@ -262,13 +262,13 @@ export function ApprovalPanel({
             name="decision"
             value="reject"
             disabled={pending}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-800 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="secondary-button px-3 py-1.5 text-sm disabled:opacity-60"
           >
             Reject / keep on hold
           </button>
         </div>
         {!canApprove ? (
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <p className="text-xs text-muted">
             The current recommendation ({recommendation.action}) cannot be
             approved directly. Resolve it first, or reject to keep it on hold.
           </p>
