@@ -9,6 +9,7 @@ import {
 } from "@/lib/ai/advisory";
 import { getDeal } from "@/lib/data";
 import { formatCents } from "@/lib/domain/format";
+import { summarizeDealMoney } from "@/lib/domain/money";
 import { approvalIsStale, recommendMilestone } from "@/lib/domain/rules";
 import {
   allowedManualDealTransitions,
@@ -114,6 +115,7 @@ async function DealDetail({
 
   const progress = computeProgress(deal);
   const payment = paymentStatusFor(deal);
+  const money = summarizeDealMoney(deal);
   const { provider, sandboxRequiresPostgres } = paymentRuntime();
   const sandboxConfigured = provider.mode === "sandbox";
   const canAuthorize = session.role === "buyer" || session.role === "reviewer";
@@ -220,6 +222,59 @@ async function DealDetail({
           </div>
           <StatusBadge label={payment.label} tone={payment.tone} />
         </div>
+
+        {money.hasAuthorization ? (
+          <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--hairline)] sm:grid-cols-4">
+            <div className="bg-[var(--surface-inset)] p-3.5">
+              <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                Authorized
+              </dt>
+              <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                {formatCents(money.authorizedCents, deal.currency)}
+              </dd>
+            </div>
+            <div className="bg-[var(--surface-inset)] p-3.5">
+              <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                Captured
+              </dt>
+              <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                {formatCents(money.capturedCents, deal.currency)}
+              </dd>
+            </div>
+            <div className="bg-[var(--surface-inset)] p-3.5">
+              <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                Pending settlement
+              </dt>
+              <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                {formatCents(money.pendingCents, deal.currency)}
+              </dd>
+            </div>
+            <div className="bg-[var(--surface-inset)] p-3.5">
+              <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                Remaining
+              </dt>
+              <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                {formatCents(money.remainingCents, deal.currency)}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+
+        {money.pendingCents > 0 ? (
+          <p className="mt-3 text-xs text-[var(--warning)]">
+            A capture of {formatCents(money.pendingCents, deal.currency)} is
+            pending with the provider. It is not counted as settled and stays
+            reserved until the provider confirms it.
+          </p>
+        ) : null}
+
+        {money.releasedCents > 0 ? (
+          <p className="mt-3 text-xs text-muted">
+            {formatCents(money.releasedCents, deal.currency)} of the hold was
+            released by a void. Released funds are no longer available to
+            capture.
+          </p>
+        ) : null}
 
         {sandboxRequiresPostgres ? (
           <p className="mt-3 rounded-lg border border-[var(--border-strong)] bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--foreground-soft)]  dark:bg-[var(--surface-inset)] dark:text-[var(--foreground-soft)]">
