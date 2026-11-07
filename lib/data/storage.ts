@@ -15,7 +15,7 @@
  * large and binary, and the relational database should not carry object
  * payloads.
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
@@ -46,4 +46,25 @@ export async function readEvidenceFile(storedPath: string): Promise<Uint8Array> 
   const filePath = resolve(root, normalized.slice(EVIDENCE_DIR_REL.length + sep.length));
   if (dirname(filePath) !== root) throw new Error("Invalid evidence storage key.");
   return readFile(filePath);
+}
+
+/**
+ * Remove bytes written by writeEvidenceFile when the database row could not be
+ * persisted. Without this, a failed submission leaves an orphaned file that no
+ * record references. A missing file is not an error: the caller is cleaning up
+ * after a failure, and cleanup must be idempotent.
+ */
+export async function deleteEvidenceFile(storedPath: string): Promise<void> {
+  const root = resolve(evidenceStorageDir());
+  const normalized = storedPath.replaceAll("/", sep).replaceAll("\\", sep);
+  if (normalized.split(sep).length !== 2 || normalized.split(sep)[0] !== EVIDENCE_DIR_REL) {
+    throw new Error("Invalid evidence storage key.");
+  }
+  const filePath = resolve(root, normalized.slice(EVIDENCE_DIR_REL.length + sep.length));
+  if (dirname(filePath) !== root) throw new Error("Invalid evidence storage key.");
+  try {
+    await unlink(filePath);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
 }
