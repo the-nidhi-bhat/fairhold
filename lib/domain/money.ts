@@ -18,6 +18,29 @@
  */
 import type { Deal } from "./types.ts";
 
+/**
+ * Parse a human-typed decimal amount into integer cents without ever touching
+ * binary floating point. "1200.5" becomes 120050, not 120049.99999999999.
+ */
+export function parseAmountToCents(
+  raw: string,
+): { ok: true; value: number } | { ok: false; error: string } {
+  const text = raw.trim().replace(/^\$/, "");
+  if (text === "") return { ok: false, error: "Enter an amount." };
+  if (!/^\d{1,9}(\.\d{1,2})?$/.test(text)) {
+    return {
+      ok: false,
+      error: "Use digits with at most two decimal places, for example 1200.00.",
+    };
+  }
+  const [whole, fraction = ""] = text.split(".");
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  if (!Number.isSafeInteger(cents) || cents <= 0) {
+    return { ok: false, error: "Enter an amount greater than zero." };
+  }
+  return { ok: true, value: cents };
+}
+
 export interface DealMoneySummary {
   authorizedCents: number;
   capturedCents: number;

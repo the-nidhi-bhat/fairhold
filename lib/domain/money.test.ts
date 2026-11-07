@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { summarizeDealMoney } from "./money.ts";
+import { parseAmountToCents, summarizeDealMoney } from "./money.ts";
 import type { Deal, Milestone } from "./types.ts";
 
 function milestone(
@@ -220,4 +220,22 @@ test("the summary never reports a negative balance or over-captured state", () =
   assert.equal(summary.capturedCents, 12_000);
   assert.equal(summary.remainingCents, 0);
   assert.equal(summary.fullyCaptured, false);
+});
+
+test("parseAmountToCents keeps exact decimal precision", () => {
+  assert.deepEqual(parseAmountToCents("1200"), { ok: true, value: 120_000 });
+  assert.deepEqual(parseAmountToCents("1200.5"), { ok: true, value: 120_050 });
+  assert.deepEqual(parseAmountToCents("0.07"), { ok: true, value: 7 });
+  assert.deepEqual(parseAmountToCents(" 19.99 "), { ok: true, value: 1_999 });
+  assert.deepEqual(parseAmountToCents("$42.10"), { ok: true, value: 4_210 });
+});
+
+test("parseAmountToCents rejects ambiguous or invalid input", () => {
+  assert.equal(parseAmountToCents("").ok, false);
+  assert.equal(parseAmountToCents("0").ok, false);
+  assert.equal(parseAmountToCents("-5").ok, false);
+  assert.equal(parseAmountToCents("1.234").ok, false);
+  assert.equal(parseAmountToCents("1,200").ok, false);
+  assert.equal(parseAmountToCents("abc").ok, false);
+  assert.equal(parseAmountToCents("1e6").ok, false);
 });
