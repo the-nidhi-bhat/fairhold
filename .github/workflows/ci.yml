@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fairhold
+          POSTGRES_PASSWORD: fairholdtest
+          POSTGRES_DB: fairhold_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fairhold -d fairhold_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # The PostgreSQL integration suites run instead of skipping whenever this
+      # is set. Each test file provisions its own schema, so no cleanup is
+      # needed between runs.
+      FAIRHOLD_TEST_DATABASE_URL: postgresql://fairhold:fairholdtest@127.0.0.1:5432/fairhold_test
+      # Build-time placeholder only. It is not a credential and is never used
+      # outside this CI job; the real secret is supplied per deployment.
+      FAIRHOLD_SESSION_SECRET: ci-placeholder-not-a-real-secret
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit and PostgreSQL integration tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
