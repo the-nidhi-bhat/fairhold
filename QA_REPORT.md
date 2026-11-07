@@ -224,3 +224,175 @@ Known limitations (not defects introduced here, and not fixed in this pass):
 - `opencode debug skill` is not available in this CLI version.
 - The GitHub Copilot skill registry is not reachable from this environment, so
   no Copilot skill claims are made.
+
+---
+
+## Release pass - 2026-11-06
+
+Scope of this pass: finish the premium UI pass, complete the documentation set,
+run the full regression matrix, record evidence, create a reviewable commit
+history, and prepare the deployment. No product rules changed: AI still only
+advises, deterministic rules decide, humans approve, PayPal executes, and the
+audit trail records what happened. Authorization remains a provider hold, never
+escrow.
+
+### Repository state
+
+- Branch: `feat/deal-milestone-foundation`
+- Release commits: 17 (`4094832` ... `e18a449`) on top of `f5e48bc`
+- Working tree: clean at the time of the test runs below
+- No secrets, `.env` files, `.data/` artifacts, test databases or build caches
+  were committed. A high-confidence secret-pattern scan of every staged file
+  returned no matches.
+
+### Commands and exact results
+
+| Command | Result |
+| --- | --- |
+| `npm run typecheck` (`next typegen && tsc --noEmit`) | Pass, no output |
+| `npm run lint` (`eslint`) | Pass, no findings |
+| `npm test` with `FAIRHOLD_TEST_DATABASE_URL` | 172 tests, 172 pass, 0 fail, 0 cancelled, 0 skipped, 0 todo, 19.2s |
+| `npm run build` | Pass - Next.js 16.4.3 Turbopack, compiled in 7.9s, TypeScript 11.6s, 9/9 static pages |
+| `npx playwright test` | 9 passed (2.1m) - 3 journeys x desktop, mobile, tablet |
+
+The PostgreSQL run used an isolated PostgreSQL 16 container
+(`fairhold-pg-test`, `127.0.0.1:55432`, database `fairhold_test`, role
+`fairhold`). The developer's Supabase containers were not touched. Without
+`FAIRHOLD_TEST_DATABASE_URL` the same suite reports 148 pass and 24 skipped, by
+design; the PostgreSQL suites are skipped rather than silently mocked.
+
+Build route output:
+
+```
+◐ /                                      ◐ /dashboard
+◐ /_not-found                            ◐ /deals/[id]
+ƒ /api/evidence/[dealId]/[evidenceId]    ◐ /deals/new
+ƒ /api/paypal/webhook                    ƒ /login
+```
+
+### Playwright matrix and failure analysis
+
+All 9 journeys (buyer/seller lifecycle, access control, deal creation and
+milestone authoring) pass on desktop, mobile (Pixel 5) and tablet (iPad)
+emulation.
+
+Earlier runs in this pass failed, and the failures were diagnosed rather than
+suppressed. No assertion, timeout-sensitive test body or product behaviour was
+changed:
+
+- A production-server run returned 6 passed / 3 failed, all three in
+  `[tablet-chromium]`, in 4.3m. One failure reported the deal page as
+  "Deal not found" with the header showing "Demo sign in"; the other two were
+  90s locator timeouts after a stalled `/login` navigation.
+- A fresh dev-server run returned 8 passed / 1 failed in 14.1m, failing in
+  `signIn` because `/login` did not redirect within the 10s expectation.
+- Re-running the failing tablet journey alone against the now-warm server
+  passed in 23.1s, and the final full run against a warm production build
+  passed 9/9 in 2.1m.
+
+Conclusion: the failures are compile/serve latency on a OneDrive-synced
+checkout, not application defects. The `playwright.config.ts` budget (90s test,
+10s expectation) is documented in a comment as an environment budget; it does
+not relax any assertion.
+
+### Defects investigated in this pass
+
+Two findings from the automated visual audit were investigated to root cause
+and are **not** application defects:
+
+1. **Hydration attribute mismatch** reported on every audited page. The dev
+   server's stream log showed the diff was
+   `style={{caret-color:"transparent"}}` on the `#title`, `#clientName`,
+   `#freelancerName` and `#agreement` inputs. That style is injected by the
+   audit harness while taking screenshots. Fresh contexts with no screenshot
+   injection produce no console output at all.
+2. **Two `h1` elements on `/dashboard`.** The second heading belongs to the
+   retained LoginPage subtree that Next.js keeps in the DOM after navigation;
+   it is not rendered (no layout box) and is absent from the accessibility
+   tree. Counting only rendered elements, every page has exactly one `h1`.
+
+The audit script was hardened to ignore non-rendered elements and hidden
+server-action inputs, then moved outside the repository so it is never
+committed.
+
+### Visual and interaction audit (automated, 14 probes)
+
+Viewports: desktop 1440, mobile 390 (iPhone 13), tablet 820, plus a
+reduced-motion context. Real browser navigation, no mocked data.
+
+- Horizontal overflow: none (`scrollWidth == clientWidth` on every probe).
+- Console errors: 0 on every probe.
+- Rendered `h1` count: 1 per page.
+- Images without `alt`: 0.
+- Unlabelled visible form controls: 0.
+- Keyboard: first Tab reaches the skip link; second Tab reaches the brand link
+  with a visible `outline: solid 2px` focus ring.
+- Reduced motion: `.reveal` resolves to `animation-name: fairhold-rise` with
+  `animation-duration: 1e-05s` and `opacity: 1`, so content is visible
+  immediately and no motion plays.
+- States exercised: landing, login, dashboard (populated), deal detail, deal
+  creation and deal not-found.
+- Screenshots and `report.json`: `C:\Users\theni\AppData\Local\Temp\opencode\fairhold-shots-final\`.
+
+### Tooling limits for this pass
+
+- Chromium only; Firefox and WebKit were not run.
+- No axe or Lighthouse run. Contrast, semantics and keyboard behaviour were
+  checked by targeted assertions and manual review, not a full audit.
+- Mobile and tablet are emulated viewports, not physical devices.
+- Browser screenshots were captured for human review; the release agent cannot
+  view images, so appearance claims rest on the programmatic checks above plus
+  those artifacts.
+- Independent subagent review and QA delegation were unavailable in this
+  environment (provider usage limit); verification was executed directly and
+  the commands and outputs are recorded here.
+
+### Still blocked, not faked
+
+- Live PayPal sandbox: no `DATABASE_URL`, no public HTTPS webhook endpoint and
+  no `PAYPAL_WEBHOOK_ID`, so the adapter refuses real actions and the app uses
+  the demo provider. No sandbox payment was executed or claimed.
+- Live AI provider: no `AI_API_KEY`/`AI_MODEL`. Only the deterministic fallback
+  is verified; the UI reports the fallback source.
+- Hosted PostgreSQL and durable evidence object storage are not configured, so
+  a serverless deployment can read the seeded demo data but cannot persist
+  writes.
+
+### Deployment verification - 2026-11-07
+
+The Vercel project `fairhold` now has a passing preview build. No production
+deployment is claimed.
+
+| Check | Result |
+| --- | --- |
+| Vercel build | Pass - Next.js preset, compiled 6.8s, TypeScript 5.8s, 9/9 static pages, output deployed in 27s |
+| Preview URL | `https://fairhold-dnt7r6md1-thenidhibhat-6721s-projects.vercel.app` (target: preview, status Ready) |
+| `/` | 200, 94,660 bytes, landing content present |
+| `/login` | 200, 34,895 bytes, buyer/seller/reviewer demo roles present |
+| `/dashboard` (no session) | 200, 28,073 bytes, sign-in gate rendered |
+| `/deals/[id]` (no session) | 200, not-found view - fails closed, no deal data leaked |
+| Public unauthenticated request | 302 to Vercel SSO (deployment protection enabled) |
+
+Two deployment defects were found and fixed rather than reported as success:
+
+1. The project was created with the "Other" framework preset and an output
+   directory of `public`, so the first deployment published the hero SVG folder
+   as a static site and returned 404 for every application route. Fixed with
+   `vercel project update fairhold --framework nextjs --auto-detect
+   output-directory --auto-detect build-command`, then rebuilt.
+2. Vercel assigns a project's first deployment to production. That first
+   deployment is the broken static one and still owns the
+   `fairhold-beta.vercel.app` alias. It is recorded as a blocker, not promoted.
+
+Environment variable names present in the preview scope (values never printed):
+`FAIRHOLD_SESSION_SECRET`, `FAIRHOLD_DEMO_BUYERS`, `FAIRHOLD_DEMO_SELLERS`,
+`FAIRHOLD_DEMO_REVIEWERS`, `FAIRHOLD_REVIEWER_DEALS`. The production scope is
+empty. `DATABASE_URL`, `PAYPAL_*` and `AI_*` are absent from every scope, so the
+deployed instance browses the demo shell, does not persist writes, refuses real
+payment actions and uses the deterministic AI fallback.
+
+Not verified on the deployed URL, and therefore not claimed: interactive
+sign-in and write journeys in a browser (Vercel Authentication gates the preview
+and the CLI does not drive form posts), hosted PostgreSQL behaviour, PayPal
+sandbox execution, and live AI calls. Those journeys are verified locally
+against a production build by Playwright (9/9).

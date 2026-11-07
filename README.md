@@ -361,7 +361,9 @@ Verified results and the exact configuration used: [TESTING.md](./TESTING.md) an
 
 The application deploys to Vercel as a standard Next.js project. A full deployment needs `DATABASE_URL` (managed PostgreSQL), `FAIRHOLD_SESSION_SECRET` and the three demo allowlists; webhook processing additionally needs a public HTTPS endpoint and `PAYPAL_WEBHOOK_ID`.
 
-Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is read-only on serverless hosts — so writes fail there by design rather than silently pretending to persist. Details and the exact required configuration: [DEPLOYMENT.md](./DEPLOYMENT.md).
+Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is read-only on serverless hosts - so writes fail there by design rather than silently pretending to persist. Details and the exact required configuration: [DEPLOYMENT.md](./DEPLOYMENT.md).
+
+**Current state (2026-11-07):** a Vercel preview build is verified - Next.js preset, successful build, 9/9 static pages, landing and sign-in pages rendering, and deal routes failing closed when unauthenticated. It sits behind Vercel Authentication and has no database, so it is a browsing demo, not a production deployment. See [HANDOFF.md](./HANDOFF.md) for the deployment record and open blockers.
 
 ## Demo
 

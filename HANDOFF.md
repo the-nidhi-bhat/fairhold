@@ -1,19 +1,30 @@
 # FairHold sprint handoff
 
-Last updated: 2026-11-01
+Last updated: 2026-11-06
 
 ## Current state
 
 - Branch: `feat/deal-milestone-foundation`
-- Head: `48ef93a` (`fix(db): correct PostgreSQL milestone and evidence persistence`)
-- Previous UI commit reviewed: `68d9e92`
-- Existing uncommitted PayPal changes remain in:
-  - `lib/payments/paypal.test.ts`
-  - `lib/payments/paypal.ts`
-  - `lib/payments/provider.ts`
+- Remote: `origin https://github.com/the-nidhi-bhat/fairhold.git`
+- Working tree: clean.
+- All release work is committed and pushed; see "Release pass — 2026-11-06"
+  at the end of this file for hashes and command output.
+- No uncommitted files remain, including the PayPal worktree files listed in
+  earlier checkpoints below (committed in `574efde`).
 
-Canonical task files were added for this execution: `TASKS.md`,
-`DECISIONS.md`, `QA_REPORT.md`, and `FAIRHOLD_STATE.md`.
+Canonical state files for this project: `TASKS.md`, `DECISIONS.md`,
+`QA_REPORT.md`, and `FAIRHOLD_STATE.md`. `README.md` is the entry point;
+`DEPLOYMENT.md` records the hosting requirements and which of them the Vercel
+preview satisfies.
+
+## Open items
+
+- Live PayPal sandbox verification: blocked, no sandbox credentials or public
+  webhook endpoint in this environment.
+- Live AI provider verification: blocked, no `AI_API_KEY`/`AI_MODEL`.
+- Hosted PostgreSQL + durable evidence storage in production: not configured.
+  The Vercel preview therefore serves reads from an empty JSON store and
+  refuses writes instead of pretending to persist them.
 
 ## Authentication checkpoint
 
@@ -338,3 +349,101 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
     are emulated viewports.
   - See `QA_REPORT.md` for the full evidence matrix and `TASKS.md` for the
     remaining/blocked list.
+
+## Release pass — 2026-11-06 (deployment verified 2026-11-07)
+
+### Committed and pushed
+
+17 commits on `feat/deal-milestone-foundation`, on top of `f5e48bc`:
+
+| Commit | Message |
+| --- | --- |
+| `4094832` | feat(design): introduce the obsidian design tokens and motion system |
+| `10a5b42` | feat(ui): rebuild the app shell around a persistent, accessible header |
+| `22a0f9f` | feat(landing): rebuild the landing page as a product proof, not a pitch |
+| `6e3226f` | feat(ui): restyle the demo sign-in page and keep the role gate explicit |
+| `5f02056` | feat(ui): restyle the dashboard and its loading, empty and failure states |
+| `d05b6c5` | feat(ui): restyle the deal workspace and its state surfaces |
+| `dfa7e5d` | feat(ui): restyle deal creation with a clearer agreement brief |
+| `4075bad` | feat(ui): derive status tone and progress from design tokens |
+| `dcdb8f1` | feat(brand): add the original FairHold hero artwork |
+| `84fad04` | chore(repo): ignore the Vercel link directory and pulled env files |
+| `3a6b7a1` | test(e2e): budget for dev-mode compile latency without touching assertions |
+| `6983851` | docs: document the architecture, schema, HTTP surface and payment lifecycle |
+| `5abda64` | docs: document the AI advisory boundary and the security model |
+| `8a4aa02` | docs: add setup, testing and deployment guides |
+| `dbea9cc` | docs: add the user, demo and release guides |
+| `3c0a18b` | docs: add the implementation changelog |
+| `e18a449` | docs(readme): rewrite the README around what the product actually does |
+
+`git push origin feat/deal-milestone-foundation` reported
+`f5e48bc..e18a449`. After `git fetch`, local HEAD and
+`origin/feat/deal-milestone-foundation` both resolved to
+`e18a449b9056740251ccc23055da7852e3f7dd5c`, and
+`git rev-list --left-right --count` showed `0 17` (no divergence).
+
+### Verification
+
+- `npm run typecheck`: pass.
+- `npm run lint`: pass.
+- `npm test` with an isolated PostgreSQL 16 container: 172 tests, 172 pass,
+  0 skipped, 0 failed (19.2s).
+- `npm run build`: pass, compiled in 7.9s, TypeScript 11.6s, 9/9 static pages.
+- `npx playwright test`: 9 passed in 2.1m (3 journeys x desktop, mobile,
+  tablet). Earlier intermittent failures were traced to OneDrive dev-compile
+  latency; the failing journey passed alone in 23.1s on a warm server.
+- Automated visual audit: 14 probes, no console errors, no horizontal overflow,
+  one rendered `h1` per page, no missing `alt`, visible focus ring, reduced
+  motion honoured. See `QA_REPORT.md` for the full matrix.
+
+### Deployment
+
+- Vercel project `fairhold` (`prj_vdIpZADs1M7qk17mPs96ubFhcZJp`) in team
+  `thenidhibhat-6721s-projects`. It is not Git-connected, so pushes do not
+  trigger deployments.
+- The first deployment was auto-assigned to *production* by Vercel (normal for a
+  project's first deployment) and returned 404 for every route: the project
+  preset was "Other" with output directory `public`, so Vercel published the
+  hero SVG folder as a static site and never built Next.js. Fixed with
+  `vercel project update fairhold --framework nextjs --auto-detect
+  output-directory --auto-detect build-command`.
+- Verified preview:
+  `https://fairhold-dnt7r6md1-thenidhibhat-6721s-projects.vercel.app`
+  (deployment `dpl_BB94J917mbz2if6GLDLgFAckUVg2`, target preview, status Ready).
+  Build log: `Compiled successfully in 6.8s`, TypeScript 5.8s, 9/9 static
+  pages, `Build Completed in /vercel/output [27s]`.
+- Runtime checks on the deployed URL: `/` 94,660 bytes, `/login` 34,895 bytes
+  with the three demo role options, `/dashboard` 28,073 bytes showing the
+  sign-in gate, and the demo deal route returns the not-found view when
+  unauthenticated — it fails closed rather than leaking deal data.
+- Environment: the preview scope holds `FAIRHOLD_SESSION_SECRET`,
+  `FAIRHOLD_DEMO_BUYERS`, `FAIRHOLD_DEMO_SELLERS`, `FAIRHOLD_DEMO_REVIEWERS`
+  and `FAIRHOLD_REVIEWER_DEALS`. Values were written through stdin and never
+  printed. The production scope is empty.
+- Deployment protection: Vercel Authentication is enabled for all deployments
+  except custom domains, so a plain request to the preview URL returns 302 to
+  the Vercel SSO flow. Verification used the CLI's protection-aware fetch. A
+  public demo link requires the project owner to change Deployment Protection
+  (or share a bypass link); that setting was deliberately not weakened here.
+
+### Blocked
+
+- Production deployment is withheld. Production scope has no environment
+  variables, there is no hosted PostgreSQL, no durable evidence storage, no
+  public PayPal webhook endpoint and no AI credentials. Promoting the preview
+  unchanged would produce a demo that cannot persist writes while presenting
+  itself as production.
+- The first production alias `fairhold-beta.vercel.app` still points at the
+  static non-Next build from the initial deploy. It must be replaced by a
+  configured deployment, or removed, rather than promoted blind.
+- Live PayPal sandbox and live AI provider remain unverified for the same
+  reasons recorded in `QA_REPORT.md`. Nothing was faked.
+
+### Next steps
+
+1. Provision managed PostgreSQL and object storage for evidence files, set
+   `DATABASE_URL` and the storage configuration, then run `vercel deploy --prod`
+   and repeat the runtime checks.
+2. Decide whether the hackathon demo should be publicly reachable; if so,
+   adjust Deployment Protection in the Vercel dashboard (owner action).
+3. Optionally connect the GitHub repository for automatic deployments.
