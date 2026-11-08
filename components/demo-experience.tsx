@@ -843,6 +843,10 @@ export function DemoExperience() {
                 <li>• Payment authorization and capture (no PayPal request).</li>
                 <li>• Persistence (localStorage, this device only).</li>
                 <li>• File uploads (disabled in the guided demo).</li>
+                <li>
+                  • Fees: no FairHold platform fee exists in this build, and
+                  provider merchant fees are not modelled.
+                </li>
               </ul>
               <p className="mt-3 text-xs leading-5 text-muted">
                 The recommendation engine, approval gating and money arithmetic are

@@ -375,6 +375,48 @@ async function DealDetail({
         )}
       </section>
 
+      {/* Fee transparency — state exactly what is and is not charged */}
+      <section className="surface mt-6 p-5 sm:p-6" aria-labelledby="costs-heading">
+        <h2
+          id="costs-heading"
+          className="text-sm font-semibold text-[var(--foreground)]"
+        >
+          Costs and limits
+        </h2>
+        <dl className="mt-4 divide-y divide-[var(--hairline)] text-sm">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
+            <dt className="text-muted">Agreed milestone total</dt>
+            <dd className="font-semibold tabular-nums">
+              {formatCents(progress.totalCents, deal.currency)}
+            </dd>
+          </div>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
+            <dt className="text-muted">FairHold platform fee</dt>
+            <dd className="text-[var(--foreground-soft)]">
+              None is implemented in this build
+            </dd>
+          </div>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
+            <dt className="text-muted">Payment provider fees</dt>
+            <dd className="max-w-[46ch] text-right text-xs leading-5 text-[var(--foreground-soft)]">
+              Charged by the provider to the merchant account. FairHold neither
+              models nor deducts them.
+            </dd>
+          </div>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
+            <dt className="text-muted">Currency and precision</dt>
+            <dd className="text-xs leading-5 text-[var(--foreground-soft)]">
+              {deal.currency} only · integer cents, never floating point
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-xs leading-5 text-muted">
+          A capture asks the provider for the milestone amount exactly. Any
+          provider fee is charged outside this ledger, so the amounts above never
+          include a deduction FairHold cannot verify.
+        </p>
+      </section>
+
       {/* Agreement */}
       <section className="surface mt-6 p-5 sm:p-6">
         <h2 className="text-sm font-semibold text-[var(--foreground)]">

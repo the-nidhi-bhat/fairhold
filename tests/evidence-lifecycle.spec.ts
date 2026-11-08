@@ -275,6 +275,26 @@ test("buyer creates a deal, the seller adds a milestone, and both see persisted 
   await signIn(page, BUYER, "buyer");
   await page.goto(dealUrl);
   await expect(milestone(page, "Discovery workshop")).toBeVisible();
+
+  // Fee transparency states what is and is not charged.
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Costs and limits" }),
+  ).toBeVisible();
+  await expect(page.getByText("None is implemented in this build")).toBeVisible();
+
   await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { level: 3, name: title })).toBeVisible();
+
+  // Search narrows the list to the created deal.
+  await page.getByLabel("Search deals").fill(title);
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByText(/\d+ of \d+ shown/)).toBeVisible();
+  await expect(page.getByRole("heading", { level: 3, name: title })).toBeVisible();
+
+  // A term with no match shows the filtered empty state, and Clear restores it.
+  await page.getByLabel("Search deals").fill("no-such-deal-xyz");
+  await page.getByRole("button", { name: "Apply" }).click();
+  await expect(page.getByText("No deals match those filters")).toBeVisible();
+  await page.getByRole("link", { name: "Clear filters" }).click();
   await expect(page.getByRole("heading", { level: 3, name: title })).toBeVisible();
 });

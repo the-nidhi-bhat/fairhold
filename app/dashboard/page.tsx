@@ -5,6 +5,7 @@ import { connection } from "next/server";
 import { canAccessDeal, getDemoSession } from "@/lib/auth/session";
 import { listDeals } from "@/lib/data";
 import { isPostgresConfigured } from "@/lib/data/db";
+import { DEAL_STATUSES, type DealStatus } from "@/lib/domain/types";
 import { formatCents } from "@/lib/domain/format";
 import {
   computeProgress,
@@ -33,9 +34,12 @@ const ROLE_FRAMING: Record<string, { eyebrow: string; line: string }> = {
   },
 };
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const session = await getDemoSession();
   if (!session) redirect("/login");
+  const query = await searchParams;
+  const search = typeof query.q === "string" ? query.q : "";
+  const status = typeof query.status === "string" ? query.status : "all";
   const canCreate = session.role !== "reviewer";
   const framing = ROLE_FRAMING[session.role] ?? ROLE_FRAMING.reviewer;
   return (
@@ -57,14 +61,61 @@ export default async function DashboardPage() {
         ) : null}
       </header>
 
+      <details className="surface mt-6 p-5 sm:p-6">
+        <summary className="cursor-pointer text-sm font-medium text-[var(--foreground-soft)]">
+          New here? How FairHold works in four steps
+        </summary>
+        <ol className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            [
+              "Agree",
+              "Write the scope and split it into milestones, each with acceptance criteria and an amount.",
+            ],
+            [
+              "Hold",
+              "The buyer places an authorization hold. It reserves funds; it is not escrow and moves no money.",
+            ],
+            [
+              "Prove",
+              "The seller submits evidence and a link. The buyer accepts it or asks for a specific change.",
+            ],
+            [
+              "Approve",
+              "A human approves. Only then does the provider capture that milestone; the audit trail records it.",
+            ],
+          ].map(([title, body], index) => (
+            <li key={title}>
+              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--accent)]">
+                Step {index + 1}
+              </span>
+              <p className="mt-1 text-sm font-semibold">{title}</p>
+              <p className="mt-1 text-xs leading-5 text-muted">{body}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="mt-4 text-xs leading-5 text-muted">
+          No database configured? The{" "}
+          <Link href="/demo" className="text-[var(--accent)] underline underline-offset-4">
+            guided demo
+          </Link>{" "}
+          runs the same rules engine in your browser with simulated payments.
+        </p>
+      </details>
+
       <Suspense fallback={<DashboardSkeleton />}>
-        <DashboardContent />
+        <DashboardContent search={search} status={status} />
       </Suspense>
     </div>
   );
 }
 
-async function DashboardContent() {
+async function DashboardContent({
+  search,
+  status,
+}: {
+  search: string;
+  status: string;
+}) {
   await connection();
   const session = await getDemoSession();
   const allDeals = await listDeals();
@@ -113,6 +164,32 @@ async function DashboardContent() {
   const paymentSummary = summarizePaymentStatuses(deals);
   const workflow = summarizeDashboardWorkflow(deals, session!.role);
 
+  const statusFilter: DealStatus | "all" = (
+    DEAL_STATUSES as readonly string[]
+  ).includes(status)
+    ? (status as DealStatus)
+    : "all";
+  const needle = search.trim().toLowerCase();
+  const visibleDeals = deals.filter((deal) => {
+    if (statusFilter !== "all" && deal.status !== statusFilter) return false;
+    if (!needle) return true;
+    return (
+      deal.title.toLowerCase().includes(needle) ||
+      deal.clientName.toLowerCase().includes(needle) ||
+      deal.freelancerName.toLowerCase().includes(needle) ||
+      deal.milestones.some(
+        (milestone) =>
+          milestone.title.toLowerCase().includes(needle) ||
+          milestone.acceptanceCriteria.toLowerCase().includes(needle),
+      )
+    );
+  });
+  const filtersActive = needle !== "" || statusFilter !== "all";
+  const openItems =
+    session!.role === "buyer"
+      ? workflow.pendingReviews.length
+      : workflow.rejectedEvidence.length + workflow.assignedMilestones.length;
+
   return (
     <>
       {session!.role === "buyer" || session!.role === "seller" ? (
@@ -132,7 +209,7 @@ async function DashboardContent() {
               </h2>
             </div>
             <span className="chip hidden sm:inline-flex">
-              {session!.role === "buyer" ? "Decision required" : "Next action"}
+              {openItems} {session!.role === "buyer" ? "awaiting your decision" : "need attention"}
             </span>
           </div>
           {session!.role === "buyer" ? (
@@ -268,14 +345,84 @@ async function DashboardContent() {
         </dl>
       </section>
 
-      <div className="mt-10 flex items-end justify-between gap-4">
+      <form
+        action="/dashboard"
+        method="get"
+        className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-end"
+        role="search"
+        aria-label="Find deals"
+      >
+        <div className="min-w-0 flex-1">
+          <label
+            htmlFor="deal-search"
+            className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted"
+          >
+            Search deals
+          </label>
+          <input
+            id="deal-search"
+            name="q"
+            type="search"
+            defaultValue={search}
+            placeholder="Title, counterparty or milestone"
+            className="field mt-1.5 text-sm"
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="deal-status-filter"
+            className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted"
+          >
+            Status
+          </label>
+          <select
+            id="deal-status-filter"
+            name="status"
+            defaultValue={statusFilter}
+            className="field mt-1.5 text-sm"
+          >
+            <option value="all">All statuses</option>
+            {DEAL_STATUSES.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-2">
+          <button type="submit" className="secondary-button">
+            Apply
+          </button>
+          {filtersActive ? (
+            <Link href="/dashboard" className="ghost-button px-3 text-sm">
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </form>
+
+      <div className="mt-6 flex items-end justify-between gap-4">
         <h2 className="section-label">All deals</h2>
         <p className="text-xs text-muted">
-          {deals.length} {deals.length === 1 ? "record" : "records"}
+          {filtersActive
+            ? `${visibleDeals.length} of ${deals.length} shown`
+            : `${deals.length} ${deals.length === 1 ? "record" : "records"}`}
         </p>
       </div>
-      <ul className="mt-4 space-y-3">
-        {deals.map((deal) => {
+
+      {visibleDeals.length === 0 ? (
+        <div className="surface mt-4 p-8 text-center">
+          <p className="text-sm font-medium">No deals match those filters</p>
+          <p className="mt-1 text-xs text-muted">
+            Try a different search term or status.
+          </p>
+          <Link href="/dashboard" className="secondary-button mt-4 inline-flex">
+            Clear filters
+          </Link>
+        </div>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {visibleDeals.map((deal) => {
           const progress = computeProgress(deal);
           const payment = paymentStatusFor(deal);
           return (
@@ -331,7 +478,8 @@ async function DashboardContent() {
             </li>
           );
         })}
-      </ul>
+        </ul>
+      )}
     </>
   );
 }
