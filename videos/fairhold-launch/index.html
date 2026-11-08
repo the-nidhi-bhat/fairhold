@@ -1,0 +1,957 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>FairHold — milestone payments that separate approval from money</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #08090b;
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #08090b;
+        color: #f4f1ec;
+        font-family: system-ui, sans-serif;
+        font-kerning: normal;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ---------- persistent backdrop ---------- */
+      .backdrop {
+        position: absolute;
+        inset: 0;
+      }
+      .grid {
+        position: absolute;
+        left: -40px;
+        right: -40px;
+        top: -240px;
+        bottom: -120px;
+        background-image: linear-gradient(
+            to right,
+            rgba(255, 255, 255, 0.05) 1px,
+            transparent 1px
+          ),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        background-size: 120px 108px;
+        opacity: 0.75;
+      }
+      .glow {
+        position: absolute;
+        width: 1100px;
+        height: 1100px;
+        border-radius: 50%;
+        filter: blur(110px);
+      }
+      .glow-a {
+        left: -360px;
+        top: -420px;
+        background: radial-gradient(
+          circle,
+          rgba(215, 106, 121, 0.32),
+          rgba(215, 106, 121, 0) 68%
+        );
+      }
+      .glow-b {
+        right: -420px;
+        bottom: -460px;
+        background: radial-gradient(
+          circle,
+          rgba(96, 140, 190, 0.2),
+          rgba(96, 140, 190, 0) 68%
+        );
+      }
+      .vignette {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(
+          ellipse at 50% 44%,
+          rgba(0, 0, 0, 0) 38%,
+          rgba(0, 0, 0, 0.58) 100%
+        );
+      }
+
+      .badge {
+        position: absolute;
+        right: 72px;
+        bottom: 46px;
+        z-index: 6;
+        font-family: ui-monospace, monospace;
+        font-size: 15px;
+        letter-spacing: 0.16em;
+        color: #d9b25f;
+        border: 1px solid rgba(217, 178, 95, 0.45);
+        background: rgba(217, 178, 95, 0.08);
+        padding: 9px 14px;
+        border-radius: 6px;
+      }
+
+      /* ---------- scenes ---------- */
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 92px 96px;
+        z-index: 2;
+      }
+      .inner {
+        width: 100%;
+        max-width: 1680px;
+        margin: 0 auto;
+      }
+
+      .kicker {
+        font-family: ui-monospace, monospace;
+        font-size: 17px;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+        color: #d76a79;
+      }
+      .display {
+        margin-top: 26px;
+        font-size: 104px;
+        line-height: 1.02;
+        font-weight: 650;
+        letter-spacing: -0.032em;
+        max-width: 1560px;
+      }
+      .display.sm {
+        font-size: 82px;
+        max-width: 1480px;
+      }
+      .lede {
+        margin-top: 30px;
+        font-size: 31px;
+        line-height: 1.5;
+        color: #b7b4ae;
+        max-width: 1240px;
+      }
+      .note {
+        font-family: ui-monospace, monospace;
+        font-size: 17px;
+        line-height: 1.65;
+        color: #94949e;
+        letter-spacing: 0.01em;
+        max-width: 1500px;
+      }
+      .mt-24 {
+        margin-top: 24px;
+      }
+      .mt-32 {
+        margin-top: 32px;
+      }
+
+      .rule {
+        display: block;
+        width: 560px;
+        height: 2px;
+        margin-top: 30px;
+        transform-origin: left center;
+        background: linear-gradient(90deg, #d76a79, rgba(215, 106, 121, 0));
+      }
+
+      .chips {
+        display: flex;
+        gap: 14px;
+        margin-top: 46px;
+        list-style: none;
+      }
+      .chip {
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 999px;
+        padding: 11px 20px;
+        font-family: ui-monospace, monospace;
+        font-size: 16px;
+        letter-spacing: 0.08em;
+        color: #d8d4cd;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .actor-list {
+        margin-top: 42px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        list-style: none;
+      }
+      .actor {
+        display: grid;
+        grid-template-columns: 84px 330px 1fr;
+        gap: 26px;
+        align-items: baseline;
+        padding: 19px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      }
+      .actor .n {
+        font-family: ui-monospace, monospace;
+        font-size: 15px;
+        letter-spacing: 0.2em;
+        color: #d76a79;
+      }
+      .actor .t {
+        font-size: 37px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+      .actor .d {
+        font-size: 21px;
+        line-height: 1.45;
+        color: #9b9ba4;
+      }
+
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 22px;
+        margin-top: 44px;
+      }
+      .cards.two {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .card {
+        background: #101318;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 28px 30px;
+      }
+      .card .label {
+        font-family: ui-monospace, monospace;
+        font-size: 13px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: #8f8f98;
+      }
+      .card .amount {
+        margin-top: 16px;
+        font-size: 43px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+        font-variant-numeric: tabular-nums;
+      }
+      .card .state {
+        margin-top: 10px;
+        font-size: 17px;
+        line-height: 1.45;
+        color: #a2a2ab;
+      }
+      .card-body {
+        margin-top: 20px;
+        font-size: 25px;
+        line-height: 1.45;
+        color: #ddd9d3;
+      }
+      .card-meta {
+        margin-top: 14px;
+        font-size: 17px;
+        line-height: 1.5;
+        color: #94949e;
+      }
+
+      .total {
+        margin-top: 30px;
+        font-size: 23px;
+        color: #a2a2ab;
+      }
+      .total strong {
+        color: #f4f1ec;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .hold-row {
+        display: flex;
+        align-items: baseline;
+        gap: 34px;
+        margin-top: 14px;
+      }
+      .amount-xl {
+        font-size: 176px;
+        line-height: 1.05;
+        font-weight: 600;
+        letter-spacing: -0.042em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        font-family: ui-monospace, monospace;
+        font-size: 14px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        color: #cfcbc4;
+        white-space: nowrap;
+      }
+      .pill.ok {
+        color: #6fbf9a;
+        border-color: rgba(111, 191, 154, 0.45);
+        background: rgba(111, 191, 154, 0.1);
+      }
+      .pill.warn {
+        color: #d9b25f;
+        border-color: rgba(217, 178, 95, 0.45);
+        background: rgba(217, 178, 95, 0.1);
+      }
+      .pill.bad {
+        color: #e07a7a;
+        border-color: rgba(224, 122, 122, 0.45);
+        background: rgba(224, 122, 122, 0.1);
+      }
+
+      .panel {
+        margin-top: 36px;
+        background: #0f1115;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        padding: 32px 36px;
+        max-width: 1440px;
+      }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .panel-title {
+        font-size: 30px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+      .kv {
+        margin-top: 6px;
+      }
+      .kv-row {
+        display: grid;
+        grid-template-columns: 190px 1fr;
+        gap: 26px;
+        align-items: baseline;
+        padding: 15px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      }
+      .kv-row:last-child {
+        border-bottom: 0;
+      }
+      .kv-row dt {
+        font-family: ui-monospace, monospace;
+        font-size: 14px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: #8f8f98;
+      }
+      .kv-row dd {
+        font-size: 22px;
+        line-height: 1.45;
+        color: #d3cfc8;
+      }
+      .mono {
+        font-family: ui-monospace, monospace;
+        font-size: 19px !important;
+      }
+
+      .callout {
+        margin-top: 36px;
+        border-radius: 16px;
+        padding: 30px 34px;
+        max-width: 1440px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      .callout.bad {
+        border-color: rgba(224, 122, 122, 0.42);
+        background: rgba(224, 122, 122, 0.08);
+      }
+      .callout-title {
+        font-size: 34px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        color: #e07a7a;
+      }
+      .callout-body {
+        margin-top: 12px;
+        font-size: 21px;
+        line-height: 1.5;
+        color: #b7b4ae;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-top: 40px;
+      }
+      .step {
+        background: #101318;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 16px;
+        padding: 26px 28px;
+      }
+      .step .n {
+        font-family: ui-monospace, monospace;
+        font-size: 14px;
+        letter-spacing: 0.2em;
+        color: #d76a79;
+      }
+      .step .st {
+        margin-top: 14px;
+        font-size: 27px;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+      .step .sd {
+        margin-top: 10px;
+        font-size: 18px;
+        line-height: 1.5;
+        color: #9b9ba4;
+      }
+
+      .events {
+        margin-top: 34px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        list-style: none;
+      }
+      .event {
+        display: grid;
+        grid-template-columns: 110px 1fr 130px;
+        gap: 24px;
+        align-items: center;
+        padding: 15px 4px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        font-size: 23px;
+        color: #ddd9d3;
+      }
+      .event .t {
+        font-family: ui-monospace, monospace;
+        font-size: 16px;
+        color: #8f8f98;
+      }
+      .event .s {
+        font-family: ui-monospace, monospace;
+        font-size: 13px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        text-align: right;
+      }
+      .event .s.ok {
+        color: #6fbf9a;
+      }
+      .event .s.warn {
+        color: #d9b25f;
+      }
+      .event .s.bad {
+        color: #e07a7a;
+      }
+
+      .gate {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-top: 28px;
+      }
+      .gate-text {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .creed {
+        margin-top: 36px;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        list-style: none;
+      }
+      .creed-row {
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        gap: 30px;
+        align-items: baseline;
+        padding: 21px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .creed-row .n {
+        font-family: ui-monospace, monospace;
+        font-size: 15px;
+        letter-spacing: 0.2em;
+        color: #d76a79;
+      }
+      .creed-row .t {
+        font-size: 45px;
+        line-height: 1.15;
+        font-weight: 600;
+        letter-spacing: -0.022em;
+      }
+      .close-note {
+        margin-top: 26px;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="fairhold-launch"
+      data-start="0"
+      data-width="1920"
+      data-height="1080"
+      data-duration="100"
+    >
+      <div class="backdrop">
+        <div class="grid" id="grid"></div>
+        <div class="glow glow-a" id="glow-a"></div>
+        <div class="glow glow-b" id="glow-b"></div>
+        <div class="vignette"></div>
+      </div>
+
+      <div class="badge" id="demo-badge">DEMO MODE · SIMULATED PAYMENTS</div>
+
+      <!-- 1 -->
+      <section id="scene-01-problem" class="scene clip" data-start="0" data-duration="7">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">01 / The problem</p>
+          <h1 class="display" data-anim="rise">Work ships. Payment stalls.</h1>
+          <p class="lede" data-anim="rise">
+            Scope drifts, approval is verbal, and the money moves before anyone
+            agrees it should.
+          </p>
+        </div>
+      </section>
+
+      <!-- 2 -->
+      <section id="scene-02-product" class="scene clip" data-start="7" data-duration="7">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">02 / The product</p>
+          <h1 class="display" data-anim="rise">FairHold</h1>
+          <span class="rule" data-anim="wipe"></span>
+          <p class="lede" data-anim="rise">
+            Milestone payments for work where both sides need proof.
+          </p>
+          <ul class="chips">
+            <li class="chip" data-anim="rise">Authorization hold</li>
+            <li class="chip" data-anim="rise">Evidence</li>
+            <li class="chip" data-anim="rise">Human approval</li>
+            <li class="chip" data-anim="rise">Provider capture</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 3 -->
+      <section id="scene-03-actors" class="scene clip" data-start="14" data-duration="8">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">03 / Five actors</p>
+          <h1 class="display sm" data-anim="rise">
+            Five actors. One separation of duties.
+          </h1>
+          <ul class="actor-list">
+            <li class="actor" data-anim="rise">
+              <span class="n">01</span>
+              <span class="t">AI proposes</span>
+              <span class="d">Drafts milestones, reads evidence, writes advisory notes</span>
+            </li>
+            <li class="actor" data-anim="rise">
+              <span class="n">02</span>
+              <span class="t">Rules decide</span>
+              <span class="d">Transitions are gated in code, not by whoever asks loudest</span>
+            </li>
+            <li class="actor" data-anim="rise">
+              <span class="n">03</span>
+              <span class="t">Humans approve</span>
+              <span class="d">A named participant accepts the evidence for that milestone</span>
+            </li>
+            <li class="actor" data-anim="rise">
+              <span class="n">04</span>
+              <span class="t">PayPal executes</span>
+              <span class="d">The provider moves the authorized amount after approval</span>
+            </li>
+            <li class="actor" data-anim="rise">
+              <span class="n">05</span>
+              <span class="t">The audit trail records everything</span>
+              <span class="d">Every action, decision and provider outcome</span>
+            </li>
+          </ul>
+          <p class="note mt-24" data-anim="fade">No single one can spend.</p>
+        </div>
+      </section>
+
+      <!-- 4 -->
+      <section id="scene-04-agree" class="scene clip" data-start="22" data-duration="8">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">04 / Agree</p>
+          <h1 class="display sm" data-anim="rise">Scope, split, sign off.</h1>
+          <div class="cards">
+            <div class="card" data-anim="rise">
+              <p class="label">Milestone 01</p>
+              <p class="amount">$1,800.00</p>
+              <p class="state">Discovery workshop</p>
+            </div>
+            <div class="card" data-anim="rise">
+              <p class="label">Milestone 02</p>
+              <p class="amount">$4,200.00</p>
+              <p class="state">Design handoff</p>
+            </div>
+            <div class="card" data-anim="rise">
+              <p class="label">Milestone 03</p>
+              <p class="amount">$2,000.00</p>
+              <p class="state">Final delivery</p>
+            </div>
+          </div>
+          <p class="total" data-anim="fade">
+            Agreed total <strong>$8,000.00</strong> · USD · integer cents, never
+            floating point
+          </p>
+        </div>
+      </section>
+
+      <!-- 5 -->
+      <section id="scene-05-hold" class="scene clip" data-start="30" data-duration="9">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">05 / Hold</p>
+          <h1 class="display sm" data-anim="rise">A hold. Not escrow.</h1>
+          <div class="hold-row">
+            <p class="amount-xl" data-anim="pop">$1,800.00</p>
+            <span class="pill warn" data-anim="fade" data-delay="0.24">
+              Authorized · Held
+            </span>
+          </div>
+          <p class="lede" data-anim="rise">
+            The buyer authorizes the milestone amount. Funds are reserved, not
+            transferred. No money moves here.
+          </p>
+        </div>
+      </section>
+
+      <!-- 6 -->
+      <section id="scene-06-prove" class="scene clip" data-start="39" data-duration="9">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">06 / Prove</p>
+          <h1 class="display sm" data-anim="rise">Evidence, not vibes.</h1>
+          <div class="panel" data-anim="rise">
+            <div class="panel-head">
+              <p class="panel-title">Design handoff</p>
+              <span class="pill ok">Submitted</span>
+            </div>
+            <dl class="kv">
+              <div class="kv-row">
+                <dt>Note</dt>
+                <dd>Responsive build with 768 and 1024 breakpoints.</dd>
+              </div>
+              <div class="kv-row">
+                <dt>Link</dt>
+                <dd class="mono">example.com/fairhold/handoff</dd>
+              </div>
+              <div class="kv-row">
+                <dt>Files</dt>
+                <dd class="mono">handoff-v2.zip</dd>
+              </div>
+              <div class="kv-row">
+                <dt>Submitted by</dt>
+                <dd>Jamie Seller · 14:02</dd>
+              </div>
+            </dl>
+          </div>
+          <p class="note mt-24" data-anim="fade">
+            Evidence is attached to the milestone, not to a chat thread.
+          </p>
+        </div>
+      </section>
+
+      <!-- 7 -->
+      <section id="scene-07-review" class="scene clip" data-start="48" data-duration="8">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">07 / Review</p>
+          <h1 class="display sm" data-anim="rise">
+            Accept it, or ask for exactly one change.
+          </h1>
+          <div class="cards two">
+            <div class="card" data-anim="rise">
+              <span class="pill ok">Accepted</span>
+              <p class="card-body">
+                Scope matches the written criteria and the evidence is
+                reviewable.
+              </p>
+            </div>
+            <div class="card" data-anim="rise">
+              <span class="pill warn">Revision requested</span>
+              <p class="card-body">“Please add the 1280 breakpoint.”</p>
+              <p class="card-meta">
+                One specific change, recorded against the milestone.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 8 -->
+      <section id="scene-08-approve" class="scene clip" data-start="56" data-duration="8">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">08 / Approve</p>
+          <h1 class="display sm" data-anim="rise">No approval, no capture.</h1>
+          <div class="callout bad" data-anim="rise">
+            <p class="callout-title">
+              Capture blocked — no matching human approval
+            </p>
+            <p class="callout-body">
+              The request was refused and recorded. Nothing moved.
+            </p>
+          </div>
+          <p class="lede" data-anim="rise">
+            A capture needs a human approval bound to this milestone, this amount
+            and this currency. A stale approval does not count.
+          </p>
+        </div>
+      </section>
+
+      <!-- 9 -->
+      <section id="scene-09-execute" class="scene clip" data-start="64" data-duration="9">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">09 / Execute</p>
+          <h1 class="display sm" data-anim="rise">
+            Then the provider moves the money.
+          </h1>
+          <div class="steps">
+            <div class="step" data-anim="rise">
+              <p class="n">01</p>
+              <p class="st">Reserve the operation</p>
+              <p class="sd">One intent, one idempotency key.</p>
+            </div>
+            <div class="step" data-anim="rise">
+              <p class="n">02</p>
+              <p class="st">Capture the exact amount</p>
+              <p class="sd">$4,200.00, not a rounded total.</p>
+            </div>
+            <div class="step" data-anim="rise">
+              <p class="n">03</p>
+              <p class="st">Record the result</p>
+              <p class="sd">
+                Completed, pending and failed are different facts.
+              </p>
+            </div>
+          </div>
+          <p class="note mt-32" data-anim="fade">
+            A timeout is not a failure: the operation stays pending until it is
+            reconciled. A duplicate capture is refused, not repeated.
+          </p>
+          <p class="note mt-24" data-anim="fade" data-delay="0.2">
+            Provider call simulated in this build.
+          </p>
+        </div>
+      </section>
+
+      <!-- 10 -->
+      <section id="scene-10-record" class="scene clip" data-start="73" data-duration="9">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">10 / Record</p>
+          <h1 class="display sm" data-anim="rise">Every fact gets a line.</h1>
+          <ul class="events">
+            <li class="event" data-anim="fade">
+              <span class="t">14:02</span>
+              <span class="e">Authorization created</span>
+              <span class="s ok">recorded</span>
+            </li>
+            <li class="event" data-anim="fade">
+              <span class="t">14:02</span>
+              <span class="e">Evidence submitted</span>
+              <span class="s ok">recorded</span>
+            </li>
+            <li class="event" data-anim="fade">
+              <span class="t">14:09</span>
+              <span class="e">Evidence accepted</span>
+              <span class="s ok">recorded</span>
+            </li>
+            <li class="event" data-anim="fade">
+              <span class="t">14:09</span>
+              <span class="e">Human approval recorded</span>
+              <span class="s ok">recorded</span>
+            </li>
+            <li class="event" data-anim="fade">
+              <span class="t">14:10</span>
+              <span class="e">Capture completed</span>
+              <span class="s ok">recorded</span>
+            </li>
+            <li class="event" data-anim="fade">
+              <span class="t">14:11</span>
+              <span class="e">capture_pending — kept pending, not failed</span>
+              <span class="s warn">pending</span>
+            </li>
+            <li class="event" data-anim="fade">
+              <span class="t">14:12</span>
+              <span class="e">Unknown event — stored, never applied</span>
+              <span class="s bad">quarantined</span>
+            </li>
+          </ul>
+          <p class="note mt-24" data-anim="fade">
+            A webhook that does not match is quarantined, not guessed.
+          </p>
+        </div>
+      </section>
+
+      <!-- 11 -->
+      <section id="scene-11-advisory" class="scene clip" data-start="82" data-duration="9">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">11 / Advisory</p>
+          <h1 class="display sm" data-anim="rise">
+            The model advises. It never decides.
+          </h1>
+          <div class="panel" data-anim="rise">
+            <p class="panel-title">Advisory</p>
+            <p class="card-body">Evidence includes 2 submissions.</p>
+            <p class="kv-row" style="margin-top: 18px; padding-bottom: 0; border-bottom: 0">
+              <span
+                style="font-family: ui-monospace, monospace; font-size: 14px; letter-spacing: 0.16em; text-transform: uppercase; color: #8f8f98"
+                >Matched criteria</span
+              >
+              <span style="font-size: 21px; color: #d3cfc8"
+                >Responsive breakpoints at 768 and 1024.</span
+              >
+            </p>
+            <p class="note" style="margin-top: 18px">
+              Advisory source: deterministic fallback (no model provider
+              configured)
+            </p>
+          </div>
+          <div class="gate" data-anim="fade" data-delay="0.3">
+            <span class="pill ok">Outcome decided by</span>
+            <span class="gate-text">Rules + a human approval</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 12 -->
+      <section id="scene-12-close" class="scene clip" data-start="91" data-duration="9">
+        <div class="inner">
+          <p class="kicker" data-anim="fade">FairHold</p>
+          <ul class="creed">
+            <li class="creed-row" data-anim="rise">
+              <span class="n">01</span>
+              <span class="t">AI proposes.</span>
+            </li>
+            <li class="creed-row" data-anim="rise">
+              <span class="n">02</span>
+              <span class="t">Rules decide.</span>
+            </li>
+            <li class="creed-row" data-anim="rise">
+              <span class="n">03</span>
+              <span class="t">Humans approve.</span>
+            </li>
+            <li class="creed-row" data-anim="rise">
+              <span class="n">04</span>
+              <span class="t">PayPal executes.</span>
+            </li>
+            <li class="creed-row" data-anim="rise">
+              <span class="n">05</span>
+              <span class="t">The audit trail records everything.</span>
+            </li>
+          </ul>
+          <p class="note close-note" data-anim="fade">
+            Guided demo at /demo · Sandbox payments are simulated in this build.
+            A real capture requires configured provider credentials.
+          </p>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // Persistent backdrop: one linear pass over the full runtime.
+      tl.fromTo("#grid", { y: 0 }, { y: 108, duration: 100, ease: "none" }, 0);
+      tl.fromTo(
+        "#glow-a",
+        { x: 0, y: 0, scale: 1 },
+        {
+          x: 110,
+          y: 70,
+          scale: 1.1,
+          duration: 50,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: 1,
+        },
+        0,
+      );
+      tl.fromTo(
+        "#glow-b",
+        { x: 0, y: 0, scale: 1.06 },
+        {
+          x: -130,
+          y: -80,
+          scale: 1,
+          duration: 50,
+          ease: "sine.inOut",
+          yoyo: true,
+          repeat: 1,
+        },
+        0,
+      );
+
+      // Per-scene reveals: static end state is authored in HTML/CSS, the
+      // timeline only animates into it. Scene clips are never tweened.
+      const scenes = Array.from(document.querySelectorAll(".scene"));
+
+      scenes.forEach(function (scene) {
+        const start = parseFloat(scene.getAttribute("data-start")) || 0;
+        const items = Array.from(scene.querySelectorAll("[data-anim]"));
+
+        items.forEach(function (el, index) {
+          const kind = el.getAttribute("data-anim");
+          const extra = parseFloat(el.getAttribute("data-delay") || "0");
+          const at = start + 0.18 + index * 0.075 + extra;
+
+          if (kind === "wipe") {
+            tl.fromTo(
+              el,
+              { scaleX: 0 },
+              { scaleX: 1, duration: 0.85, ease: "power2.inOut" },
+              at,
+            );
+            return;
+          }
+
+          if (kind === "rise") {
+            tl.fromTo(
+              el,
+              { y: 26, opacity: 0 },
+              { y: 0, opacity: 1, duration: 0.7, ease: "power3.out" },
+              at,
+            );
+            return;
+          }
+
+          if (kind === "pop") {
+            tl.fromTo(
+              el,
+              { scale: 0.94, opacity: 0 },
+              { scale: 1, opacity: 1, duration: 0.8, ease: "power3.out" },
+              at,
+            );
+            return;
+          }
+
+          tl.fromTo(
+            el,
+            { opacity: 0 },
+            { opacity: 1, duration: 0.8, ease: "power2.out" },
+            at,
+          );
+        });
+      });
+
+      window.__timelines["fairhold-launch"] = tl;
+    </script>
+  </body>
+</html>
