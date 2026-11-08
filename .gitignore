@@ -80,6 +80,13 @@ temp/
 .cache/
 *.bak
 
+# Release gate logs (local verification only)
+.gate/
+
+# HyperFrames tool state (locks, check artifacts)
+videos/*/.hyperframes/
+videos/*/renders/*.log
+
 # Development/demo persistence (JSON store; no real data)
 .data/
 playwright-report/
