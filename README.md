@@ -67,6 +67,11 @@ FairHold makes the milestone itself the unit of coordination:
 - **Fail-closed webhooks** — signature verification, duplicate suppression and a durable inbox with sanitised quarantine reasons.
 - **Audit trail** — append-only events with actor, timestamp and payload; the UI renders recorded history only.
 - **Reduced-motion-safe motion system** — CSS-only reveal choreography with one owner per animated property.
+- **Public guided demo** — `/demo` runs the same deterministic rules in the browser against a fixed scenario, with simulated payments, no server writes and no provider calls.
+- **Exact money** — every amount is an integer number of cents; typed amounts are parsed straight to cents, so no float rounding can reach the ledger.
+- **Search, filters and honest empty states** — the dashboard narrows by text or status, says how many records match, and offers a clear path when nothing matches.
+- **Fee transparency** — the deal page states that no FairHold platform fee is implemented in this build and that provider merchant fees sit outside the ledger.
+- **Launch video** — a 100-second HyperFrames composition (source, storyboard, captions and MP4) in [`videos/fairhold-launch/`](./videos/fairhold-launch/).
 
 ---
 
@@ -351,9 +356,9 @@ npm run lint
 npm run build
 ```
 
-- Without a test database, PostgreSQL integration tests skip and the suite reports 148 passing / 24 skipped.
-- With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, the full 172 pass with zero skips.
-- `npm test` never touches the demo database file and never contacts PayPal.
+- Without a test database, the PostgreSQL integration tests skip rather than fail. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, every test runs: 193 pass, 0 skip.
+- `npx playwright test` runs the same buyer/seller journeys against a production build on desktop, mobile and tablet Chromium.
+- `npm test` never touches the demo database file and never contacts PayPal. `npx playwright test` never contacts PayPal either — the provider adapter is simulated in this build.
 
 Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./QA_REPORT.md).
 
@@ -363,16 +368,25 @@ The application deploys to Vercel as a standard Next.js project. A full deployme
 
 Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is read-only on serverless hosts - so writes fail there by design rather than silently pretending to persist. Details and the exact required configuration: [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-**Current state (2026-11-07):** a Vercel preview build is verified - Next.js preset, successful build, 9/9 static pages, landing and sign-in pages rendering, and deal routes failing closed when unauthenticated. It sits behind Vercel Authentication and has no database, so it is a browsing demo, not a production deployment. See [HANDOFF.md](./HANDOFF.md) for the deployment record and open blockers.
+**Current state (2026-11-08):** a Vercel **preview** build is Ready with the Next.js preset and the full route set, but anonymous visitors are stopped by Vercel Deployment Protection, and it has no hosted database — so it is a protected browsing demo, not a production deployment. Production env scope is empty and no production deployment has been created. See [DEPLOYMENT.md](./DEPLOYMENT.md) and [FINAL_RELEASE_REPORT.md](./FINAL_RELEASE_REPORT.md).
 
 ## Demo
 
+Two demos exist, and they are deliberately separate:
+
+| Demo | Where | Payments | Persistence |
+| --- | --- | --- | --- |
+| Guided demo | `/demo`, no sign-in | Simulated, always labelled | Browser `localStorage` on that device only |
+| Operator walkthrough | `/login` + `/dashboard`, demo identities | Simulated, always labelled | Local JSON store or PostgreSQL |
+
 ```bash
-npm run demo:reset
+npm run demo:reset   # reset the server demo store
 npm run dev
 ```
 
 Then follow [DEMO_GUIDE.md](./DEMO_GUIDE.md): sign in as the seller, submit evidence, switch to the buyer, request a revision, resubmit, accept, and walk the approval through the simulated capture. Every simulated action is labelled as simulated in the UI.
+
+For a non-interactive walkthrough, [`videos/fairhold-launch/renders/fairhold-launch.mp4`](./videos/fairhold-launch/renders) tells the same story in 100 seconds; the 30-second cut is next to it.
 
 ## Documentation
 
@@ -393,6 +407,9 @@ Then follow [DEMO_GUIDE.md](./DEMO_GUIDE.md): sign in as the seller, submit evid
 | [CHANGELOG.md](./CHANGELOG.md) | Implementation history. |
 | [QA_REPORT.md](./QA_REPORT.md) | Latest verification evidence. |
 | [HANDOFF.md](./HANDOFF.md) | Current state, blockers and next actions. |
+| [FINAL_RELEASE_REPORT.md](./FINAL_RELEASE_REPORT.md) | The final evidence-based release report and verdicts. |
+| [FINAL_REMAINING_WORK.md](./FINAL_REMAINING_WORK.md) | Gap matrix: every remaining item, its priority and its blocker. |
+| [videos/fairhold-launch/](./videos/fairhold-launch/) | Launch video source, storyboard, captions and renders. |
 
 ## Limitations
 

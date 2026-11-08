@@ -396,3 +396,62 @@ sign-in and write journeys in a browser (Vercel Authentication gates the preview
 and the CLI does not drive form posts), hosted PostgreSQL behaviour, PayPal
 sandbox execution, and live AI calls. Those journeys are verified locally
 against a production build by Playwright (9/9).
+
+### Release verification - 2026-11-08
+
+Full gate re-run on the final tree after the demo, money, dashboard, fee and video
+work. Nothing was skipped, mocked or weakened.
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Types | `npm run typecheck` | exit 0 |
+| Lint | `npm run lint` | exit 0 |
+| Unit + integration | `npm test` with `FAIRHOLD_TEST_DATABASE_URL` → isolated PostgreSQL 16 | 193 tests, 193 pass, 0 fail, 0 skipped (13.9 s) |
+| Build | `npm run build` | exit 0, 10 routes including `/demo` |
+| Browser | `npx playwright test` | 24 passed (8 journeys × desktop/mobile/tablet Chromium) |
+| Video composition | `npx hyperframes@0.8.171 check` | 0 errors, layout 0 issues across 9 samples, 53/53 contrast AA |
+| Video output | `ffprobe`, `ffmpeg blackdetect` | 1920×1080/30 fps/3000 frames/100.0 s; no black segment ≥ 0.4 s |
+
+New functional evidence in this pass:
+
+- `/demo` runs the lifecycle in the browser and the money summary follows it; the
+  test fails if any request URL mentions PayPal.
+- Dashboard search narrows the list, reports "N of M shown", shows a filtered
+  empty state and restores it with Clear.
+- The deal page renders "Costs and limits" and states that no platform fee exists
+  in this build.
+- Typed amounts parse to exact integer cents; no float rounding path reaches the
+  ledger.
+
+Still blocked, unchanged: live PayPal sandbox (no credentials, no public HTTPS
+webhook, no `PAYPAL_WEBHOOK_ID`), live AI provider (no key), hosted PostgreSQL and
+durable evidence storage (none configured), and anonymous access to the Vercel
+preview (Deployment Protection returns 302 to SSO).
+
+### Flake found by the release gate, and what it taught us (2026-11-08)
+
+The first full run of the release gate returned 23 passed / 1 failed:
+`[tablet-chromium] evidence-lifecycle.spec.ts:78` clicked "Sign out" and the URL
+stayed on `/dashboard` for the whole 10 s assertion window. Investigation:
+
+1. `logoutAction` is a React server-action form. Until the client bundle hydrates,
+   React renders the form with a `javascript:` action, so the click is inert and
+   no navigation happens. On a cold OneDrive dev server hydration can lag the
+   click. A repeated tablet-only run then failed at a different step
+   ("Approve recommendation" never became stable), consistent with the same
+   pre-hydration window.
+2. A control experiment against `npm start` (production server) failed 3/3 at the
+   deal page because this suite's fixture expects the dev server's seeded JSON
+   store. That run was invalid and is not treated as a product signal; the server
+   was stopped and port 3100 verified free.
+3. No `animation: infinite` exists in app CSS, so perpetual CSS motion is not the
+   cause of the stability timeout.
+
+Rather than loosen the assertion, the suite now waits for the form to be live
+(`not.toHaveAttribute("action", /^javascript:/)`) before clicking sign-out and
+before the capture approval, then asserts the same URL/state as before. Final
+run on the hardened suite: see the gate table above; local reruns were 24/24.
+
+This is a real, if narrow, product limitation: a mutating control is inert until
+hydration. It is recorded in `FINAL_RELEASE_REPORT.md` §13 and scheduled as a P2
+item (progressive-enhancement form fallbacks) in `FINAL_REMAINING_WORK.md`.

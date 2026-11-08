@@ -1,65 +1,69 @@
 # FairHold MVP task state
 
-Updated 2026-11-06.
+Updated 2026-11-08.
+
+## Verified in the 2026-11-08 pass
+
+- `npm run typecheck`, `npm run lint`, `npm run build`: pass (build emits 10
+  routes, including `/demo`).
+- `npm test` against an isolated PostgreSQL 16 container
+  (`127.0.0.1:55432`, database `fairhold_test`): 193 tests, 193 pass, 0 failed,
+  0 skipped.
+- `npx playwright test`: 24 passed — 8 journeys across desktop, mobile and tablet
+  Chromium, including search, filtered empty state, fee transparency, the guided
+  demo and its PayPal-request guard.
+- Public guided demo at `/demo`: browser-only, localStorage persistence, reuses
+  the deterministic rules, labels every payment SIMULATED, never calls a provider.
+- Money is integer cents end to end; typed amounts parse straight to cents.
+- Deal page states what is and is not charged (no platform fee exists in this
+  build; provider merchant fees sit outside the ledger).
+- Launch video: 100 s master + 30 s cut + thumbnail + contact sheet + SRT, in
+  `videos/fairhold-launch/`; `hyperframes check` 0 errors, 53/53 contrast AA.
+
+## Not verified in this pass (do not claim)
+
+- Live PayPal sandbox lifecycle: no credentials, no public HTTPS webhook, no
+  `PAYPAL_WEBHOOK_ID`.
+- Live AI provider: no `AI_API_KEY`/`AI_MODEL`; only the deterministic fallback.
+- Hosted PostgreSQL, durable object storage, production deployment.
+- Anonymous access to the deployed preview: Vercel Deployment Protection returns
+  302 to SSO.
 
 ## Verified in the 2026-11-06 release pass
 
 - `npm run typecheck`, `npm run lint`, `npm run build`: pass.
 - `npm test` with `FAIRHOLD_TEST_DATABASE_URL` pointed at an isolated PostgreSQL
-  16 container: 172 tests, 172 pass, 0 skipped, 0 failed (19.2s).
-- `npx playwright test`: 9 passed (3 journeys x desktop, mobile, tablet) in 2.1m
-  against a warm production build on port 3100.
+  16 container: 172 tests, 172 pass, 0 skipped, 0 failed.
+- `npx playwright test`: 9 passed (3 journeys x desktop, mobile, tablet).
 - Automated visual and interaction audit: 14 browser probes across desktop 1440,
   mobile 390, tablet 820 and reduced motion. No console errors, no horizontal
   overflow, one rendered `h1` per page, no image without `alt`, no unlabelled
   visible control, visible focus ring, reduced motion honoured.
-- Defects investigated to root cause and dismissed as harness artifacts (not
-  application defects): the hydration attribute mismatch came from the audit
-  tool's screenshot `caret-color: transparent` injection, and the second
-  dashboard `h1` belongs to a retained, non-rendered login subtree.
-- Release work committed in 17 reviewable commits and pushed to
-  `origin/feat/deal-milestone-foundation`; local and remote HEAD match and the
-  tree is clean.
-
-## Verified in the 2026-11-04 pass
-
-- `npm run typecheck`, `npm run lint`, `npm run build`: pass.
-- `npm test` with `FAIRHOLD_TEST_DATABASE_URL` pointed at an isolated PostgreSQL
-  16 container: 172 tests, 172 pass, 0 skipped, 0 failed.
-- `npx playwright test`: 9 passed (3 journeys x desktop, mobile, tablet).
-- Buyer/seller lifecycle: authorization hold, evidence upload and download,
-  rejection with note, revision and resubmission, acceptance, simulated capture,
-  payment history, reload persistence, and double-payment prevention.
-- Access control: anonymous download 404, unknown identity rejected at login,
-  non-participant deal access shows not-found, role-gated controls.
-- Deal creation and milestone authoring across both roles, with dashboard
-  visibility.
-- Not-found rendering after hoisting the deal guard out of the Suspense
-  boundary (previously blank in the browser).
-- PostgreSQL approval/capture ledger fixes, revision supersession, migration
-  advisory locking, and webhook reconciliation regression tests.
+- Release work committed and pushed to `origin/feat/deal-milestone-foundation`.
 
 ## Remaining, executable in this workspace
 
-- Optional: Firefox/WebKit runs and a Lighthouse/axe accessibility pass
-  (Chromium-only today).
-- Optional: verify PostgreSQL behaviour across a physical server restart.
-- Optional: add a production authentication story; demo login remains
-  name+role only.
+- Optional: assert the dashboard onboarding explainer in Playwright (today it is
+  rendered but not asserted).
+- Optional: cut the ten-minute `DEMO_GUIDE.md` script down to a three-minute
+  spoken script.
+- Optional: Firefox/WebKit runs (`npx playwright install firefox webkit`).
+- Optional: an axe or Lighthouse accessibility pass; today's evidence is
+  heuristic.
 
 ## Blocked by external configuration
 
-- Live PayPal sandbox lifecycle (authorization, capture, partial capture, void,
-  webhook verification, duplicate delivery): requires `DATABASE_URL` so the app
-  uses PostgreSQL-backed accounting, a public HTTPS webhook endpoint, and
-  `PAYPAL_WEBHOOK_ID`. The app currently uses the demo provider by design, and
-  real sandbox actions are refused without PostgreSQL.
+- Public demo access: Vercel Deployment Protection covers the preview. Fixing it
+  is an owner-side configuration decision.
+- Live PayPal sandbox lifecycle: requires `DATABASE_URL`, a public HTTPS webhook
+  endpoint and `PAYPAL_WEBHOOK_ID`.
 - Live AI provider calls: require non-placeholder `AI_API_KEY` and `AI_MODEL`.
-  The deterministic fallback is what is verified today.
+- Hosted PostgreSQL, backups/restore, durable evidence storage, monitoring,
+  email notifications: require accounts or paid resources.
 
 ## Not claimed
 
-- Production readiness. This remains a demo-grade application with simulated
-  payments unless the sandbox configuration above is supplied.
-- PayPal escrow. An authorization is a provider hold, never escrow or
-  settlement.
+- Production readiness. This is a demo-grade application with simulated payments
+  unless the configuration above is supplied.
+- PayPal escrow. An authorization is a provider hold, never escrow or settlement.
+- Refunds. Not implemented; a void exists, a capture refund does not.
