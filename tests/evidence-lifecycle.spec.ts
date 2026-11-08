@@ -29,7 +29,17 @@ async function signIn(page: Page, name: string, role: Role) {
 
 async function signOut(page: Page) {
   await page.goto("/dashboard");
-  await page.getByRole("button", { name: /Sign out/ }).click();
+  const button = page.getByRole("button", { name: /Sign out/ });
+  await expect(button).toBeVisible();
+  // React 19 renders a server-action <form> with a `javascript:` action until it
+  // hydrates, and a click before that point is inert — the page simply does not
+  // navigate. Waiting for the live form removes that race without relaxing the
+  // URL assertion below.
+  await expect(button.locator("xpath=ancestor::form[1]")).not.toHaveAttribute(
+    "action",
+    /^javascript:/,
+  );
+  await button.click();
   await expect(page).toHaveURL(/\/(login|\?|$)/);
 }
 
@@ -173,6 +183,12 @@ test("buyer and seller complete authorization, review, revision, acceptance and 
   await expect(buildScope.getByText("CAPTURE", { exact: true })).toBeVisible();
   const approve = buildScope.getByRole("button", { name: "Approve recommendation" });
   await expect(approve).toBeEnabled();
+  // Same hydration race as sign-out: the button is inert while React replaces
+  // its `javascript:` form action, and a click in that window can never settle.
+  await expect(approve.locator("xpath=ancestor::form[1]")).not.toHaveAttribute(
+    "action",
+    /^javascript:/,
+  );
   await approve.click();
 
   await expect(buildScope.getByText(/Last decision: approve → CAPTURE/)).toBeVisible();
