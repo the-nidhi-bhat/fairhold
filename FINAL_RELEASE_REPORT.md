@@ -205,6 +205,13 @@ configuration change is an increased Playwright timeout (90 s / 10 s), because a
 dev-mode compile on a OneDrive-synced checkout exceeded the 30 s default; no
 assertion was relaxed.
 
+One gate run did fail — 23 passed / 1 failed on the tablet project, a swallowed
+"Sign out" click — and it was not waved through. It led to the real cause (a
+server-action form is inert until hydration), to a stricter pre-click readiness
+check in the suite, and to a documented product limitation. After the hardening
+the full suite passed 24/24 twice; the investigation is in `QA_REPORT.md` under
+"Flake found by the release gate".
+
 ---
 
 ## 10. Launch video
