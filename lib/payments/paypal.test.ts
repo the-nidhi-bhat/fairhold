@@ -727,8 +727,8 @@ test("config: sandbox requires real-looking credentials", () => {
   );
   const ok = readPayPalConfig({
     PAYPAL_ENV: "sandbox",
-    PAYPAL_CLIENT_ID: "cid",
-    PAYPAL_CLIENT_SECRET: "csec",
+    PAYPAL_CLIENT_ID: "paypal-client-id",
+    PAYPAL_CLIENT_SECRET: "paypal-client-secret",
   });
   assert.equal(ok?.environment, "sandbox");
   assert.equal(ok?.webhookId, null);
@@ -737,7 +737,11 @@ test("config: sandbox requires real-looking credentials", () => {
 test("selection: sandbox provider only when configured, demo otherwise", () => {
   assert.equal(getPaymentProvider({}).mode, "demo");
   assert.equal(
-    getPaymentProvider({ PAYPAL_ENV: "sandbox", PAYPAL_CLIENT_ID: "cid", PAYPAL_CLIENT_SECRET: "csec" }).mode,
+    getPaymentProvider({
+      PAYPAL_ENV: "sandbox",
+      PAYPAL_CLIENT_ID: "paypal-client-id",
+      PAYPAL_CLIENT_SECRET: "paypal-client-secret",
+    }).mode,
     "sandbox",
   );
 });
