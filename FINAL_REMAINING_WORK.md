@@ -13,7 +13,7 @@ Legend: **DONE** · **PARTIAL** (works, with a named gap) · **MISSING** (not bu
 
 | # | Item | Status | Evidence | Gap / next action |
 |---|---|---|---|---|
-| 1 | Onboarding | PARTIAL | Collapsed four-step explainer on `/dashboard` (`app/dashboard/page.tsx`), `DEMO_GUIDE.md` for a human walkthrough | No first-run tour and no assertion of the explainer in a test. Add a Playwright assertion that the summary exists and expands. |
+| 1 | Onboarding | DONE | Collapsed four-step explainer on `/dashboard` (`app/dashboard/page.tsx`); Playwright asserts it starts collapsed, expands to steps 1–4 with the approval sentence, and collapses again (`tests/evidence-lifecycle.spec.ts`) | — |
 | 2 | Guided demo walkthrough | DONE | `/demo` (`components/demo-experience.tsx`, `lib/demo/reducer.ts`), 10 reducer tests in `lib/demo/reducer.test.ts`, `tests/demo.spec.ts` on 3 viewports | — |
 | 3 | Buyer / seller / reviewer role separation | DONE | `canAccessDeal` + `getDemoSession`; Playwright proves a reviewer cannot create a deal, a non-participant gets not-found, and role-gated controls are absent | — |
 | 4 | Notifications | PARTIAL | Dashboard attention chip counts decisions required / items needing attention (`summarizeDashboardWorkflow`) | No outbound email or push. Needs an email provider credential and a delivery job. |
@@ -28,9 +28,22 @@ Legend: **DONE** · **PARTIAL** (works, with a named gap) · **MISSING** (not bu
 | 13 | Backups and restore | BLOCKED | Local PostgreSQL 16 container + SQL migrations in `migrations/0001�0004` prove the schema applies cleanly | No hosted database exists, so there is nothing to back up. Needs a managed Postgres plan with automated backups, plus a documented restore drill. |
 | 14 | Demo data reset | DONE | `npm run demo:reset` (`scripts/demo-reset.mjs`); `/demo` has an in-browser reset; Playwright resets between runs | — |
 | 15 | Screenshots | DONE | 14 screenshots + `report.json` in `C:\Users\theni\AppData\Local\Temp\opencode\fairhold-shots-final\`; video frames in `videos/fairhold-launch/renders/` | Human review only — the model cannot read images. |
-| 16 | Three-minute pitch / demo script | PARTIAL | `DEMO_GUIDE.md` ten-minute script; `videos/fairhold-launch/SCRIPT.md` 100-second video copy | No dedicated 3-minute spoken script. Cutting the ten-minute script to three minutes is a doc-only task. |
+| 16 | Three-minute pitch / demo script | DONE | `DEMO_SCRIPT_3MIN.md` — spoken script with timing beats, exact UI steps, the hold-not-escrow sentence and an explicit "what is not verified" close; `videos/fairhold-launch/SCRIPT.md` remains the 100 s video copy | Delivery requires a human presenter; no rehearsal was recorded |
 
-Score: 9 DONE, 5 PARTIAL, 1 MISSING, 1 BLOCKED.
+Score: 11 DONE, 3 PARTIAL, 1 MISSING, 1 BLOCKED.
+
+Closeout (2026-11-09) — security fixes applied: removed the hardcoded fallback
+signing secret (`secret()` now throws when `FAIRHOLD_SESSION_SECRET` is missing
+in any env); removed `Disputed` from payable deal states so a dispute always
+blocks capture; simulated provider no longer auto-selected in production without
+explicit `FAIRHOLD_ALLOW_SIMULATED_PAYMENTS=true`; webhook body is streamed
+with a hard byte cap before any allocation; access checks now run before
+existence/state checks in deal/milestone status actions; evidence downloads
+send `Cache-Control: private, no-store`; placeholder-credential detection was
+broadened; `.env.example` corrected to describe the implemented capture/void
+path. Design-level findings (demo identity strength, ambiguous-capture
+reconciliation, webhook rate limiting, payload retention) require product
+decisions or credentials and are left as documented limits rather than patched.
 
 ---
 
@@ -43,7 +56,7 @@ Score: 9 DONE, 5 PARTIAL, 1 MISSING, 1 BLOCKED.
 | Public demo accessible to an external visitor | **BLOCKED** | Vercel preview Ready; plain request returns 302 to Vercel SSO | Deployment Protection is `all_except_custom_domains` on the project | No — owner action in Vercel | `curl -I <url>` returns 200 and renders `/demo` |
 | Demo sign-in and buyer/seller workflows | **PARTIAL** | Playwright exercises the full lifecycle locally against a production build | Same journeys are unverified on the deployed URL because CLI requests are stopped by SSO | Partly — `vercel curl` works, but it cannot drive a browser | `npx playwright test` against the public URL |
 | Demo mode / real mode separation | **DONE** | `/demo` is browser-only and calls no server route; the server demo store and PostgreSQL are separate; `DEMO MODE · SIMULATED PAYMENTS` labels everywhere | — | — | `tests/demo.spec.ts`; code review of `components/demo-experience.tsx` |
-| No payment-safety regression | **DONE** | 193 unit tests + 24 Playwright journeys incl. double-capture refusal, approval-before-capture, webhook quarantine | — | — | Final gate in `FINAL_RELEASE_REPORT.md` §9 |
+| No payment-safety regression | **DONE** | 193 unit tests + 27 Playwright journeys incl. double-capture refusal, approval-before-capture, webhook quarantine | — | — | Final gate in `FINAL_RELEASE_REPORT.md` §9 |
 | No secret exposed to the browser | **DONE** | Server-only env reads; `.env*` gitignored; no `NEXT_PUBLIC_` provider key; `git log` scan clean | — | — | `grep -r "NEXT_PUBLIC_" app components lib`; secret scan |
 | Critical errors fixed | **DONE** | Error boundaries, not-found page, webhook quarantine, idempotent capture | — | — | Unit + Playwright |
 
@@ -67,7 +80,7 @@ Score: 9 DONE, 5 PARTIAL, 1 MISSING, 1 BLOCKED.
 | Accessibility audit tooling | **MISSING** | No axe or Lighthouse run. Current evidence is heuristic (labels, focus, contrast, heading order). |
 | Performance measurement | **MISSING** | No Lighthouse scores or Core Web Vitals measurement; 60 fps is never claimed. |
 | Observability | **MISSING** | See gate item 12. |
-| Progressive-enhancement forms | **MISSING** | Mutating controls are server-action forms and are inert until hydration (found by the release gate as a swallowed sign-out click). Add real `method="post"` fallbacks or an always-enabled HTML form so a pre-hydration click still works. Verify: Playwright test that clicks before hydration completes. |
+| JavaScript-disabled dashboard | **MISSING** | Sign-in posts without client JavaScript (tested), but the dashboard body streams through `<Suspense>` and needs hydration, so a JS-disabled client sees the skeleton. Documented as a limit, not a promise of no-JS support. |
 
 ### P3 — optional experiments
 

@@ -9,7 +9,7 @@ Updated 2026-11-08.
 - `npm test` against an isolated PostgreSQL 16 container
   (`127.0.0.1:55432`, database `fairhold_test`): 193 tests, 193 pass, 0 failed,
   0 skipped.
-- `npx playwright test`: 24 passed — 8 journeys across desktop, mobile and tablet
+- `npx playwright test`: 27 passed - 9 journeys across desktop, mobile and tablet
   Chromium, including search, filtered empty state, fee transparency, the guided
   demo and its PayPal-request guard.
 - Public guided demo at `/demo`: browser-only, localStorage persistence, reuses

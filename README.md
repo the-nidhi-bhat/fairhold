@@ -403,6 +403,7 @@ For a non-interactive walkthrough, [`videos/fairhold-launch/renders/fairhold-lau
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Vercel configuration and production requirements. |
 | [USER_GUIDE.md](./USER_GUIDE.md) | Buyer, seller and reviewer instructions. |
 | [DEMO_GUIDE.md](./DEMO_GUIDE.md) | A repeatable five-minute demonstration script. |
+| [DEMO_SCRIPT_3MIN.md](./DEMO_SCRIPT_3MIN.md) | Spoken three-minute hackathon demo, with timing beats and what not to claim. |
 | [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | Release acceptance checklist. |
 | [CHANGELOG.md](./CHANGELOG.md) | Implementation history. |
 | [QA_REPORT.md](./QA_REPORT.md) | Latest verification evidence. |

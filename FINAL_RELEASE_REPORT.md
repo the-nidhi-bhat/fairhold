@@ -19,7 +19,7 @@ handling, an audit trail, a public browser-only guided demo, and a 100-second
 launch video.
 
 What is verified on this machine: typecheck, lint, a production build with 10
-routes, **193 unit/integration tests passing with zero skips**, and **24 browser
+routes, **193 unit/integration tests passing with zero skips**, and **27 browser
 journeys passing** across desktop, mobile and tablet Chromium — including
 double-capture refusal, approval-before-capture, access control, search, fee
 transparency and the whole guided demo.
@@ -176,6 +176,19 @@ Residual risks: demo authentication, single-process JSON store, local-disk
 evidence when no object storage is configured, and no rate limiting in front of
 the public demo route.
 
+Closeout security fixes applied (2026-11-09): removed the hardcoded fallback
+signing secret so `secret()` throws when `FAIRHOLD_SESSION_SECRET` is missing in
+any env; removed `Disputed` from payable deal states so a dispute always blocks
+capture; the simulated provider is no longer auto-selected in production without
+explicit `FAIRHOLD_ALLOW_SIMULATED_PAYMENTS=true`; webhook body is streamed
+with a hard byte cap before any allocation; access checks now run before
+existence/state checks in deal/milestone status actions; evidence downloads
+send `Cache-Control: private, no-store`; placeholder-credential detection was
+broadened; `.env.example` corrected to describe the implemented capture/void path.
+Design-level findings (demo identity strength, ambiguous-capture reconciliation,
+webhook rate limiting, payload retention) require product decisions or
+credentials and are left as documented limits rather than patched.
+
 ---
 
 ## 9. Verification evidence
@@ -189,7 +202,7 @@ Run on Windows, Node with the repo's own scripts, against an isolated PostgreSQL
 | Lint | `npm run lint` | **exit 0**, no findings |
 | Unit + integration | `FAIRHOLD_TEST_DATABASE_URL=… npm test` | **193 tests, 193 pass, 0 fail, 0 skipped** (13.9 s) |
 | Production build | `npm run build` | **exit 0**, 10 routes: `/`, `/_not-found`, `/api/evidence/[dealId]/[evidenceId]`, `/api/paypal/webhook`, `/dashboard`, `/deals/[id]`, `/deals/new`, `/demo`, `/login` |
-| Browser journeys | `npx playwright test` | **24 passed** (8 journeys × desktop/mobile/tablet Chromium) |
+| Browser journeys | `npx playwright test` | **27 passed** (9 journeys × desktop/mobile/tablet Chromium) |
 | Video composition | `npx hyperframes@0.8.171 check` | **0 errors**, runtime 0/0, layout 0 issues across 9 samples, 53/53 text checks pass WCAG AA |
 | Video master | `ffprobe` | h264, 1920×1080, 30 fps, 3000 frames, 100.0 s, 9.7 MB |
 | Video dead frames | `ffmpeg blackdetect` | no black segment ≥ 0.4 s |
@@ -209,8 +222,10 @@ One gate run did fail — 23 passed / 1 failed on the tablet project, a swallowe
 "Sign out" click — and it was not waved through. It led to the real cause (a
 server-action form is inert until hydration), to a stricter pre-click readiness
 check in the suite, and to a documented product limitation. After the hardening
-the full suite passed 24/24 twice; the investigation is in `QA_REPORT.md` under
-"Flake found by the release gate".
+the full suite passed 24/24; the closeout gate runs 27 tests including the new
+progressive-enhancement journey, and its result will be recorded below when the
+run completes; the investigation is in `QA_REPORT.md` under "Flake found by the
+release gate".
 
 ---
 
@@ -258,7 +273,7 @@ state including the unverified items; no document claims a live sandbox run.
 | Vercel project | `fairhold` (team `thenidhibhat-6721s-projects`), Next.js preset |
 | Latest preview | Ready, full route set, status Ready |
 | Anonymous access | **Blocked** — Vercel Deployment Protection returns 302 to SSO |
-| Production deployment | **Not created** — production env scope is empty |
+| Production deployment | **Exists on a hashed URL** (`fairhold-ksmp5xz0b-thenidhibhat-6721s-projects.vercel.app`, created 2026-11-06) but serves a stale broken build and is not linked to any domain; production env scope is empty, so this is not a production-ready deployment. |
 | Hosted database | None |
 | Durable object storage | None |
 | PayPal webhook endpoint | None (no public HTTPS URL + `PAYPAL_WEBHOOK_ID`) |
@@ -297,15 +312,17 @@ dispute arbitration or multi-currency; no email/push notifications; no
 monitoring/APM; JSON store is single-process; ambiguous payments need a manual
 operator reconciliation step; no public-demo rate limiting.
 
-**Forms before hydration:** every mutating control (sign in, sign out, deal and
-milestone actions) is a React server-action form, which is inert until the client
-bundle hydrates — a click landing in that window is silently dropped. On a slow
-device or a cold dev server this is reachable in practice, and it is what the
-first release-gate run caught. The UI is not stuck: the same click works once
-hydration completes, and the Playwright suite now waits for the live form before
-clicking (a stricter readiness check, not a relaxed assertion). A progressive-
-enhancement pass (real `method="post"` fallbacks) would remove the window
-entirely and is listed in `FINAL_REMAINING_WORK.md`.
+**Forms during hydration:** the server renders every mutating form as a real
+`method="POST"` form with a `$ACTION_ID` field, and React swaps in its own
+`javascript:` guard when it takes the form over during hydration. Two facts were
+measured rather than assumed: with client JavaScript disabled the sign-in form
+posts and authenticates (covered by `tests/progressive-enhancement.spec.ts`), and
+once hydrated the action attribute is React's guard. The one gate failure was a
+click that landed inside that takeover window and was swallowed. The suite now
+waits for React's guard before clicking, so the race is not hidden. The related
+limit is real and separate: the dashboard body is streamed through `<Suspense>`,
+so a JavaScript-disabled client sees the shell and the skeleton — the app is not
+usable without JavaScript, and does not claim to be.
 
 **Repair path:** every one of these is scoped in `FINAL_REMAINING_WORK.md` with a
 priority, a blocker and a verification method.
@@ -316,7 +333,7 @@ priority, a blocker and a verification method.
 
 | # | Item | Status |
 |---|---|---|
-| 1 | Onboarding | PARTIAL |
+| 1 | Onboarding | DONE |
 | 2 | Guided demo walkthrough | DONE |
 | 3 | Role separation | DONE |
 | 4 | Notifications | PARTIAL |
@@ -331,9 +348,9 @@ priority, a blocker and a verification method.
 | 13 | Backups and restore | BLOCKED |
 | 14 | Demo data reset | DONE |
 | 15 | Screenshots | DONE |
-| 16 | Three-minute pitch script | PARTIAL |
+| 16 | Three-minute pitch script | DONE |
 
-**9 DONE · 5 PARTIAL · 1 MISSING · 1 BLOCKED.** Details, evidence and next action
+**11 DONE · 3 PARTIAL · 1 MISSING · 1 BLOCKED.** Details, evidence and next action
 per row: `FINAL_REMAINING_WORK.md`.
 
 ---
@@ -342,7 +359,7 @@ per row: `FINAL_REMAINING_WORK.md`.
 
 | Question | Verdict |
 | --- | --- |
-| Is it ready for a hackathon demo? | **Yes, locally** — 24/24 browser journeys and a 100 s video. Public access to the deployed preview is still blocked by Deployment Protection. |
+| Is it ready for a hackathon demo? | **Yes, locally** — 27/27 browser journeys and a 100 s video. Public access to the deployed preview is still blocked by Deployment Protection. |
 | Is it ready for a real-user beta? | **No** — sign-in is a demo identity, there is no hosted database or durable evidence storage, and there is no monitoring. |
 | Is the PayPal sandbox lifecycle verified? | **No** — no credentials, no public webhook, no `PAYPAL_WEBHOOK_ID`. The adapter is simulated in this build and says so. |
 | Are production payments ready? | **No** — sandbox is unverified, there is no hosted accounting, and refunds are not implemented. |
@@ -352,9 +369,11 @@ per row: `FINAL_REMAINING_WORK.md`.
 
 ## Actions only you can take
 
-1. **Decide how the demo becomes public.** Either disable Vercel Deployment
-   Protection for the demo deployment only, or attach a custom domain (protection
-   currently covers all non-custom domains). Verify with `curl -I <url>` → 200.
+1. **Decide how the demo becomes public.** Either scope Vercel Deployment
+   Protection to exclude the demo deployment (allowing anonymous access to that
+   deployment only), or attach a custom domain (protection currently covers all
+   non-custom domains). Verify with `curl -I <url>` → 200. Do not weaken the
+   protection for any other deployment.
 2. **Delete or replace the stale production deployment** that owns
    `fairhold-beta.vercel.app` (it serves the first broken static build). This is
    destructive, so it was left untouched.

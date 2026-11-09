@@ -65,7 +65,7 @@ Playwright starts its own dev server on port 3100 (reusing one already running),
 
 Projects: `desktop-chromium`, `mobile-chromium` (Pixel 5), `tablet-chromium` (iPad gen 7). Each journey resets the demo store first via `scripts/demo-reset.mjs`.
 
-### The eight journeys
+### The nine journeys
 
 1. **Full milestone lifecycle.** Sign in as seller → submit evidence with a file → download it and byte-compare the content → sign in as buyer → reject with a revision note → seller resubmits → buyer accepts → simulated authorization → simulated capture → attempt a second capture and confirm it is blocked.
 2. **Access control.** A non-participant is refused the deal and its evidence; a reviewer without a grant is refused; a granted reviewer is allowed.
@@ -76,10 +76,12 @@ Projects: `desktop-chromium`, `mobile-chromium` (Pixel 5), `tablet-chromium` (iP
 7. **Guided demo persistence.** State survives a reload and resets on demand.
 8. **Guided demo responsive fit.** The page never scrolls horizontally.
 
+9. **Progressive enhancement.** With client JavaScript disabled, the sign-in form still posts and authenticates, returning the buyer to `/dashboard` (`tests/progressive-enhancement.spec.ts`). The Suspense-streamed dashboard body does not complete without hydration — a documented limit, not a regression.
+
 ### Verified result
 
 ```
-npx playwright test   → 24 passed (8 journeys × 3 projects)
+npx playwright test   → 27 passed (9 journeys × 3 projects)
 ```
 
 ### Timeouts

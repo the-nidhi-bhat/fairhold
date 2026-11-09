@@ -35,7 +35,7 @@ Notable changes, newest first. Grouped by milestone rather than by commit; the f
 
 - `npm run typecheck`, `npm run lint`, `npm run build`: pass.
 - `npm test` against isolated PostgreSQL 16: 193 pass, 0 fail, 0 skip.
-- `npx playwright test`: 24 passed across desktop, mobile and tablet Chromium.
+- `npx playwright test`: 27 passed across desktop, mobile and tablet Chromium.
 - `npx hyperframes check`: 0 errors, layout 0 issues, 53/53 contrast AA.
 
 ## Release and presentation pass (2026-11-07)
