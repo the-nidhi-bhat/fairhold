@@ -1,8 +1,7 @@
 import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 test.describe("UI/UX audit screenshots", () => {
-  const baseURL = "http://localhost:3000";
-
   test("landing page", async ({ page }) => {
     await page.goto("/");
     await expect(page).toHaveTitle(/FairHold/);
@@ -27,7 +26,7 @@ test.describe("UI/UX audit screenshots", () => {
     await page.screenshot({ path: "audit-shots/dashboard-buyer-desktop.png", fullPage: true });
   });
 
-  async function signInAs(page, name: string, role: string) {
+  async function signInAs(page: Page, name: string, role: string) {
   await page.goto("/login");
   await page.getByLabel("Display name").fill(name);
   await page.getByLabel("Demo role").selectOption(role);
