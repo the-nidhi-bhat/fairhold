@@ -48,6 +48,26 @@ import {
 export const metadata = { title: "Deal" };
 export const instant = false;
 
+/**
+ * Renders the provider's own expiry timestamp (never an estimate). Returns null
+ * when the provider reported no expiry, so the UI stays silent rather than
+ * inventing a deadline.
+ */
+function describeHoldExpiry(
+  expiresAt: string | null,
+): { iso: string; label: string; passed: boolean } | null {
+  if (!expiresAt) return null;
+  const ms = Date.parse(expiresAt);
+  if (Number.isNaN(ms)) return null;
+  const iso = new Date(ms).toISOString();
+  const label = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(ms));
+  return { iso, label: `${label} UTC`, passed: ms <= Date.now() };
+}
+
 const ACTION_ERROR_MESSAGES: Record<string, string> = {
   role: "This action is not allowed for your current role. No changes were made.",
   forbidden: "You do not have access to this deal. No changes were made.",
@@ -116,6 +136,9 @@ async function DealDetail({
   const progress = computeProgress(deal);
   const payment = paymentStatusFor(deal);
   const money = summarizeDealMoney(deal);
+  // Only a timestamp the provider actually reported is shown; the app never
+  // guesses an expiry for a hold.
+  const holdExpiry = describeHoldExpiry(deal.authorization?.expiresAt ?? null);
   const { provider, sandboxRequiresPostgres } = paymentRuntime();
   const sandboxConfigured = provider.mode === "sandbox";
   const canAuthorize = session.role === "buyer" || session.role === "reviewer";
@@ -273,6 +296,16 @@ async function DealDetail({
             {formatCents(money.releasedCents, deal.currency)} of the hold was
             released by a void. Released funds are no longer available to
             capture.
+          </p>
+        ) : null}
+
+        {holdExpiry ? (
+          <p className="mt-3 text-xs text-muted">
+            {holdExpiry.passed ? "This hold's reported expiry has passed: " : "Provider hold expires "}
+            <time dateTime={holdExpiry.iso}>{holdExpiry.label}</time>
+            {deal.authorization?.simulated ? " (simulated)" : ""}. A capture
+            after that time is expected to be refused by the provider; the app
+            never extends a hold on its own.
           </p>
         ) : null}
 

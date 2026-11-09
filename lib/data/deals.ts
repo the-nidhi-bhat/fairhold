@@ -267,6 +267,7 @@ export async function markDealAuthorized(
     providerOrderId?: string | null;
     simulated: boolean;
     amountCents: number;
+    expiresAt?: string | null;
   },
   actor = "system",
 ): Promise<DealMutationResult> {
@@ -287,6 +288,7 @@ export async function markDealAuthorized(
       providerOrderId: authorization.providerOrderId ?? null,
       simulated: authorization.simulated,
       amountCents: authorization.amountCents,
+      expiresAt: authorization.expiresAt ?? null,
       createdAt: now(),
     };
     deal.pendingAuthorization = null;
