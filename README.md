@@ -12,7 +12,7 @@ Work moves forward. Payments move with proof.
 [![React](https://img.shields.io/badge/React-19.3-000000?style=flat-square)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square)](https://www.postgresql.org)
-[![Tests](https://img.shields.io/badge/tests-199%20passing-2f6f4f?style=flat-square)](#quality)
+[![Tests](https://img.shields.io/badge/tests-233%20passing-2f6f4f?style=flat-square)](#quality)
 [![E2E](https://img.shields.io/badge/playwright-9%20journeys-2f6f4f?style=flat-square)](#quality)
 [![PayPal](https://img.shields.io/badge/PayPal-sandbox%20adapter-0070ba?style=flat-square)](#payment-lifecycle)
 
@@ -356,7 +356,7 @@ npm run lint
 npm run build
 ```
 
-- Without a test database, the PostgreSQL integration tests skip rather than fail. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, every test runs: 199 pass, 0 skip.
+- Without a test database, the PostgreSQL integration tests skip rather than fail. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, every test runs: 233 pass, 0 skip.
 - `npx playwright test` runs the same buyer/seller journeys against the dev server on desktop, mobile and tablet Chromium.
 - `npm test` never touches the demo database file and never contacts PayPal. `npx playwright test` never contacts PayPal either — the provider adapter is simulated in this build.
 
@@ -368,7 +368,7 @@ The application deploys to Vercel as a standard Next.js project. A full deployme
 
 Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is read-only on serverless hosts - so writes fail there by design rather than silently pretending to persist. Details and the exact required configuration: [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-**Current state (2026-11-08):** a Vercel **preview** build is Ready with the Next.js preset and the full route set, but anonymous visitors are stopped by Vercel Deployment Protection, and it has no hosted database — so it is a protected browsing demo, not a production deployment. Production env scope is empty and no production deployment has been created. See [DEPLOYMENT.md](./DEPLOYMENT.md) and [FINAL_RELEASE_REPORT.md](./FINAL_RELEASE_REPORT.md).
+**Current state (2026-11-09):** a Vercel **preview** build is Ready with the Next.js preset and the full route set, but anonymous visitors are stopped by Vercel Deployment Protection, and it has no hosted database — so it is a protected browsing demo, not a production deployment. Production env scope is empty and no production deployment has been created. See [DEPLOYMENT.md](./DEPLOYMENT.md) and [FINAL_RELEASE_REPORT.md](./FINAL_RELEASE_REPORT.md).
 
 ## Demo
 
