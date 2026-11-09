@@ -267,6 +267,9 @@ export async function changeMilestoneStatusAction(
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
+  // Check access before anything about the deal's existence or state, so an
+  // outsider cannot use the error code to learn whether a deal exists.
+  await requireDealAccessOrRedirect(dealId);
   if (!isMilestoneStatus(to)) {
     redirect(`/deals/${dealId}?actionError=invalid_status`);
   }
@@ -279,7 +282,6 @@ export async function changeMilestoneStatusAction(
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
   }
 
-  await requireDealAccessOrRedirect(dealId);
   const response = await setMilestoneStatus(dealId, milestoneId, to, await currentActor());
   if (!response.ok) {
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
@@ -296,6 +298,8 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
+  // Access first: the transition error must not double as an existence oracle.
+  await requireDealAccessOrRedirect(dealId);
   if (!isDealStatus(to) || to === "Authorized") {
     redirect(`/deals/${dealId}?actionError=invalid_status`);
   }
@@ -306,7 +310,6 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
   }
 
-  await requireDealAccessOrRedirect(dealId);
   const response = await setDealStatus(dealId, to, await currentActor());
   if (!response.ok) {
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
@@ -371,6 +374,7 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
         providerReference: authorization.providerReference,
         simulated: authorization.simulated,
         amountCents,
+        expiresAt: authorization.expiresAt ?? null,
       },
       await currentActor(),
     );
@@ -423,6 +427,7 @@ export async function confirmAuthorizationAction(formData: FormData): Promise<vo
       providerOrderId: pending.providerOrderId,
       simulated: result.simulated,
       amountCents: pending.amountCents,
+      expiresAt: result.expiresAt ?? null,
     },
     await currentActor(),
   );

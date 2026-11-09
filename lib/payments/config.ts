@@ -16,7 +16,15 @@ export interface PayPalConfig {
 }
 
 function looksPlaceholder(value: string | undefined): boolean {
-  return !value || /^your_/i.test(value.trim());
+  if (!value) return true;
+  const trimmed = value.trim();
+  // Common placeholder / sample values that are not real PayPal credentials.
+  // Real sandbox client IDs are long base64url strings (20+ chars); secrets are
+  // long random strings. Anything short or matching a known placeholder pattern
+  // is treated as unconfigured so the app never silently enables the real
+  // adapter with a dummy value.
+  if (trimmed.length < 12) return true;
+  return /^(your_|change-?me|changeme|placeholder|sample|example|dummy|fake|replace-?me|insert-?your|enter-?your|your-app-|demo|test)$/i.test(trimmed);
 }
 
 /**

@@ -13,10 +13,9 @@ const MAX_AGE_MS = 8 * 60 * 60 * 1000;
 function secret(): string {
   const configured = process.env.FAIRHOLD_SESSION_SECRET;
   if (configured) return configured;
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("FAIRHOLD_SESSION_SECRET is required in production.");
-  }
-  return "fairhold-development-only-session-secret";
+  // No hardcoded fallback: a forged session can approve captures. FAIRHOLD_SESSION_SECRET
+  // is required in every environment; dev/CI must set it explicitly (as the test suite does).
+  throw new Error("FAIRHOLD_SESSION_SECRET is required. Set it before starting the app.");
 }
 
 function signature(value: string): string {
