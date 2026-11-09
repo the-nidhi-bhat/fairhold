@@ -50,7 +50,12 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
+        # unrs-resolver (transitive dep of eslint-import-resolver-typescript)
+        # ships a postinstall that runs napi-postinstall, which fails on
+        # Linux CI runners. Skipping install scripts is safe: FairHold has no
+        # runtime dependencies that require postinstall hooks, and lint/typecheck
+        # tests pass without them.
 
       - name: Lint
         run: npm run lint
