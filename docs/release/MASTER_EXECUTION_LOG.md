@@ -1,14 +1,14 @@
 # Master Execution Log — FairHold Final Hackathon Release
 
 **Branch:** `feat/deal-milestone-foundation`
-**Local HEAD:** `ef91e05f342fb0072b1153d160c358aaab245702`
-**Remote HEAD:** `ef91e05f342fb0072b1153d160c358aaab245702` (synced ✓)
+**Local HEAD:** `fcb2e6d3bdd987e33e182b34eaab9b6910f868fd`
+**Remote HEAD:** `fcb2e6d3bdd987e33e182b34eaab9b6910f868fd` (synced ✓)
 **Working tree:** clean
 **Repository:** https://github.com/the-nidhi-bhat/fairhold.git (public, fetch+push)
 **PR:** #6 on origin/feat/deal-milestone-foundation
 
 **Reconciliation date:** Mon Nov 09 2026
-**Status:** Phase 0 complete; Phase 3 (Gemini AI) implementation complete, waiting for owner API key.
+**Status:** Phase 0 complete; Phase 3 (Gemini AI) implementation complete, waiting for owner API key; P0 payment correctness tests added; P1 AI evaluation dataset and evidence lifecycle docs added.
 
 ---
 
@@ -23,7 +23,7 @@
 | Working tree | `git status --porcelain` | Clean |
 | Stashes | `git stash list` | 3 stashed items (see Section C) |
 
-**Latest commit:** `ef91e05 feat(ai): convert advisory layer to Gemini API with agreement and evidence intelligence`
+**Latest commit:** `fcb2e6d feat(ai): add AI evaluation dataset; docs: add evidence lifecycle document`
 
 ---
 
@@ -31,6 +31,8 @@
 
 | SHA | Date | Message | Type |
 |---|---|---|---|
+| `fcb2e6d` | Nov 09 | feat(ai): add AI evaluation dataset; docs: add evidence lifecycle document | Code (AI) + Documentation |
+| `b76e4d3` | Nov 09 | test(payments): add capture-state edge case tests for sequential/concurrent captures | Code (test) |
 | `ef91e05` | Nov 09 | feat(ai): convert advisory layer to Gemini API with agreement and evidence intelligence | Code (AI) |
 | `36941df` | Nov 09 | docs(release): update GitHub Actions CI audit with root cause and fix | Documentation |
 | `2aeef4e` | Nov 09 | fix(ci): revert npm ci --ignore-scripts, restore npm ci | Code (CI) |
@@ -70,13 +72,13 @@ Three stashes exist on the branch:
 |---|---|---|---|
 | TypeScript typecheck | `npm run typecheck` | exit 0 ✓ | Nov 09 |
 | Lint | `npm run lint` | exit 0, 0 warnings ✓ | Nov 09 |
-| Unit + integration | `FAIRHOLD_TEST_DATABASE_URL=postgresql://fairhold:fairholdtest@127.0.0.1:55432/fairhold_test FAIRHOLD_SESSION_SECRET=local-verification-secret npm test` | 215 pass / 215 total / 0 fail / 0 skip ✓ | Nov 09 |
+| Unit + integration | `FAIRHOLD_TEST_DATABASE_URL=postgresql://fairhold:fairholdtest@127.0.0.1:55432/fairhold_test FAIRHOLD_SESSION_SECRET=local-verification-secret npm test` | 233 pass / 233 total / 0 fail / 0 skip ✓ | Nov 09 |
 | Production build | `npm run build` | exit 0, 10 routes ✓ | Nov 09 |
 | HyperFrames video check | `npx hyperframes@0.8.171 check` | 0 errors, 53/53 WCAG AA ✓ | Prior phase |
 
 **10 build routes:** `/`, `/_not-found`, `/api/evidence/[dealId]/[evidenceId]`, `/api/paypal/webhook`, `/dashboard`, `/deals/[id]`, `/deals/new`, `/demo`, `/login`
 
-**Test count increased 199 → 215:** +16 new AI advisory tests covering Gemini format, parsers, fallbacks, agreement analysis, evidence analysis, advisory-only enforcement.
+**Test count increased 199 → 233:** +34 new tests (+16 AI advisory tests in `ef91e05`, +4 payment capture-state tests in `b76e4d3`, +14 AI evaluation tests in `fcb2e6d`).
 
 ---
 
@@ -125,6 +127,34 @@ Three stashes exist on the branch:
 
 **Live verification:** Blocked — requires owner-provided `GEMINI_API_KEY`/`GEMINI_MODEL`. Deterministic fallback is live and tested.
 
+### P0 — Payment Correctness Edge Case Tests
+
+**File changed:** `lib/payments/capture-state.test.ts` (+4 tests)
+
+- Sequential captures track remaining amount correctly across multiple calls
+- Concurrent captures: second rejected when authorization exhausted
+- Zero authorization is never payable
+- Negative capture amount is rejected
+
+### P1 — AI Evaluation Dataset
+
+**File changed:** `lib/ai/evaluation.test.ts` (NEW, +14 tests)
+
+- Deterministic fallback evaluation for agreement and evidence analysis
+- Provider-response evaluation with mocked Gemini (valid/invalid/malformed responses)
+- Parser boundary tests (field truncation, clamping, invalid structure rejection)
+- Advisory-only enforcement verification (no payment/deal references in advisory output)
+
+### P1 — Evidence Lifecycle Documentation
+
+**File changed:** `docs/release/EVIDENCE_LIFECYCLE.md` (NEW)
+
+- Storage mode: local disk dev (`/data/evidence/`), object storage production (not configured)
+- File validation: magic byte sniffing, extension allowlist, size limits, path sanitization
+- Access control: deal-level `canAccessDeal` gating on upload/download
+- Retention/deletion: no automatic policy, no user-facing delete, orphan cleanup on failed writes
+- Documented limitations: no malware scanning, no permanent durability claims, no retention schedule
+
 ---
 
 ## H. Release Documentation Inventory
@@ -141,6 +171,7 @@ All reports exist in `docs/release/`. Key reports:
 | Phase 5 Video Report | `PHASE_05_VIDEO_REPORT.md` | COMPLETE |
 | Phase 6 Repository Audit | `PHASE_06_REPOSITORY_AUDIT.md` | PARTIAL (LICENSE missing) |
 | Phase 7 Security Audit | `PHASE_07_SECURITY_AUDIT.md` | COMPLETE |
+| Evidence Lifecycle | `EVIDENCE_LIFECYCLE.md` | COMPLETE |
 | Final Release Checklist | `FINAL_RELEASE_CHECKLIST.md` | COMPLETE |
 | Final UI/UX Audit | `FINAL_UI_UX_AUDIT.md` | COMPLETE |
 | Final Owner Actions | `FINAL_OWNER_ACTIONS.md` | COMPLETE |
@@ -204,7 +235,7 @@ All reports exist in `docs/release/`. Key reports:
 | 0 | Reconciliation | COMPLETE | This document | — |
 | 1 | Product Inventory | COMPLETE | `PHASE_01_BASELINE_AUDIT.md` | — |
 | 2 | Core Correctness | COMPLETE | `PHASE_02_PAYPAL_AI_REPORT.md`, local gate green | — |
-| 3 | Gemini AI | IMPLEMENTED (live blocked) | `lib/ai/advisory.ts` converted to Gemini format; 16 new tests | `GEMINI_API_KEY`/`GEMINI_MODEL` (owner) |
+| 3 | Gemini AI | IMPLEMENTED (live blocked) | `lib/ai/advisory.ts` converted to Gemini format; 30 new AI tests | `GEMINI_API_KEY`/`GEMINI_MODEL` (owner) |
 | 4 | PayPal AI Toolkit | NOT STARTED | — | — |
 | 5 | PayPal Sandbox | CODE COMPLETE (live blocked) | `lib/payments/paypal.ts` adapter exists; mock-tested | PayPal creds + webhook (owner) |
 | 6 | Database Integrity | COMPLETE | Migrations 0001-0005; two backends | `DATABASE_URL` for real persistence |
