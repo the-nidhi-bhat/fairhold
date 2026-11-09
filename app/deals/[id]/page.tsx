@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { canAccessDeal, getDemoSession } from "@/lib/auth/session";
 import {
+  analyzeAgreement,
+  analyzeEvidence,
   resolveEvidenceAdvisory,
   resolveMilestoneProposal,
 } from "@/lib/ai/advisory";
@@ -460,6 +462,9 @@ async function DealDetail({
         </p>
       </section>
 
+      {/* AI agreement analysis */}
+      <AgreementAnalysisPanel agreement={deal.agreement} />
+
       {/* Deal status controls */}
       {dealTransitions.length > 0 &&
       (session.role === "seller" || session.role === "reviewer") ? (
@@ -580,6 +585,14 @@ async function DealDetail({
                           .filter((value): value is string => Boolean(value))
                           .join(" "),
                       )}
+                  />
+
+                  <EvidenceAnalysisPanel
+                    criteria={[milestone.acceptanceCriteria]}
+                    evidence={deal.evidence
+                      .filter((item) => item.milestoneId === milestone.id)
+                      .map((item) => item.note)
+                      .filter(Boolean)}
                   />
 
                   <MilestoneEvidence
@@ -729,6 +742,155 @@ async function EvidenceAdvisoryPanel({
       ) : null}
       <p className="mt-2 text-xs text-muted">
         Advisory only; it cannot approve evidence or execute payment.
+      </p>
+    </div>
+  );
+}
+
+async function AgreementAnalysisPanel({
+  agreement,
+}: {
+  agreement: string;
+}) {
+  const { analysis, source } = await analyzeAgreement(agreement);
+  return (
+    <section className="surface mt-6 p-5 sm:p-6">
+      <p className="text-xs font-medium uppercase tracking-wide text-[var(--accent)]">
+        AI agreement analysis
+      </p>
+      <h3 className="mt-1 text-base font-semibold text-[var(--foreground)]">
+        Suggested milestone structure
+      </h3>
+      <p className="mt-1 text-sm text-[var(--foreground-soft)]">
+        Estimated <strong>{analysis.estimatedMilestones}</strong>{" "}
+        {analysis.estimatedMilestones === 1 ? "milestone" : "milestones"}
+      </p>
+      {analysis.deliverables.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted">
+            Deliverables
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.deliverables.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.acceptanceCriteria.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted">
+            Acceptance criteria
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.acceptanceCriteria.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.missingDetails.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--warning)]">
+            Missing details
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.missingDetails.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.ambiguousRequirements.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--warning)]">
+            Ambiguous requirements
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.ambiguousRequirements.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      <p className="mt-3 text-xs text-muted">
+        Source: {source === "ai" ? "configured AI provider" : "deterministic fallback"}{" "}
+        · Advisory only. A human defines milestones and acceptance criteria;
+        deterministic rules decide payment.
+      </p>
+    </section>
+  );
+}
+
+async function EvidenceAnalysisPanel({
+  criteria,
+  evidence,
+}: {
+  criteria: string[];
+  evidence: string[];
+}) {
+  const { analysis, source } = await analyzeEvidence(criteria, evidence);
+  return (
+    <div className="surface-inset mt-3 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-[var(--accent)]">
+        AI evidence analysis
+      </p>
+      <p className="mt-1 text-sm text-[var(--foreground-soft)]">
+        {analysis.reasoning}
+      </p>
+      {analysis.supportedCriteria.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--success)]">
+            Supported criteria
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.supportedCriteria.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.missingCriteria.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--warning)]">
+            Missing criteria
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.missingCriteria.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.contradictoryEvidence.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--danger)]">
+            Contradictory evidence
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.contradictoryEvidence.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.insufficientEvidence.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--warning)]">
+            Insufficient evidence
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.insufficientEvidence.map((e) => (
+              <li key={e}>{e}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      <p className="mt-3 text-xs text-muted">
+        Source: {source === "ai" ? "configured AI provider" : "deterministic fallback"}{" "}
+        · Advisory only. A human reviewer must open and assess each evidence file
+        directly; this analysis uses keyword overlap only and does not understand
+        document contents.
       </p>
     </div>
   );
