@@ -16,13 +16,11 @@ import type {
   RecommendationAction,
 } from "./types";
 
-/** Deal states in which a milestone could reasonably be paid out. */
+/** Deal states in which a milestone could reasonably be paid out. A deal the buyer has disputed is never payable. */
 const PAYABLE_DEAL_STATES = [
   "Authorized",
   "In Progress",
   "Awaiting Review",
-  "Disputed",
-  "Completed",
 ] as const;
 
 /**

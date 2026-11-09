@@ -38,9 +38,21 @@ The build must complete before any deployment attempt; a failing build is not a 
 ### Current linkage
 
 - The Vercel CLI is installed and authenticated (`vercel whoami`).
-- No `.vercel` directory exists in this checkout, so the repository is not linked to a project locally.
-- The team project list contains no project named `fairhold`.
-- Therefore: **nothing has been deployed, and no production URL exists.** Any URL previously quoted for FairHold is not evidence of a deployment from this branch.
+- The project exists as `fairhold` in team `thenidhibhat-6721s-projects`
+  (`prj_vdIpZADs1M7qk17mPs96ubFhcZJp`), linked locally through the gitignored
+  `.vercel/project.json`.
+- Framework preset: Next.js, auto-detected output directory and build command.
+  The first deployment used the "Other" preset and published `public/`, which
+  404'd every route; that was fixed on the project, not worked around.
+- **A preview deployment is Ready.** It is not a production deployment and it is
+  not publicly reachable: Vercel Deployment Protection
+  (`all_except_custom_domains`) returns a 302 to Vercel SSO for anonymous
+  requests.
+- **No production deployment has been created.** The production environment
+  scope is empty. The project's very first (broken) deployment still owns the
+  `fairhold-beta.vercel.app` alias; replacing or deleting it is an owner action.
+- Deployment protection was deliberately left enabled. Removing an access
+  control to make a demo public is not an acceptable trade.
 
 ### Linking an existing project
 

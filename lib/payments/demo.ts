@@ -22,6 +22,15 @@ export class DemoPaymentProvider implements PaymentProvider {
   readonly name = "demo-payment-provider";
   readonly mode = "demo" as const;
 
+  /**
+   * The demo provider supplies an invented expiry so the UI's expiry surface can
+   * be exercised without a provider. It is flagged simulated wherever it is
+   * shown and is never presented as PayPal's real authorization window.
+   */
+  private simulatedExpiry(): string {
+    return new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString();
+  }
+
   async createAuthorizationHold(
     request: AuthorizationRequest,
   ): Promise<AuthorizationResult> {
@@ -34,6 +43,7 @@ export class DemoPaymentProvider implements PaymentProvider {
       orderId: null,
       approvalUrl: null,
       status: "CREATED",
+      expiresAt: this.simulatedExpiry(),
       message: `SIMULATED: no PayPal request was made (${request.currency} ${amount}).`,
     };
   }
@@ -48,6 +58,7 @@ export class DemoPaymentProvider implements PaymentProvider {
       providerReference: `demo-auth-${randomUUID()}`,
       orderId: request.orderId,
       status: "CREATED",
+      expiresAt: this.simulatedExpiry(),
       message:
         "SIMULATED: no PayPal request was made (the demo provider needs no buyer approval step).",
     };

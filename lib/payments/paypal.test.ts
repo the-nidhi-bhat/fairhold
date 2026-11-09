@@ -193,6 +193,60 @@ test("paypal: authorizeOrder returns the authorization id", async () => {
   assert.ok(call.headers["PayPal-Request-Id"]);
 });
 
+test("paypal: authorizeOrder surfaces the provider's expiration_time", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, {
+      id: "ORDER-1",
+      status: "COMPLETED",
+      purchase_units: [
+        {
+          payments: {
+            authorizations: [
+              {
+                id: "AUTH-9",
+                status: "AUTHORIZED",
+                expiration_time: "2026-12-08T12:00:00Z",
+              },
+            ],
+          },
+        },
+      ],
+    });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).authorizeOrder({
+    dealId: "deal-1",
+    orderId: "ORDER-1",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.expiresAt, "2026-12-08T12:00:00.000Z");
+});
+
+test("paypal: authorizeOrder does not invent an expiry from a malformed value", async () => {
+  const { transport } = api((request) => {
+    if (request.url.endsWith("/token")) return tokenHandler(request);
+    return json(201, {
+      id: "ORDER-1",
+      status: "COMPLETED",
+      purchase_units: [
+        {
+          payments: {
+            authorizations: [
+              { id: "AUTH-9", status: "AUTHORIZED", expiration_time: "not-a-date" },
+            ],
+          },
+        },
+      ],
+    });
+  });
+  const result = await new PayPalSandboxProvider({ config, transport }).authorizeOrder({
+    dealId: "deal-1",
+    orderId: "ORDER-1",
+  });
+  assert.equal(result.ok, true);
+  assert.equal(result.expiresAt, null);
+});
+
 test("paypal: authorizeOrder reports a confirmed refusal", async () => {
   const { transport } = api((request) => {
     if (request.url.endsWith("/token")) return tokenHandler(request);

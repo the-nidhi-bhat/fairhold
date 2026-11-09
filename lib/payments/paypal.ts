@@ -386,6 +386,7 @@ export class PayPalSandboxProvider implements PaymentProvider {
         ok: true,
         providerReference: authorization.id,
         status: "CREATED",
+        expiresAt: authorization.expirationTime,
         message: "Sandbox authorization hold created. This is a hold, not a capture or a settlement.",
       };
     }
@@ -564,12 +565,26 @@ interface ExtractedAuthorization {
   id: string | null;
   /** Raw, untrusted status value from PayPal; not a success signal. */
   status: unknown;
+  /** Parsed `expiration_time`, or null when absent or unparseable. */
+  expirationTime: string | null;
+}
+
+/**
+ * PayPal documents `expiration_time` as an ISO 8601 string, but the value is
+ * still untrusted input. Only a parseable timestamp is accepted; anything else
+ * becomes null so the UI never displays an expiry that the provider did not
+ * actually report.
+ */
+function parseProviderTimestamp(value: unknown): string | null {
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const parsed = Date.parse(value);
+  return Number.isNaN(parsed) ? null : new Date(parsed).toISOString();
 }
 
 function extractAuthorization(
   order: Record<string, unknown> | null,
 ): ExtractedAuthorization {
-  if (!order) return { id: null, status: undefined };
+  if (!order) return { id: null, status: undefined, expirationTime: null };
   const units = Array.isArray(order.purchase_units) ? order.purchase_units : [];
   for (const unit of units) {
     if (!unit || typeof unit !== "object") continue;
@@ -584,11 +599,15 @@ function extractAuthorization(
       if (!authorization || typeof authorization !== "object") continue;
       const record = authorization as Record<string, unknown>;
       if (typeof record.id === "string" && record.id.trim() !== "") {
-        return { id: record.id, status: record.status };
+        return {
+          id: record.id,
+          status: record.status,
+          expirationTime: parseProviderTimestamp(record.expiration_time),
+        };
       }
     }
   }
-  return { id: null, status: undefined };
+  return { id: null, status: undefined, expirationTime: null };
 }
 
 // ---------------------------------------------------------------------------

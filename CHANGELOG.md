@@ -2,7 +2,43 @@
 
 Notable changes, newest first. Grouped by milestone rather than by commit; the full commit history is the authoritative record.
 
-## Unreleased — release and presentation pass
+## Unreleased — demo, precision and presentation pass (2026-11-08)
+
+### Added
+
+- Public guided demo at `/demo`: a browser-only walkthrough that reuses the real
+  deterministic rules, keeps state in `localStorage`, labels every payment
+  SIMULATED and never calls a payment provider. Ten reducer tests plus five
+  Playwright journeys cover it.
+- Dashboard search (`?q=`) and status filter (`?status=`), "N of M shown", a
+  filtered empty state with Clear, and an attention-count chip.
+- Collapsed four-step onboarding explainer on the dashboard.
+- "Costs and limits" section on the deal page: no FairHold platform fee exists in
+  this build, provider merchant fees sit outside the ledger, USD-only integer
+  cents.
+- `lib/domain/money.ts` — `summarizeDealMoney` and `parseAmountToCents`, with
+  exact integer-cent parsing and no float math.
+- Evidence orphan cleanup in the storage layer, with a test.
+- GitHub Actions CI with a PostgreSQL 16 service and a CI-only placeholder
+  session secret.
+- Launch video project in `videos/fairhold-launch/`: 100 s master, 30 s cut,
+  thumbnail, contact sheet, SRT captions, brief, storyboard and script.
+- `FINAL_RELEASE_REPORT.md` and `FINAL_REMAINING_WORK.md`.
+
+### Changed
+
+- README, TESTING, TASKS, DECISIONS, QA_REPORT and CHANGELOG describe the new
+  demo, money, dashboard, fee and video evidence, and keep the unverified items
+  unverified.
+
+### Verified
+
+- `npm run typecheck`, `npm run lint`, `npm run build`: pass.
+- `npm test` against isolated PostgreSQL 16: 193 pass, 0 fail, 0 skip.
+- `npx playwright test`: 27 passed across desktop, mobile and tablet Chromium.
+- `npx hyperframes check`: 0 errors, layout 0 issues, 53/53 contrast AA.
+
+## Release and presentation pass (2026-11-07)
 
 ### Added
 

@@ -28,7 +28,7 @@ import {
   updatePaymentOperation,
 } from "@/lib/data";
 import { planCapture } from "@/lib/payments/capture-state";
-import { writeEvidenceFile } from "@/lib/data/storage";
+import { writeEvidenceFile, deleteEvidenceFile } from "@/lib/data/storage";
 import { isApprovalDecision, planApproval } from "@/lib/domain/approval";
 import { validateEvidenceInput } from "@/lib/domain/evidence";
 import { recommendMilestone } from "@/lib/domain/rules";
@@ -267,6 +267,9 @@ export async function changeMilestoneStatusAction(
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
+  // Check access before anything about the deal's existence or state, so an
+  // outsider cannot use the error code to learn whether a deal exists.
+  await requireDealAccessOrRedirect(dealId);
   if (!isMilestoneStatus(to)) {
     redirect(`/deals/${dealId}?actionError=invalid_status`);
   }
@@ -279,7 +282,6 @@ export async function changeMilestoneStatusAction(
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
   }
 
-  await requireDealAccessOrRedirect(dealId);
   const response = await setMilestoneStatus(dealId, milestoneId, to, await currentActor());
   if (!response.ok) {
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
@@ -296,6 +298,8 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
   } catch {
     redirect(`/deals/${dealId}?actionError=role`);
   }
+  // Access first: the transition error must not double as an existence oracle.
+  await requireDealAccessOrRedirect(dealId);
   if (!isDealStatus(to) || to === "Authorized") {
     redirect(`/deals/${dealId}?actionError=invalid_status`);
   }
@@ -306,7 +310,6 @@ export async function changeDealStatusAction(formData: FormData): Promise<void> 
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
   }
 
-  await requireDealAccessOrRedirect(dealId);
   const response = await setDealStatus(dealId, to, await currentActor());
   if (!response.ok) {
     redirect(`/deals/${dealId}?actionError=invalid_transition`);
@@ -371,6 +374,7 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
         providerReference: authorization.providerReference,
         simulated: authorization.simulated,
         amountCents,
+        expiresAt: authorization.expiresAt ?? null,
       },
       await currentActor(),
     );
@@ -423,6 +427,7 @@ export async function confirmAuthorizationAction(formData: FormData): Promise<vo
       providerOrderId: pending.providerOrderId,
       simulated: result.simulated,
       amountCents: pending.amountCents,
+      expiresAt: result.expiresAt ?? null,
     },
     await currentActor(),
   );
@@ -468,24 +473,35 @@ export async function submitEvidenceAction(
     );
   }
 
-  const response = await addEvidence(
-    dealId,
-    milestoneId,
-    {
-      note: result.value.note,
-      url: result.value.url,
-      file: result.value.file
-        ? {
-            name: result.value.file.name,
-            size: result.value.file.size,
-            type: result.value.file.type,
-            storedPath: storedPath as string,
-          }
-        : null,
-    },
-    await currentActor(),
-  );
-  if (!response.ok) return { ok: false, errors: { _form: response.error } };
+  let response;
+  try {
+    response = await addEvidence(
+      dealId,
+      milestoneId,
+      {
+        note: result.value.note,
+        url: result.value.url,
+        file: result.value.file
+          ? {
+              name: result.value.file.name,
+              size: result.value.file.size,
+              type: result.value.file.type,
+              storedPath: storedPath as string,
+            }
+          : null,
+      },
+      await currentActor(),
+    );
+  } catch (error) {
+    // The file was already written; the row was not. Remove the orphan so a
+    // failed submission leaves no unreferenced bytes behind.
+    if (storedPath) await deleteEvidenceFile(storedPath).catch(() => undefined);
+    throw error;
+  }
+  if (!response.ok) {
+    if (storedPath) await deleteEvidenceFile(storedPath).catch(() => undefined);
+    return { ok: false, errors: { _form: response.error } };
+  }
 
   revalidatePath(`/deals/${dealId}`);
   return { ok: true, errors: {} };
@@ -523,7 +539,7 @@ export async function reviewEvidenceAction(
  * Records a human decision. The recommendation is always recomputed from the
  * current stored state (never trusted from the client), the decision is gated
  * by the pure approval rules, and only an allowed decision may invoke the
- * payment provider. Reviewer identity is fixed to "system" until auth exists.
+ * payment provider. The reviewer is the signed demo identity, never "system".
  */
 export async function recordApprovalAction(
   _prev: FormState,

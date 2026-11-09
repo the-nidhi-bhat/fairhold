@@ -23,6 +23,10 @@ export async function GET(
         "Content-Type": evidence.file.type,
         "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(evidence.file.name)}`,
         "X-Content-Type-Options": "nosniff",
+        // Buyer evidence is private to the deal: never let a shared proxy or
+        // the browser cache keep a copy after the session ends.
+        "Cache-Control": "private, no-store",
+        Vary: "Cookie",
       },
     });
   } catch {

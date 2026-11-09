@@ -9,6 +9,7 @@ import {
 } from "@/lib/ai/advisory";
 import { getDeal } from "@/lib/data";
 import { formatCents } from "@/lib/domain/format";
+import { summarizeDealMoney } from "@/lib/domain/money";
 import { approvalIsStale, recommendMilestone } from "@/lib/domain/rules";
 import {
   allowedManualDealTransitions,
@@ -46,6 +47,26 @@ import {
 
 export const metadata = { title: "Deal" };
 export const instant = false;
+
+/**
+ * Renders the provider's own expiry timestamp (never an estimate). Returns null
+ * when the provider reported no expiry, so the UI stays silent rather than
+ * inventing a deadline.
+ */
+function describeHoldExpiry(
+  expiresAt: string | null,
+): { iso: string; label: string; passed: boolean } | null {
+  if (!expiresAt) return null;
+  const ms = Date.parse(expiresAt);
+  if (Number.isNaN(ms)) return null;
+  const iso = new Date(ms).toISOString();
+  const label = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(new Date(ms));
+  return { iso, label: `${label} UTC`, passed: ms <= Date.now() };
+}
 
 const ACTION_ERROR_MESSAGES: Record<string, string> = {
   role: "This action is not allowed for your current role. No changes were made.",
@@ -114,6 +135,10 @@ async function DealDetail({
 
   const progress = computeProgress(deal);
   const payment = paymentStatusFor(deal);
+  const money = summarizeDealMoney(deal);
+  // Only a timestamp the provider actually reported is shown; the app never
+  // guesses an expiry for a hold.
+  const holdExpiry = describeHoldExpiry(deal.authorization?.expiresAt ?? null);
   const { provider, sandboxRequiresPostgres } = paymentRuntime();
   const sandboxConfigured = provider.mode === "sandbox";
   const canAuthorize = session.role === "buyer" || session.role === "reviewer";
@@ -221,6 +246,69 @@ async function DealDetail({
           <StatusBadge label={payment.label} tone={payment.tone} />
         </div>
 
+        {money.hasAuthorization ? (
+          <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[var(--hairline)] bg-[var(--hairline)] sm:grid-cols-4">
+            <div className="bg-[var(--surface-inset)] p-3.5">
+              <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                Authorized
+              </dt>
+              <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                {formatCents(money.authorizedCents, deal.currency)}
+              </dd>
+            </div>
+            <div className="bg-[var(--surface-inset)] p-3.5">
+              <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                Captured
+              </dt>
+              <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                {formatCents(money.capturedCents, deal.currency)}
+              </dd>
+            </div>
+            <div className="bg-[var(--surface-inset)] p-3.5">
+              <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                Pending settlement
+              </dt>
+              <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                {formatCents(money.pendingCents, deal.currency)}
+              </dd>
+            </div>
+            <div className="bg-[var(--surface-inset)] p-3.5">
+              <dt className="text-[10px] uppercase tracking-[0.12em] text-muted">
+                Remaining
+              </dt>
+              <dd className="mt-1 text-sm font-semibold tabular-nums text-[var(--foreground)]">
+                {formatCents(money.remainingCents, deal.currency)}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+
+        {money.pendingCents > 0 ? (
+          <p className="mt-3 text-xs text-[var(--warning)]">
+            A capture of {formatCents(money.pendingCents, deal.currency)} is
+            pending with the provider. It is not counted as settled and stays
+            reserved until the provider confirms it.
+          </p>
+        ) : null}
+
+        {money.releasedCents > 0 ? (
+          <p className="mt-3 text-xs text-muted">
+            {formatCents(money.releasedCents, deal.currency)} of the hold was
+            released by a void. Released funds are no longer available to
+            capture.
+          </p>
+        ) : null}
+
+        {holdExpiry ? (
+          <p className="mt-3 text-xs text-muted">
+            {holdExpiry.passed ? "This hold's reported expiry has passed: " : "Provider hold expires "}
+            <time dateTime={holdExpiry.iso}>{holdExpiry.label}</time>
+            {deal.authorization?.simulated ? " (simulated)" : ""}. A capture
+            after that time is expected to be refused by the provider; the app
+            never extends a hold on its own.
+          </p>
+        ) : null}
+
         {sandboxRequiresPostgres ? (
           <p className="mt-3 rounded-lg border border-[var(--border-strong)] bg-[var(--surface-inset)] px-3 py-2 text-xs text-[var(--foreground-soft)]  dark:bg-[var(--surface-inset)] dark:text-[var(--foreground-soft)]">
             PayPal sandbox credentials are configured, but real payment actions
@@ -318,6 +406,48 @@ async function DealDetail({
         ) : (
           <p className="mt-3 text-sm text-muted">No payment operations recorded for this deal.</p>
         )}
+      </section>
+
+      {/* Fee transparency — state exactly what is and is not charged */}
+      <section className="surface mt-6 p-5 sm:p-6" aria-labelledby="costs-heading">
+        <h2
+          id="costs-heading"
+          className="text-sm font-semibold text-[var(--foreground)]"
+        >
+          Costs and limits
+        </h2>
+        <dl className="mt-4 divide-y divide-[var(--hairline)] text-sm">
+          <div className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
+            <dt className="text-muted">Agreed milestone total</dt>
+            <dd className="font-semibold tabular-nums">
+              {formatCents(progress.totalCents, deal.currency)}
+            </dd>
+          </div>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
+            <dt className="text-muted">FairHold platform fee</dt>
+            <dd className="text-[var(--foreground-soft)]">
+              None is implemented in this build
+            </dd>
+          </div>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
+            <dt className="text-muted">Payment provider fees</dt>
+            <dd className="max-w-[46ch] text-right text-xs leading-5 text-[var(--foreground-soft)]">
+              Charged by the provider to the merchant account. FairHold neither
+              models nor deducts them.
+            </dd>
+          </div>
+          <div className="flex flex-wrap items-baseline justify-between gap-2 py-2.5">
+            <dt className="text-muted">Currency and precision</dt>
+            <dd className="text-xs leading-5 text-[var(--foreground-soft)]">
+              {deal.currency} only · integer cents, never floating point
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-3 text-xs leading-5 text-muted">
+          A capture asks the provider for the milestone amount exactly. Any
+          provider fee is charged outside this ledger, so the amounts above never
+          include a deduction FairHold cannot verify.
+        </p>
       </section>
 
       {/* Agreement */}

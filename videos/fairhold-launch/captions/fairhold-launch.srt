@@ -1,0 +1,47 @@
+1
+00:00:00,500 --> 00:00:06,500
+Work ships. Payment stalls. Scope drifts, approval is verbal, and the money moves before anyone agrees it should.
+
+2
+00:00:07,500 --> 00:00:13,500
+FairHold. Milestone payments for work where both sides need proof. Authorization hold, evidence, human approval, provider capture.
+
+3
+00:00:14,500 --> 00:00:21,500
+Five actors, one separation of duties. AI proposes. Rules decide. Humans approve. PayPal executes. The audit trail records everything. No single one can spend.
+
+4
+00:00:22,500 --> 00:00:29,500
+Scope, split, sign off. Discovery workshop 1,800.00. Design handoff 4,200.00. Final delivery 2,000.00. Agreed total 8,000.00 US dollars, in integer cents.
+
+5
+00:00:30,500 --> 00:00:38,500
+A hold, not escrow. One thousand eight hundred dollars authorized and held. Funds are reserved, not transferred. No money moves here.
+
+6
+00:00:39,500 --> 00:00:47,500
+Evidence, not vibes. The design handoff milestone is submitted with a note, a link and a file, by the seller. Evidence is attached to the milestone, not to a chat thread.
+
+7
+00:00:48,500 --> 00:00:55,500
+Accept it, or ask for exactly one change. Accepted means the scope matches the written criteria. Revision requested means one specific change, recorded against the milestone.
+
+8
+00:00:56,500 --> 00:01:03,500
+No approval, no capture. Capture blocked: no matching human approval. A capture needs a human approval bound to this milestone, this amount and this currency. A stale approval does not count.
+
+9
+00:01:04,500 --> 00:01:12,500
+Then the provider moves the money. Reserve the operation. Capture the exact amount. Record the result. A timeout is not a failure. A duplicate capture is refused. The provider call is simulated in this build.
+
+10
+00:01:13,500 --> 00:01:21,500
+Every fact gets a line. Authorization created, evidence submitted, evidence accepted, approval recorded, capture completed. A pending capture stays pending, not failed. A webhook that does not match is quarantined, not guessed.
+
+11
+00:01:22,500 --> 00:01:30,500
+The model advises. It never decides. The advisory summarises the evidence and matched criteria. The outcome is decided by rules plus a human approval.
+
+12
+00:01:31,500 --> 00:01:39,500
+AI proposes. Rules decide. Humans approve. PayPal executes. The audit trail records everything. Guided demo at /demo. Sandbox payments are simulated in this build.

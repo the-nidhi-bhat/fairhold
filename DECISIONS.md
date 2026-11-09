@@ -35,3 +35,20 @@
   advisory lock, so the suite can run concurrently against one test database.
 - Payment and evidence simulation stay clearly labeled. A passing test suite is
   not evidence of live PayPal sandbox execution.
+- The public demo at `/demo` is browser-only on purpose: serverless filesystems
+  are read-only and no hosted database exists, so a server-backed public demo
+  would either lose writes or pretend to persist them. The demo reuses the real
+  deterministic rules and labels every payment SIMULATED.
+- Demo mode and real-user mode do not share storage: `/demo` keeps its state in
+  `localStorage`; the operator app keeps its state in JSON or PostgreSQL.
+- Amounts are integer cents end to end. Typed amounts are parsed directly to
+  cents rather than going through a float. Display formatting never feeds the
+  ledger.
+- Vercel Deployment Protection is left enabled rather than removed to make the
+  preview public. Weakening an access control to unblock a demo is not an
+  acceptable trade; public access is an owner-side configuration decision.
+- No production deployment is created while the production environment scope is
+  empty. A preview that says what it is beats a production URL that silently
+  fails writes.
+- The launch video is silent by design because no TTS/music provider credential
+  exists; on-screen copy plus SRT captions carry the narration.

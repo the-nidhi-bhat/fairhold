@@ -70,7 +70,7 @@ export interface DealEvent {
   id: string;
   type: DealEventType;
   message: string;
-  /** Who/what caused the event. "system" until authentication exists. */
+  /** Signed demo identity that caused the event (`role:name`), or "system". */
   actor: string;
   createdAt: string;
   milestoneId?: string;
@@ -149,7 +149,7 @@ export interface EvidenceSubmission {
   url: string | null;
   file: EvidenceFile | null;
   submittedAt: string;
-  /** "system" until authentication exists; never taken from the client. */
+  /** Actor recorded by the server from the signed session; never client-supplied. */
   submittedBy: string;
   decision: EvidenceDecision;
   reviewedAt: string | null;
@@ -215,7 +215,7 @@ export interface MilestoneApproval {
   explanation: string;
   evidenceFingerprint: string;
   evidenceReviewedCount: number;
-  /** "system" until authentication exists; never taken from the client. */
+  /** Actor recorded by the server from the signed session; never client-supplied. */
   reviewedBy: string;
   reviewedAt: string;
   /** Provider reference for a simulated/real payment operation, if any. */
@@ -235,6 +235,12 @@ export interface DealAuthorization {
   providerOrderId?: string | null;
   simulated: boolean;
   amountCents: number;
+  /**
+   * ISO timestamp at which the provider says the hold expires, or null when the
+   * provider did not report one. Never estimated: the UI only shows an expiry
+   * the provider actually supplied.
+   */
+  expiresAt?: string | null;
   createdAt: string;
 }
 

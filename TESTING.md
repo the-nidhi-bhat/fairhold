@@ -45,16 +45,11 @@ npm test
 
 ```
 npm test   (FAIRHOLD_TEST_DATABASE_URL pointing at an isolated PostgreSQL 16)
-tests 172   pass 172   fail 0   skipped 0   cancelled 0   todo 0
-duration ~20.0s
+tests 193   pass 193   fail 0   skipped 0   cancelled 0   todo 0
+duration ~13.9s
 ```
 
-```
-npm test   (no test database)
-tests 172   pass 148   fail 0   skipped 24
-```
-
-The 24 skipped tests are exactly the PostgreSQL suites. Nothing is skipped to make the run green.
+Without `FAIRHOLD_TEST_DATABASE_URL` the PostgreSQL suites skip instead of failing; nothing is skipped to make a run green.
 
 ## Browser journeys
 
@@ -70,16 +65,23 @@ Playwright starts its own dev server on port 3100 (reusing one already running),
 
 Projects: `desktop-chromium`, `mobile-chromium` (Pixel 5), `tablet-chromium` (iPad gen 7). Each journey resets the demo store first via `scripts/demo-reset.mjs`.
 
-### The three journeys
+### The nine journeys
 
 1. **Full milestone lifecycle.** Sign in as seller → submit evidence with a file → download it and byte-compare the content → sign in as buyer → reject with a revision note → seller resubmits → buyer accepts → simulated authorization → simulated capture → attempt a second capture and confirm it is blocked.
 2. **Access control.** A non-participant is refused the deal and its evidence; a reviewer without a grant is refused; a granted reviewer is allowed.
-3. **Deal creation and milestone authoring.** Create a deal, add milestones with amounts and due dates, verify validation failures, verify the deal detail renders the persisted state.
+3. **Deal creation, milestone authoring, search and fees.** Create a deal, add milestones with amounts and due dates, verify validation failures, verify the deal detail renders the persisted state, verify the "Costs and limits" section, then narrow the dashboard by search and confirm the filtered empty state and Clear.
+4. **Guided demo lifecycle.** `/demo` runs the whole story and the money summary follows it; the test fails if any request URL mentions PayPal.
+5. **Guided demo role boundaries.** A reviewer cannot approve or review evidence in the demo.
+6. **Guided demo validation.** Requesting changes requires a reason and blocks approval.
+7. **Guided demo persistence.** State survives a reload and resets on demand.
+8. **Guided demo responsive fit.** The page never scrolls horizontally.
+
+9. **Progressive enhancement.** With client JavaScript disabled, the sign-in form still posts and authenticates, returning the buyer to `/dashboard` (`tests/progressive-enhancement.spec.ts`). The Suspense-streamed dashboard body does not complete without hydration — a documented limit, not a regression.
 
 ### Verified result
 
 ```
-npx playwright test   → 9 passed (5.5m)
+npx playwright test   → 27 passed (9 journeys × 3 projects)
 ```
 
 ### Timeouts

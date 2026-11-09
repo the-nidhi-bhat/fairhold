@@ -71,14 +71,38 @@ export async function handlePaypalWebhookRequest(
   }
 
   // ---- read and shape the request -------------------------------------
+  // Reject oversized bodies before allocating memory: check Content-Length
+  // first (cheap, no allocation), then enforce a hard byte cap on the read.
+  const contentLength = request.headers.get("content-length");
+  if (contentLength !== null) {
+    const len = Number.parseInt(contentLength, 10);
+    if (!Number.isFinite(len) || len > WEBHOOK_MAX_BODY_CHARS) {
+      return jsonResponse({ error: "request body too large" }, 413);
+    }
+  }
+
   let raw: string;
   try {
-    raw = await request.text();
+    const reader = request.body?.getReader();
+    if (!reader) {
+      return jsonResponse({ error: "invalid request body" }, 400);
+    }
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (value) {
+        total += value.byteLength;
+        if (total > WEBHOOK_MAX_BODY_CHARS) {
+          return jsonResponse({ error: "request body too large" }, 413);
+        }
+        chunks.push(value);
+      }
+    }
+    raw = new TextDecoder().decode(Buffer.concat(chunks));
   } catch {
     return jsonResponse({ error: "invalid request body" }, 400);
-  }
-  if (raw.length > WEBHOOK_MAX_BODY_CHARS) {
-    return jsonResponse({ error: "request body too large" }, 413);
   }
 
   for (const header of TRANSMISSION_HEADERS) {

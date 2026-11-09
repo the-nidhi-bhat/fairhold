@@ -29,10 +29,23 @@ export function paymentRuntime(
   env: Record<string, string | undefined> = process.env,
 ): PaymentRuntime {
   const config = readPayPalConfig(env);
+  const isProduction = env.NODE_ENV === "production";
+  const allowSimulated = env.FAIRHOLD_ALLOW_SIMULATED_PAYMENTS === "true";
+
   if (!config) {
+    if (isProduction && !allowSimulated) {
+      throw new Error(
+        "PayPal credentials are required in production. Simulated payments are disabled unless FAIRHOLD_ALLOW_SIMULATED_PAYMENTS=true.",
+      );
+    }
     return { provider: new DemoPaymentProvider(), sandboxRequiresPostgres: false };
   }
   if (!isPostgresConfigured(env)) {
+    if (isProduction && !allowSimulated) {
+      throw new Error(
+        "Durable PostgreSQL accounting is required for real PayPal operations in production. Simulated payments are disabled unless FAIRHOLD_ALLOW_SIMULATED_PAYMENTS=true.",
+      );
+    }
     return { provider: new DemoPaymentProvider(), sandboxRequiresPostgres: true };
   }
   return {

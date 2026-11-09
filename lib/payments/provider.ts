@@ -40,6 +40,11 @@ export interface AuthorizationResult {
   approvalUrl: string | null;
   status: "CREATED" | "FAILED";
   message: string;
+  /**
+   * ISO expiry the provider reported for the hold, when it reports one at this
+   * step. Only the demo provider supplies it here (flagged `simulated`).
+   */
+  expiresAt?: string | null;
 }
 
 export interface AuthorizeOrderRequest {
@@ -58,6 +63,11 @@ export interface AuthorizeOrderResult {
   orderId: string;
   status: "CREATED" | "PENDING" | "FAILED";
   message: string;
+  /**
+   * ISO expiry of the authorization hold, taken from PayPal's
+   * `expiration_time` when present. Null when the provider did not report one.
+   */
+  expiresAt?: string | null;
 }
 
 export interface CaptureRequest {

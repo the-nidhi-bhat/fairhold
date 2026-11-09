@@ -78,10 +78,13 @@ export default function Home() {
             with clarity at every step.
           </p>
           <div className="reveal reveal-3 mt-9 flex flex-wrap items-center gap-3">
-            <Link href="/dashboard" className="primary-button px-5">
+            <Link href="/demo" className="primary-button px-5">
+              Open the guided demo
+            </Link>
+            <Link href="/dashboard" className="secondary-button px-5">
               Open the dashboard
             </Link>
-            <Link href="/deals/new" className="secondary-button px-5">
+            <Link href="/deals/new" className="ghost-button px-3">
               Start a deal
             </Link>
           </div>
@@ -387,8 +390,8 @@ export default function Home() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/dashboard" className="primary-button px-5">
-              Open dashboard
+            <Link href="/demo" className="primary-button px-5">
+              Open the guided demo
             </Link>
             <Link href="/login" className="secondary-button px-5">
               Demo sign in
