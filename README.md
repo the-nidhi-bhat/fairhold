@@ -335,7 +335,7 @@ All variables are documented by name in [.env.example](./.env.example) and expla
 | `PAYPAL_ENV` | Only for sandbox | Must be exactly `sandbox`; any other value keeps the demo adapter. |
 | `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | Only for sandbox | Sandbox app credentials; placeholders are rejected. |
 | `PAYPAL_WEBHOOK_ID` | Only for webhooks | Webhook listener id registered on developer.paypal.com. |
-| `AI_API_KEY` / `AI_MODEL` / `AI_API_URL` | No | Enables live advisory calls; otherwise deterministic fallbacks run. |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` / `GEMINI_API_URL` | No | Enables live Gemini advisory calls; otherwise deterministic fallbacks run. |
 | `NEXT_PUBLIC_APP_URL` | No | Canonical URL used for links and metadata. |
 
 ### Database setup

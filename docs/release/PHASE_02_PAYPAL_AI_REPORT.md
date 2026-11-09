@@ -15,7 +15,7 @@ FairHold's PayPal sandbox adapter and AI advisory layer are fully implemented as
 
 **PayPal status:** PARTIAL — real sandbox adapter code exists and is thoroughly unit-tested with a mocked transport, but **live sandbox integration is NOT VERIFIED** because no sandbox credentials, public webhook URL, or `PAYPAL_WEBHOOK_ID` are configured.
 
-**AI status:** PARTIAL — advisory layer implemented with structured output validation and a live deterministic fallback, but **live AI integration is NOT VERIFIED** because no `AI_API_KEY`/`AI_MODEL` are configured.
+**AI status:** PARTIAL — advisory layer implemented with structured output validation and a live deterministic fallback, but **live AI integration is NOT VERIFIED** because no `GEMINI_API_KEY`/`GEMINI_MODEL` are configured.
 
 **Meaningful AI + PayPal connection:** NOT VERIFIED — the cross-workflow path (AI advisory → human approval → PayPal capture) is demonstrated via mocks in new tests, but cannot be exercised end-to-end with live providers without credentials.
 
@@ -84,7 +84,7 @@ Full gate after this phase: typecheck exit 0, lint exit 0, unit **199/199 pass**
 
 | Capability | Status | Evidence |
 |---|---|---|
-| Live provider integration | NOT VERIFIED | `readAdvisoryProviderConfig` requires `AI_API_KEY` + `AI_MODEL`; none configured |
+| Live provider integration | NOT VERIFIED | `readAdvisoryProviderConfig` requires `GEMINI_API_KEY` + `GEMINI_MODEL`; none configured |
 | Meaningful product workflow | IMPLEMENTED (mock-tested) | `resolveEvidenceAdvisory` summarizes evidence against acceptance criteria |
 | Structured output validation | IMPLEMENTED | `parseMilestoneProposal` / `parseEvidenceAdvisory` reject malformed responses |
 | Failure handling | IMPLEMENTED | Deterministic fallback on fetch/parse/invalid-response failure |
@@ -175,7 +175,7 @@ All changes are uncommitted at the time of this report. Head is `4144090` (synce
 ## J. Owner actions
 
 1. **Provide PayPal sandbox credentials** (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`) + public HTTPS webhook URL + `PAYPAL_WEBHOOK_ID` to enable live sandbox verification.
-2. **Provide `AI_API_KEY`/`AI_MODEL`** to enable live AI verification.
+2. **Provide `GEMINI_API_KEY`/`GEMINI_MODEL`** to enable live AI verification.
 3. **Provision `DATABASE_URL`** (PostgreSQL) for real payment operations.
 4. **Review and commit** the Phase 2 changes (this report, new tests, new docs).
 

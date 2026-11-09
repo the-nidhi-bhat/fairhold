@@ -95,7 +95,7 @@ Demo authentication is name-only allowlist — documented limitation, not produc
 | AI output validation | PASS (`parseJsonObject`, structured parsing) |
 | AI advisory-only labelling | PASS (system prompts: "does not authorize payment", "human reviewer decides") |
 | AI cannot change deal state | PASS (`planApproval` human gate) |
-| AI fallback (deterministic) when unconfigured | PASS (live, no AI_API_KEY/AI_MODEL) |
+| AI fallback (deterministic) when unconfigured | PASS (live, no GEMINI_API_KEY/GEMINI_MODEL) |
 | AI failure does not block manual review | PASS |
 | No sensitive data sent to AI | PASS (only deal/milestone/evidence metadata) |
 

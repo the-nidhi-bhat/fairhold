@@ -17,9 +17,9 @@ Both live in `lib/ai/advisory.ts`. Neither is required for any workflow: with no
 
 | Variable | Required | Behaviour |
 | --- | --- | --- |
-| `AI_API_KEY` | No | Must be non-empty and not a `your_` placeholder, or the provider is treated as unconfigured. |
-| `AI_MODEL` | No | Same placeholder rule. Sent as `model`. |
-| `AI_API_URL` | No | Defaults to `https://api.openai.com/v1/chat/completions`. |
+| `GEMINI_API_KEY` | No | Must be non-empty and not a `your_` placeholder, or the provider is treated as unconfigured. |
+| `GEMINI_MODEL` | No | Same placeholder rule. Sent as `model`. |
+| `GEMINI_API_URL` | No | Defaults to `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`. |
 
 `readAdvisoryProviderConfig(env)` returns `null` unless both key and model are usable. Any OpenAI-compatible chat-completions endpoint that supports `response_format: { type: "json_object" }` works with the existing call shape.
 
@@ -118,7 +118,7 @@ Concretely:
 
 ## Limitations
 
-- **Live provider calls are unverified in this environment.** No `AI_API_KEY` was configured; the deterministic fallbacks are what the test suite exercises. Do not describe live AI as verified until a real request has been made and its response validated.
+- **Live provider calls are unverified in this environment.** No `GEMINI_API_KEY` was configured; the deterministic fallbacks are what the test suite exercises. Do not describe live AI as verified until a real request has been made and its response validated.
 - The advisory is single-shot: no retries, no streaming, no conversation memory.
 - The model never sees the ledger or the provider state, so it cannot comment on payment status.
 - There is no evaluation harness or golden dataset. If the prompts change, only schema validation and the deterministic fallback protect the product.

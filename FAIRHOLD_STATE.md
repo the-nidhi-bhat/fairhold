@@ -31,7 +31,7 @@ Updated 2026-11-04.
 - Live PayPal sandbox execution: blocked on `DATABASE_URL`, a public HTTPS
   webhook endpoint and `PAYPAL_WEBHOOK_ID`. The app runs the demo provider and
   refuses real sandbox actions without PostgreSQL.
-- Live AI provider calls: blocked on `AI_API_KEY`/`AI_MODEL`; the deterministic
+- Live AI provider calls: blocked on `GEMINI_API_KEY`/`GEMINI_MODEL`; the deterministic
   fallback is verified.
 - Cross-browser (Firefox/WebKit) and physical-device testing: not run.
 - Production authentication: demo login is name+role based and not suitable for

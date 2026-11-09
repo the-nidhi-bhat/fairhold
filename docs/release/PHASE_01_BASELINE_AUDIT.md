@@ -17,7 +17,7 @@ FairHold is a milestone-based payment coordination platform for buyers and selle
 
 **Core principle:** "AI proposes. Rules decide. Humans approve. PayPal executes. The audit trail records everything."
 
-**Actual state:** The product implements a complete demo-capable milestone workflow: deal creation, milestone definition, evidence submission/review/revision, human approval, authorization holds, and simulated capture. The PayPal sandbox adapter exists as real code but is **unverified live** (no sandbox credentials, no public webhook endpoint, no `PAYPAL_WEBHOOK_ID`). The AI advisory layer exists with structured output validation but runs as a **deterministic fallback** (no `AI_API_KEY`/`AI_MODEL` configured). The deployed preview is **not publicly accessible** (Vercel Deployment Protection returns 302 to SSO for anonymous visitors).
+**Actual state:** The product implements a complete demo-capable milestone workflow: deal creation, milestone definition, evidence submission/review/revision, human approval, authorization holds, and simulated capture. The PayPal sandbox adapter exists as real code but is **unverified live** (no sandbox credentials, no public webhook endpoint, no `PAYPAL_WEBHOOK_ID`). The AI advisory layer exists with structured output validation but runs as a **deterministic fallback** (no `GEMINI_API_KEY`/`GEMINI_MODEL` configured). The deployed preview is **not publicly accessible** (Vercel Deployment Protection returns 302 to SSO for anonymous visitors).
 
 **Gate results (verified, current tree):**
 - `npm run typecheck`: exit 0
@@ -126,7 +126,7 @@ FairHold is a milestone-based payment coordination platform for buyers and selle
 
 | Capability | Status | Evidence |
 |---|---|---|
-| AI provider | CONFIG-GATED | `readAdvisoryProviderConfig` requires `AI_API_KEY` + `AI_MODEL` |
+| AI provider | CONFIG-GATED | `readAdvisoryProviderConfig` requires `GEMINI_API_KEY` + `GEMINI_MODEL` |
 | Model | NOT CONFIGURED | No key set; deterministic fallback active |
 | SDK/API | IMPLEMENTED | `fetch` with 15s timeout, `AbortSignal` |
 | Credential handling | IMPLEMENTED | Server-side only; never returned to client |
@@ -138,7 +138,7 @@ FairHold is a milestone-based payment coordination platform for buyers and selle
 | Human approval preserved | VERIFIED | Deterministic rules + human `CAPTURE` approval required |
 | Live AI + PayPal workflow | NOT VERIFIED | No AI key; no PayPal credentials |
 
-**Blocker:** No `AI_API_KEY`/`AI_MODEL`. Cannot verify live AI behavior or demonstrate AI + PayPal together in a real workflow.
+**Blocker:** No `GEMINI_API_KEY`/`GEMINI_MODEL`. Cannot verify live AI behavior or demonstrate AI + PayPal together in a real workflow.
 
 ---
 
@@ -267,7 +267,7 @@ No test mocked, skipped, or weakened to get green. Playwright timeouts raised (9
 |---|---|---|---|
 | 1 | Public demo blocked by Deployment Protection | HIGH | Owner-side scoped protection change or share link |
 | 2 | PayPal sandbox unverified | HIGH | Owner provide sandbox credentials + public webhook + `PAYPAL_WEBHOOK_ID` |
-| 3 | AI unverified | MEDIUM | Owner provide `AI_API_KEY`/`AI_MODEL` |
+| 3 | AI unverified | MEDIUM | Owner provide `GEMINI_API_KEY`/`GEMINI_MODEL` |
 | 4 | Missing LICENSE | MEDIUM | Owner license decision (MIT recommended) |
 | 5 | Demo identity strength | MEDIUM | Name-only allowlist; not production auth |
 | 6 | Ambiguous-capture reconciliation | MEDIUM | Product decision: reconcile vs. retry |
@@ -282,7 +282,7 @@ No test mocked, skipped, or weakened to get green. Playwright timeouts raised (9
 2. **Scope Deployment Protection** to allow anonymous access to the dedicated demo deployment (or issue a share link). Do not weaken globally.
 3. **Decide** on stale `fairhold-beta.vercel.app` alias (replace/remove/leave).
 4. **Provide** `DATABASE_URL`, hosted object storage, PayPal sandbox credentials (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`), public HTTPS webhook URL, `PAYPAL_WEBHOOK_ID`.
-5. **Provide** `AI_API_KEY`/`AI_MODEL` for live AI verification.
+5. **Provide** `GEMINI_API_KEY`/`GEMINI_MODEL` for live AI verification.
 6. **Choose** open-source license (MIT recommended) — do not silently add.
 7. **Upload** video to YouTube (public, <3 min) — do not upload without authorization.
 8. **Human review** of video frames (model cannot view images).

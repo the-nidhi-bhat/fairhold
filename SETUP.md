@@ -51,9 +51,9 @@ Without `DATABASE_URL`, data lives in `.data/fairhold.json` and evidence files i
 | `PAYPAL_CLIENT_ID` | only for sandbox | Placeholder values (`your_…`) are rejected. |
 | `PAYPAL_CLIENT_SECRET` | only for sandbox | Same placeholder rule. |
 | `PAYPAL_WEBHOOK_ID` | only for webhooks | Registered listener id from developer.paypal.com. |
-| `AI_API_KEY` | no | Enables live advisory calls. |
-| `AI_MODEL` | no | Model name for advisory calls. |
-| `AI_API_URL` | no | Defaults to `https://api.openai.com/v1/chat/completions`. |
+| `GEMINI_API_KEY` | no | Enables live Gemini advisory calls. |
+| `GEMINI_MODEL` | no | Model name for advisory calls. |
+| `GEMINI_API_URL` | no | Defaults to `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`. |
 | `AUTH_SECRET` | not read by the current build | Reserved. |
 | `PAYMENT_CONDITIONS_SIGNING_SECRET` | not read by the current build | Reserved. |
 

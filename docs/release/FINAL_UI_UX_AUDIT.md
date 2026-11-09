@@ -265,7 +265,7 @@ Nothing was weakened, skipped, mocked, or omitted.
 | `LICENSE` file | OWNER ACTION REQUIRED | Missing; MIT recommended |
 | YouTube video upload | OWNER ACTION REQUIRED | Assets ready (100s master + 30s cut + captions + thumbnail); not uploaded |
 | PayPal sandbox verification | BLOCKED | No sandbox credentials, no public webhook, no `PAYPAL_WEBHOOK_ID` |
-| AI provider verification | BLOCKED | No `AI_API_KEY` / `AI_MODEL` |
+| AI provider verification | BLOCKED | No `GEMINI_API_KEY` / `GEMINI_MODEL` |
 | `DATABASE_URL` / hosted storage | BLOCKED | Production env scope empty |
 | Visual defect inspection | NOT VERIFIED | Model cannot view images; screenshots in `audit-shots/` for human review |
 

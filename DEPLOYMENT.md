@@ -110,10 +110,10 @@ PAYPAL_CLIENT_ID=<sandbox app client id>
 PAYPAL_CLIENT_SECRET=<sandbox app secret>
 PAYPAL_WEBHOOK_ID=<registered listener id>
 
-# AI (optional)
-AI_API_KEY=<key>
-AI_MODEL=<model>
-AI_API_URL=<optional OpenAI-compatible endpoint>
+# AI (optional, Gemini)
+GEMINI_API_KEY=<key>
+GEMINI_MODEL=<model>
+# GEMINI_API_URL=<optional override; defaults to generativelanguage.googleapis.com>
 ```
 
 Register `https://<host>/api/paypal/webhook` on developer.paypal.com and subscribe it to the authorization and capture events the app normalises: `authorization_created`, `authorization_voided`, `capture_completed`, `capture_pending`. Copy the resulting listener id into `PAYPAL_WEBHOOK_ID`.

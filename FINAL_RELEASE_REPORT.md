@@ -152,7 +152,7 @@ credentials, a public HTTPS webhook and `PAYPAL_WEBHOOK_ID` (§13).
 - No write path: advisory output cannot change deal, milestone, approval or
   payment state, and cannot call the provider.
 - The UI names its source. In this build it says *"deterministic fallback (no
-  model provider configured)"*, because no `AI_API_KEY`/`AI_MODEL` exists.
+  model provider configured)"*, because no `GEMINI_API_KEY`/`GEMINI_MODEL` exists.
 - Recommendations carry reason codes and an evidence fingerprint, so the same
   inputs produce the same recommendation.
 
@@ -384,7 +384,7 @@ per row: `FINAL_REMAINING_WORK.md`.
    `PAYPAL_CLIENT_SECRET`, `PAYPAL_ENV=sandbox`), a public HTTPS deployment and
    `PAYPAL_WEBHOOK_ID`, then run `node scripts/paypal-kill-test.mjs`. Until then,
    no sandbox claim can be made.
-6. **Provide `AI_API_KEY` and `AI_MODEL`** to replace the deterministic advisory
+6. **Provide `GEMINI_API_KEY` and `GEMINI_MODEL`** to replace the deterministic advisory
    fallback with a live model.
 7. **Choose a real authentication method** (password, magic link, or OIDC/SSO)
    before any real-user beta.

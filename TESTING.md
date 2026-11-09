@@ -116,7 +116,7 @@ All three pass. The build emits these routes:
 | Gap | Why | Consequence |
 | --- | --- | --- |
 | Live PayPal sandbox transactions | No sandbox credentials or webhook id configured | Authorization, capture, void and webhook delivery are verified against the adapter contract and injected transports, not against PayPal. Do not claim otherwise. |
-| Live AI provider calls | No `AI_API_KEY` | Only deterministic fallbacks and schema validation are exercised. |
+| Live AI provider calls | No `GEMINI_API_KEY` | Only deterministic fallbacks and schema validation are exercised. |
 | Firefox and WebKit | Not installed in this environment | Browser coverage is Chromium only, at three viewport profiles. |
 | Automated accessibility audit | No axe/Lighthouse wired in | Keyboard, focus and contrast checked manually; see [QA_REPORT.md](./QA_REPORT.md). |
 | Load, concurrency beyond the ledger tests, and chaos | Out of scope | Concurrent capture protection is asserted at the ledger level only. |

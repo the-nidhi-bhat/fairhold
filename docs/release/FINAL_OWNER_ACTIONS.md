@@ -142,14 +142,14 @@ Do NOT silently add a license without owner approval — licensing changes owner
 | PayPal sandbox transaction | BLOCKED BY CONFIGURATION | No sandbox client ID/secret, no public HTTPS webhook, no `PAYPAL_WEBHOOK_ID` |
 | AI meaningful integration | NOT VERIFIED | Advisory layer live (deterministic fallback), but live provider unverified |
 | AI + PayPal together | NOT VERIFIED | Cross-workflow path mock-tested, not exercised live |
-| Live AI provider | NOT VERIFIED | No `AI_API_KEY` / `AI_MODEL` configured |
+| Live AI provider | NOT VERIFIED | No `GEMINI_API_KEY` / `GEMINI_MODEL` configured |
 
 **To resolve (owner actions, in order):**
 1. Create PayPal sandbox app at developer.paypal.com → get `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`
 2. Set `PAYPAL_ENV=sandbox` + credentials in Vercel Preview env
 3. Create public HTTPS webhook endpoint → get `PAYPAL_WEBHOOK_ID`
 4. Configure `DATABASE_URL` (hosted PostgreSQL) for real payment operations
-5. Configure `AI_API_KEY` + `AI_MODEL` for live AI advisory
+5. Configure `GEMINI_API_KEY` + `GEMINI_MODEL` for live AI advisory
 6. Run sandbox verification: order creation → buyer approval → capture → webhook → ledger accounting
 
 **Never invent credentials. Never run real-money production transactions.**
@@ -170,7 +170,7 @@ Do NOT silently add a license without owner approval — licensing changes owner
 
 6. [ ] **Provide PayPal sandbox credentials** — client ID, secret, webhook URL + ID
 7. [ ] **Provide `DATABASE_URL`** — hosted PostgreSQL
-8. [ ] **Provide `AI_API_KEY` + `AI_MODEL`** — live AI provider
+8. [ ] **Provide `GEMINI_API_KEY` + `GEMINI_MODEL`** — live AI provider
 9. [ ] **Run sandbox verification** — full PayPal lifecycle end-to-end
 
 ### Optional polish

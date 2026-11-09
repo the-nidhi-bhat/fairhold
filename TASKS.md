@@ -24,7 +24,7 @@ Updated 2026-11-08.
 
 - Live PayPal sandbox lifecycle: no credentials, no public HTTPS webhook, no
   `PAYPAL_WEBHOOK_ID`.
-- Live AI provider: no `AI_API_KEY`/`AI_MODEL`; only the deterministic fallback.
+- Live AI provider: no `GEMINI_API_KEY`/`GEMINI_MODEL`; only the deterministic fallback.
 - Hosted PostgreSQL, durable object storage, production deployment.
 - Anonymous access to the deployed preview: Vercel Deployment Protection returns
   302 to SSO.
@@ -57,7 +57,7 @@ Updated 2026-11-08.
   is an owner-side configuration decision.
 - Live PayPal sandbox lifecycle: requires `DATABASE_URL`, a public HTTPS webhook
   endpoint and `PAYPAL_WEBHOOK_ID`.
-- Live AI provider calls: require non-placeholder `AI_API_KEY` and `AI_MODEL`.
+- Live AI provider calls: require non-placeholder `GEMINI_API_KEY` and `GEMINI_MODEL`.
 - Hosted PostgreSQL, backups/restore, durable evidence storage, monitoring,
   email notifications: require accounts or paid resources.
 

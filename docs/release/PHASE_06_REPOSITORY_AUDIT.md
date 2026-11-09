@@ -24,7 +24,7 @@ README.md inspected and verified against current code.
 | Solution | PASS | Deal creation, milestones, evidence review, approval, payment status, audit trail |
 | How it works | PASS | Buyer/seller/reviewer workflows documented |
 | PayPal integration | PASS | Describes real sandbox adapter + simulated demo provider; requires `PAYPAL_ENV=sandbox`, real credentials; never claims live sandbox |
-| AI integration | PASS | Advisory-only, deterministic fallback, `AI_API_KEY`/`AI_MODEL` required for live calls |
+| AI integration | PASS | Advisory-only, deterministic fallback, `GEMINI_API_KEY`/`GEMINI_MODEL` required for live calls |
 | Architecture | PASS | Next.js 16.4.3, React 19.3.0, TypeScript, Tailwind 4, PostgreSQL/raw `pg`, PayPal, AI |
 | Screenshots | PASS | References verified assets |
 | Demo link | PARTIAL | `/demo` exists but is blocked by Deployment Protection (302 SSO); honest about it |

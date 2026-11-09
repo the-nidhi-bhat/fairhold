@@ -29,7 +29,7 @@ AI is strictly advisory. Deterministic business rules and human approval remain 
 
 | Layer | Responsibility | Key file |
 |-------|---------------|----------|
-| Advisory provider config | Reads `AI_API_KEY`/`AI_MODEL`; rejects placeholders | `lib/ai/advisory.ts` (`readAdvisoryProviderConfig`) |
+| Advisory provider config | Reads `GEMINI_API_KEY`/`GEMINI_MODEL`; rejects placeholders | `lib/ai/advisory.ts` (`readAdvisoryProviderConfig`) |
 | Milestone proposal | AI suggests milestone structure from agreement text | `resolveMilestoneProposal` |
 | Evidence advisory | AI summarizes evidence against acceptance criteria | `resolveEvidenceAdvisory` |
 | Output validation | Structured JSON parsing and bounds checking | `parseMilestoneProposal`, `parseEvidenceAdvisory` |
@@ -40,9 +40,9 @@ AI is strictly advisory. Deterministic business rules and human approval remain 
 
 | Variable | Purpose | Required? |
 |----------|---------|-----------|
-| `AI_API_KEY` | AI provider API key | Required for live AI |
-| `AI_MODEL` | Model identifier | Required for live AI |
-| `AI_API_URL` | Endpoint (defaults to OpenAI-compatible chat completions) | Optional |
+| `GEMINI_API_KEY` | AI provider API key | Required for live AI |
+| `GEMINI_MODEL` | Model identifier | Required for live AI |
+| `GEMINI_API_URL` | Endpoint (defaults to Gemini generateContent) | Optional |
 
 `readAdvisoryProviderConfig` returns `null` when either key is missing or matches `/^your_/i`. When unconfigured, the deterministic fallback is used automatically — the application never crashes or silently fabricates AI output.
 
@@ -92,7 +92,7 @@ AI **must never**:
 
 ## 7. What is NOT implemented (honest limits)
 
-- Live AI verification — **NOT VERIFIED** (no `AI_API_KEY`/`AI_MODEL` configured; deterministic fallback is live).
+- Live AI verification — **NOT VERIFIED** (no `GEMINI_API_KEY`/`GEMINI_MODEL` configured; deterministic fallback is live).
 - AI-driven automatic evidence acceptance/rejection — intentionally not implemented.
 - AI-initiated payment — intentionally not possible.
 - Multi-model or agentic workflows — not part of the product scope.
@@ -100,7 +100,7 @@ AI **must never**:
 ## 8. Owner actions to enable live AI verification
 
 1. Obtain an AI provider API key and model identifier.
-2. Set `AI_API_KEY` and `AI_MODEL` (and optionally `AI_API_URL`).
+2. Set `GEMINI_API_KEY` and `GEMINI_MODEL` (and optionally `GEMINI_API_URL`).
 3. Verify that AI-generated proposals/advisories are displayed with `source: "ai"` and labelled as advisory.
 4. Verify the deterministic fallback still works when the provider is unavailable.
 

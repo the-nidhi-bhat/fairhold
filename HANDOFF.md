@@ -21,7 +21,7 @@ preview satisfies.
 
 - Live PayPal sandbox verification: blocked, no sandbox credentials or public
   webhook endpoint in this environment.
-- Live AI provider verification: blocked, no `AI_API_KEY`/`AI_MODEL`.
+- Live AI provider verification: blocked, no `GEMINI_API_KEY`/`GEMINI_MODEL`.
 - Hosted PostgreSQL + durable evidence storage in production: not configured.
   The Vercel preview therefore serves reads from an empty JSON store and
   refuses writes instead of pretending to persist them.
@@ -344,7 +344,7 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
     producing invalid blank-page results. Playwright now owns port 3100.
   - Still blocked, not faked: live PayPal sandbox (needs `DATABASE_URL`, public
     HTTPS webhook endpoint, `PAYPAL_WEBHOOK_ID`; app currently runs the demo
-    provider) and live AI provider calls (needs `AI_API_KEY`/`AI_MODEL`).
+    provider) and live AI provider calls (needs `GEMINI_API_KEY`/`GEMINI_MODEL`).
   - Browser coverage is Chromium-only; no axe/Lighthouse run. Mobile and tablet
     are emulated viewports.
   - See `QA_REPORT.md` for the full evidence matrix and `TASKS.md` for the

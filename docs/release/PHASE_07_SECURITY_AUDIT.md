@@ -68,7 +68,7 @@
 | Advisory-only prompts; AI never changes deal state | Critical | PASS | `lib/ai/advisory.ts` system prompts |
 | Structured input/output validation; malformed rejected | Medium | PASS | `parseMilestoneProposal` / `parseEvidenceAdvisory` |
 | Deterministic fallback on provider failure / missing key | — | PASS | `resolveAdvisoryProviderConfig` + fallback |
-| Live AI unverified (no `AI_API_KEY`/`AI_MODEL`) | — | NOT VERIFIED | Configuration required |
+| Live AI unverified (no `GEMINI_API_KEY`/`GEMINI_MODEL`) | — | NOT VERIFIED | Configuration required |
 | AI cannot approve evidence / capture / bypass roles | Critical | PASS | Human `planApproval` gate; advisory-only |
 
 ## G. Application & infrastructure findings
@@ -135,7 +135,7 @@ No application code changed in Phase 7.
 ## M. Owner-only actions
 
 1. Scope Vercel Deployment Protection for the demo preview (or accept blocked public demo).
-2. Provide `DATABASE_URL`, hosted object storage, PayPal sandbox credentials + webhook, `AI_API_KEY`/`AI_MODEL`.
+2. Provide `DATABASE_URL`, hosted object storage, PayPal sandbox credentials + webhook, `GEMINI_API_KEY`/`GEMINI_MODEL`.
 3. Human review of video frames (cannot view images).
 4. License decision (MIT recommended; LICENSE file missing).
 

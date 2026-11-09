@@ -14,7 +14,7 @@ Status is evidence-based. Anything not executed is marked **Unverified** rather 
 | `PAYPAL_ENV` + client id + secret | Real sandbox payments | Not set |
 | `PAYPAL_WEBHOOK_ID` | Webhook verification | Not set |
 | Public HTTPS webhook listener registered with PayPal | Webhook delivery | Not configured |
-| `AI_API_KEY` + `AI_MODEL` | Live advisory | Not set |
+| `GEMINI_API_KEY` + `GEMINI_MODEL` | Live advisory | Not set |
 | Evidence object storage | Deployed file uploads | Not implemented (local disk only) |
 
 ## Authentication
@@ -69,7 +69,7 @@ Status is evidence-based. Anything not executed is marked **Unverified** rather 
 | Schema validation and clamping | Verified | Unit tests |
 | Fallback on non-2xx, bad JSON, timeout | Verified | Unit tests with injected fetch |
 | No write path from advisory to state or payment | Verified | Import boundaries + code review |
-| Live provider call | **Unverified** | No `AI_API_KEY` |
+| Live provider call | **Unverified** | No `GEMINI_API_KEY` |
 | Prompt regression / evaluation harness | Not implemented | — |
 
 ## Security
