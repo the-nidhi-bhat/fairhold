@@ -69,6 +69,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
               placeholder="Alex Buyer or Jamie Seller"
               className="field mt-2"
             />
+            <p className="text-[10px] text-muted mt-1">
+              Demo identities: Alex Buyer · Jamie Seller · Morgan Reviewer
+            </p>
           </label>
           <label className="block text-sm font-medium text-[var(--foreground-soft)]">
             Demo role
