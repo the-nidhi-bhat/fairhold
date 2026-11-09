@@ -23,7 +23,18 @@ async function signIn(page: Page, name: string, role: Role) {
   await page.goto("/login");
   await page.getByLabel("Display name").fill(name);
   await page.getByLabel("Demo role").selectOption(role);
-  await page.getByRole("button", { name: "Continue" }).click();
+  const button = page.getByRole("button", { name: "Continue" });
+  await expect(button).toBeVisible();
+  // The server renders a real POST form; React swaps in a `javascript:` guard
+  // when it takes the form over during hydration. A click that lands during
+  // that takeover can be swallowed, so wait for React's guard to appear before
+  // clicking. The URL assertion below is unchanged.
+  await expect(button.locator("xpath=ancestor::form[1]")).not.toHaveAttribute(
+    "action",
+    /^javascript:/,
+    { timeout: 60_000 },
+  );
+  await button.click();
   await expect(page).toHaveURL(/\/dashboard$/);
 }
 
@@ -31,13 +42,14 @@ async function signOut(page: Page) {
   await page.goto("/dashboard");
   const button = page.getByRole("button", { name: /Sign out/ });
   await expect(button).toBeVisible();
-  // React 19 renders a server-action <form> with a `javascript:` action until it
-  // hydrates, and a click before that point is inert — the page simply does not
-  // navigate. Waiting for the live form removes that race without relaxing the
-  // URL assertion below.
+  // The server renders a real POST form; React swaps in a `javascript:` guard
+  // when it takes the form over during hydration. A click that lands during
+  // that takeover can be swallowed, so wait for React's guard to appear before
+  // clicking. The URL assertion below is unchanged.
   await expect(button.locator("xpath=ancestor::form[1]")).not.toHaveAttribute(
     "action",
     /^javascript:/,
+    { timeout: 60_000 },
   );
   await button.click();
   await expect(page).toHaveURL(/\/(login|\?|$)/);
@@ -183,11 +195,12 @@ test("buyer and seller complete authorization, review, revision, acceptance and 
   await expect(buildScope.getByText("CAPTURE", { exact: true })).toBeVisible();
   const approve = buildScope.getByRole("button", { name: "Approve recommendation" });
   await expect(approve).toBeEnabled();
-  // Same hydration race as sign-out: the button is inert while React replaces
-  // its `javascript:` form action, and a click in that window can never settle.
+  // Same takeover window as sign-out: wait until React has taken the form over
+  // before clicking, or the click can be swallowed mid-hydration.
   await expect(approve.locator("xpath=ancestor::form[1]")).not.toHaveAttribute(
     "action",
     /^javascript:/,
+    { timeout: 60_000 },
   );
   await approve.click();
 
@@ -300,6 +313,26 @@ test("buyer creates a deal, the seller adds a milestone, and both see persisted 
 
   await page.goto("/dashboard");
   await expect(page.getByRole("heading", { level: 3, name: title })).toBeVisible();
+
+  // The onboarding explainer starts collapsed and expands to the four steps.
+  // `<details>` keeps its content in the DOM, so the assertion is visibility,
+  // not presence.
+  const onboarding = page
+    .locator("details")
+    .filter({ hasText: "How FairHold works in four steps" })
+    .first();
+  const firstStep = onboarding.getByText("Step 1");
+  await expect(firstStep).toBeHidden();
+  await onboarding.locator("summary").click();
+  await expect(firstStep).toBeVisible();
+  await expect(onboarding.getByText("Step 4")).toBeVisible();
+  await expect(
+    onboarding.getByText(
+      "A human approves. Only then does the provider capture that milestone",
+    ),
+  ).toBeVisible();
+  await onboarding.locator("summary").click();
+  await expect(firstStep).toBeHidden();
 
   // Search narrows the list to the created deal.
   await page.getByLabel("Search deals").fill(title);
