@@ -12,7 +12,7 @@ Work moves forward. Payments move with proof.
 [![React](https://img.shields.io/badge/React-19.3-000000?style=flat-square)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square)](https://www.postgresql.org)
-[![Tests](https://img.shields.io/badge/tests-172%20passing-2f6f4f?style=flat-square)](#quality)
+[![Tests](https://img.shields.io/badge/tests-199%20passing-2f6f4f?style=flat-square)](#quality)
 [![E2E](https://img.shields.io/badge/playwright-9%20journeys-2f6f4f?style=flat-square)](#quality)
 [![PayPal](https://img.shields.io/badge/PayPal-sandbox%20adapter-0070ba?style=flat-square)](#payment-lifecycle)
 
@@ -342,7 +342,7 @@ All variables are documented by name in [.env.example](./.env.example) and expla
 
 ```bash
 # with DATABASE_URL set
-npm run db:migrate      # apply migrations/0001..0004
+npm run db:migrate      # apply migrations/0001..0005
 npm run db:import       # optional: import an existing .data/fairhold.json
 ```
 
@@ -356,8 +356,8 @@ npm run lint
 npm run build
 ```
 
-- Without a test database, the PostgreSQL integration tests skip rather than fail. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, every test runs: 193 pass, 0 skip.
-- `npx playwright test` runs the same buyer/seller journeys against a production build on desktop, mobile and tablet Chromium.
+- Without a test database, the PostgreSQL integration tests skip rather than fail. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, every test runs: 199 pass, 0 skip.
+- `npx playwright test` runs the same buyer/seller journeys against the dev server on desktop, mobile and tablet Chromium.
 - `npm test` never touches the demo database file and never contacts PayPal. `npx playwright test` never contacts PayPal either — the provider adapter is simulated in this build.
 
 Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./QA_REPORT.md).
