@@ -25,20 +25,23 @@ function recommendation(
   };
 }
 
+function geminiResponse(text: string): Response {
+  return new Response(
+    JSON.stringify({
+      candidates: [{ content: { parts: [{ text }] } }],
+    }),
+  );
+}
+
 async function aiEvidenceAdvisory(
   advisory: EvidenceAdvisory,
 ): Promise<EvidenceAdvisory> {
-  const fetchImpl = (async () => {
-    return new Response(
-      JSON.stringify({
-        choices: [{ message: { content: JSON.stringify(advisory) } }],
-      }),
-    );
-  }) as unknown as typeof fetch;
+  const fetchImpl = (async () =>
+    geminiResponse(JSON.stringify(advisory))) as unknown as typeof fetch;
   const result = await resolveEvidenceAdvisory(
     "Deliverable matches criteria",
     ["delivery.pdf"],
-    { AI_API_KEY: "test-key", AI_MODEL: "test-model" },
+    { GEMINI_API_KEY: "test-key", GEMINI_MODEL: "test-model" },
     fetchImpl,
   );
   return result.advisory;
@@ -111,25 +114,15 @@ test(
   async () => {
     // Resolve an AI evidence advisory (mocked provider).
     const fetchImpl = (async () =>
-      new Response(
-        JSON.stringify({
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  summary: "Evidence looks complete.",
-                  matchedCriteria: ["All criteria met"],
-                  concerns: [],
-                }),
-              },
-            },
-          ],
-        }),
-      )) as typeof fetch;
+      geminiResponse(JSON.stringify({
+        summary: "Evidence looks complete.",
+        matchedCriteria: ["All criteria met"],
+        concerns: [],
+      }))) as typeof fetch;
     const result = await resolveEvidenceAdvisory(
       "Deliverable is provided",
       ["file.pdf"],
-      { AI_API_KEY: "test-key", AI_MODEL: "test-model" },
+      { GEMINI_API_KEY: "test-key", GEMINI_MODEL: "test-model" },
       fetchImpl,
     );
 
