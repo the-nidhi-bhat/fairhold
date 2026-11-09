@@ -1,6 +1,6 @@
 # FairHold — Final Release Checklist (Hackathon Submission)
 
-**Candidate commit:** `544a6b3` (`feat/deal-milestone-foundation`, synced with remote)
+**Candidate commit:** `e8d57ff` (`feat/deal-milestone-foundation`, synced with remote)
 
 ## 1. Official hackathon requirements
 
@@ -15,8 +15,9 @@
 | Open-source license | OWNER ACTION | No LICENSE tracked; MIT recommended |
 | Public YouTube video < 3 min | NOT UPLOADED | 100s master + 30s cut ready; owner uploads |
 | Solo team | VERIFIED | No teammates |
-| Final Git sync | VERIFIED | HEAD == remote == `544a6b3` |
+| Final Git sync | VERIFIED | HEAD == remote == `e8d57ff` |
 | Full test gate | PASS | typecheck 0, lint 0, unit 199/199, build 0, Playwright 27/27 |
+| Demo sign-in allowlist | VERIFIED | Alex Buyer+buyer, Jamie Seller+seller, Morgan Reviewer+reviewer all accepted; incorrect role/unknown/empty env rejected |
 
 ## 2. Payment safety invariants (all verified)
 
@@ -48,11 +49,12 @@
 ## 5. Remaining owner actions (deadline order)
 
 1. Upload video to YouTube (public), supply URL — before submission
-2. Scope Deployment Protection for demo preview (or leave blocked) — before public demo
-3. Provide DATABASE_URL + hosted storage + PayPal sandbox creds + webhook + AI key — for sandbox/live verification
-4. Decide license; add LICENSE file — before repo publication
-5. Replace/remove stale `fairhold-beta.vercel.app` alias — optional
-6. Human review of video frames — optional (I cannot view images)
+2. Configure Vercel preview env vars for demo access: `FAIRHOLD_SESSION_SECRET`, `FAIRHOLD_DEMO_BUYERS`, `FAIRHOLD_DEMO_SELLERS`, `FAIRHOLD_DEMO_REVIEWERS`, `FAIRHOLD_REVIEWER_DEALS` — before demo sign-in works
+3. Scope Deployment Protection for demo preview (or leave blocked) — before public demo
+4. Provide DATABASE_URL + hosted storage + PayPal sandbox creds + webhook + AI key — for sandbox/live verification
+5. Decide license; add LICENSE file — before repo publication
+6. Replace/remove stale `fairhold-beta.vercel.app` alias — optional
+7. Human review of video frames — optional (I cannot view images)
 
 ## 6. Definitive verdict
 
