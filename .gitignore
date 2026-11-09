@@ -102,3 +102,4 @@ scripts/.paypal-kill-test-state.json
 .vercel/
 .env*.local
 .env.vercel
+.env*

@@ -16,13 +16,41 @@
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
 import type { Database, Deal } from "../domain/types.ts";
 import { writeEvidenceFile } from "./storage.ts";
 
 export { writeEvidenceFile };
 
-const DATA_DIR = join(process.cwd(), ".data");
-const DATA_FILE = join(DATA_DIR, "fairhold.json");
+// The JSON demo store prefers the local .data/ directory (so dev and tests
+// share the same seeded file) and falls back to the OS temp directory on
+// serverless hosts (e.g. Vercel) where the deployment directory is read-only.
+// Data is ephemeral by design — lost on redeploy, which matches the JSON
+// store's documented development/demo role.
+const DATA_DIR_CANDIDATES = [
+  join(process.cwd(), ".data"),
+  join(tmpdir(), "fairhold"),
+];
+
+let resolvedDataDir: string | null = null;
+
+async function resolveDataDir(): Promise<string> {
+  if (resolvedDataDir) return resolvedDataDir;
+  for (const dir of DATA_DIR_CANDIDATES) {
+    try {
+      await mkdir(dir, { recursive: true });
+      resolvedDataDir = dir;
+      return dir;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error("No writable data directory available for the demo store.");
+}
+
+export async function dataFilePath(): Promise<string> {
+  return join(await resolveDataDir(), "fairhold.json");
+}
 
 function emptyDatabase(): Database {
   return { version: 1, deals: [], paymentOperations: [] };
@@ -47,7 +75,7 @@ function normalizeDeal(deal: Deal): Deal {
 
 export async function readDatabase(): Promise<Database> {
   try {
-    const raw = await readFile(DATA_FILE, "utf8");
+    const raw = await readFile(await dataFilePath(), "utf8");
     const parsed = JSON.parse(raw) as Database;
     if (!parsed || !Array.isArray(parsed.deals)) return emptyDatabase();
     return { ...parsed, deals: parsed.deals.map(normalizeDeal) };
@@ -60,8 +88,8 @@ export async function readDatabase(): Promise<Database> {
 }
 
 export async function writeDatabase(db: Database): Promise<void> {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(DATA_FILE, JSON.stringify(db, null, 2), "utf8");
+  await mkdir(await resolveDataDir(), { recursive: true });
+  await writeFile(await dataFilePath(), JSON.stringify(db, null, 2), "utf8");
 }
 
 // Serialize writes so two requests cannot interleave read-modify-write cycles.

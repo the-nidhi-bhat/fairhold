@@ -15,9 +15,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           Enter the workspace as a real role.
         </h1>
         <p className="lede mt-5">
-          FairHold signs demo sessions locally and checks every deal action on the
-          server. Buyers, sellers and reviewers see different controls because
-          they have different responsibilities.
+          FairHold signs demo sessions locally and checks every deal action on
+          the server. Buyers, sellers and reviewers see different controls
+          because they have different responsibilities.
         </p>
 
         <dl className="mt-9 grid gap-4 sm:grid-cols-3">
@@ -36,14 +36,17 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         </dl>
 
         <p className="mt-8 max-w-lg text-xs leading-5 text-muted">
-          Demo authentication is not production identity verification. Names must
-          be allowlisted on the server; reviewers also need an explicit deal grant.
+          Demo authentication is not production identity verification. Names
+          must be allowlisted on the server; reviewers also need an explicit
+          deal grant.
         </p>
       </div>
 
       <div className="surface w-full p-6 sm:p-8">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-semibold tracking-[-0.03em]">Demo sign in</h2>
+          <h2 className="text-xl font-semibold tracking-[-0.03em]">
+            Demo sign in
+          </h2>
           <span className="chip">Signed locally</span>
         </div>
 
@@ -52,9 +55,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             role="alert"
             className="mt-5 rounded-lg border border-[color-mix(in_srgb,var(--warning)_35%,transparent)] bg-[color-mix(in_srgb,var(--warning)_10%,transparent)] px-3.5 py-3 text-sm leading-6 text-[var(--warning)]"
           >
-            That identity is not allowlisted for the selected role. Check the demo
-            allowlist configured on the server, or ask the operator which demo
-            identities are enabled.
+            That identity is not allowlisted for the selected role. Check the
+            demo allowlist configured on the server, or ask the operator which
+            demo identities are enabled.
           </p>
         ) : null}
 
@@ -86,7 +89,10 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
         <p className="mt-5 text-center text-xs text-muted">
           No account is created.{" "}
-          <Link href="/" className="underline decoration-[var(--border-strong)] underline-offset-4 hover:text-[var(--foreground)]">
+          <Link
+            href="/"
+            className="underline decoration-[var(--border-strong)] underline-offset-4 hover:text-[var(--foreground)]"
+          >
             Back to overview
           </Link>
         </p>
