@@ -80,6 +80,9 @@ temp/
 .cache/
 *.bak
 
+# UI/UX audit screenshots (binary artifacts, not source)
+audit-shots/
+
 # Release gate logs (local verification only)
 .gate/
 

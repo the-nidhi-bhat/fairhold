@@ -61,9 +61,22 @@ Add these to **Vercel Dashboard → Project `fairhold` → Settings → Environm
 
 ## 4. Exact anonymous demo access blocker and owner steps
 
-**Blocker:** Vercel Deployment Protection returns HTTP 302 → Vercel SSO login page for anonymous visitors to `https://fairhold-3zsrgxjrg-thenidhibhat-6721s-projects.vercel.app/demo` (newest preview, built from HEAD `4822859`).
+**Blocker:** Vercel Deployment Protection returns HTTP 302 → Vercel SSO login page for anonymous visitors.
 
-**Evidence:** Anonymous webfetch returned "Login – Vercel" page, not the demo. `vercel curl` (authenticated CLI session) loads `/demo` successfully — confirming the app itself is fine; the block is purely the protection layer.
+**Deployments checked (automated webfetch, both return Vercel SSO login page):**
+
+| Deployment URL | Age at check | Anonymous `/demo` result |
+|---|---|---|
+| `https://fairhold-3zsrgxjrg-thenidhibhat-6721s-projects.vercel.app` (tested in prior report) | 16m | SSO login page (blocked) |
+| `https://fairhold-2r5a3xof3-thenidhibhat-6721s-projects.vercel.app` (newest preview, deployment `dpl_EJT1NbUrT3qJpETQsqHxB6N7qRYA`, created Mon Nov 09 2026 16:36:59 IST) | 8m | SSO login page (blocked) |
+
+**Owner-reported observation (UNVERIFIED by automated tooling):** Owner reports manual incognito browser verification succeeded without SSO, and all 5 Preview env vars were configured before redeployment. This cannot be independently confirmed — both current deployments return the Vercel SSO page for anonymous requests.
+
+**Whether `e3137ed` is deployed:** CANNOT DETERMINE — Vercel CLI (`vercel inspect`/`vercel ls`) does not expose the source commit SHA for individual deployments. The newest preview may or may not be built from `e3137ed`.
+
+**Preview environment variables:** Owner reports all 5 configured (`FAIRHOLD_SESSION_SECRET`, `FAIRHOLD_DEMO_BUYERS`, `FAIRHOLD_DEMO_SELLERS`, `FAIRHOLD_DEMO_REVIEWERS`, `FAIRHOLD_REVIEWER_DEALS`). Cannot be verified independently from source code or CLI output — env var values are not exposed.
+
+**`vercel curl` (authenticated CLI session) loads `/demo` successfully** on both deployments — confirming the app code, demo route, and sign-in flow work correctly; the block is purely the Deployment Protection layer.
 
 **This is NOT a code defect.** The application code, demo route, and sign-in flow all work correctly.
 
