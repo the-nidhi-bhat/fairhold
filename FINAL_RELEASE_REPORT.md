@@ -222,10 +222,10 @@ One gate run did fail — 23 passed / 1 failed on the tablet project, a swallowe
 "Sign out" click — and it was not waved through. It led to the real cause (a
 server-action form is inert until hydration), to a stricter pre-click readiness
 check in the suite, and to a documented product limitation. After the hardening
-the full suite passed 24/24; the closeout gate runs 27 tests including the new
-progressive-enhancement journey, and its result will be recorded below when the
-run completes; the investigation is in `QA_REPORT.md` under "Flake found by the
-release gate".
+the full suite passed 24/24; the closeout gate ran **27 tests (9 journeys × 3
+projects: desktop/mobile/tablet Chromium)**, all passing — **27 passed, exit 0,
+4.6m**. The investigation is in `QA_REPORT.md` under "Flake found by the release
+gate".
 
 ---
 
@@ -271,7 +271,7 @@ state including the unverified items; no document claims a live sandbox run.
 | Item | State |
 | --- | --- |
 | Vercel project | `fairhold` (team `thenidhibhat-6721s-projects`), Next.js preset |
-| Latest preview | Ready, full route set, status Ready |
+| Latest preview | **Freshly deployed from final HEAD `5c7f8f6`** — https://fairhold-gpjdgtu59-thenidhibhat-6721s-projects.vercel.app (deployment `dpl_DjHoRHGtfUeZF91KW36YCaUd6d7f`, Next.js preset, build exit 0, 10 routes including `/demo`). Build was verified on the local tree before deploy; anonymous access remains blocked by Deployment Protection (302 to SSO) — that control was intentionally not changed. |
 | Anonymous access | **Blocked** — Vercel Deployment Protection returns 302 to SSO |
 | Production deployment | **Exists on a hashed URL** (`fairhold-ksmp5xz0b-thenidhibhat-6721s-projects.vercel.app`, created 2026-11-06) but serves a stale broken build and is not linked to any domain; production env scope is empty, so this is not a production-ready deployment. |
 | Hosted database | None |
@@ -363,7 +363,7 @@ per row: `FINAL_REMAINING_WORK.md`.
 | Is it ready for a real-user beta? | **No** — sign-in is a demo identity, there is no hosted database or durable evidence storage, and there is no monitoring. |
 | Is the PayPal sandbox lifecycle verified? | **No** — no credentials, no public webhook, no `PAYPAL_WEBHOOK_ID`. The adapter is simulated in this build and says so. |
 | Are production payments ready? | **No** — sandbox is unverified, there is no hosted accounting, and refunds are not implemented. |
-| Is a production deployment ready? | **No** — the production environment scope is empty and no production deployment was created. |
+| Is a production deployment ready? | **No** — a production deployment exists on a hashed URL but serves a stale broken build, production env scope is empty, and no domain is linked; it is not production-ready. |
 
 ---
 
