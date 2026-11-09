@@ -23,9 +23,9 @@
  *          so the endpoint returns 5xx and the provider redelivers.
  *
  * Provider events are PAYMENT-LIFECYCLE EVIDENCE, never permission: nothing
- * here can approve a human decision, move a milestone, or trigger a capture.
- * capture_completed only ever records evidence for an approval that a human
- * already recorded (and that already moved the milestone to Completed).
+ * here can approve a human decision or trigger a capture. capture_completed
+ * only ever records evidence for an approval a human already recorded, and the
+ * milestone moves to Completed only through that approval's capture path.
  */
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
