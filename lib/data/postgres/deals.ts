@@ -329,6 +329,7 @@ export async function markDealAuthorized(
     providerOrderId?: string | null;
     simulated: boolean;
     amountCents: number;
+    expiresAt?: string | null;
   },
   actor = "system",
 ): Promise<DealMutationResult> {
@@ -345,8 +346,8 @@ export async function markDealAuthorized(
     try {
       await client.query(
         `INSERT INTO payment_authorizations
-           (id, deal_id, provider_name, provider_reference, provider_order_id, simulated, amount_cents, currency, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+           (id, deal_id, provider_name, provider_reference, provider_order_id, simulated, amount_cents, currency, expires_at, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
         [
           randomUUID(),
           dealId,
@@ -356,6 +357,7 @@ export async function markDealAuthorized(
           authorization.simulated,
           authorization.amountCents,
           dealRow.currency,
+          authorization.expiresAt ?? null,
           now(),
         ],
       );

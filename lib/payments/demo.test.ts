@@ -19,6 +19,11 @@ test("demo provider: simulates an authorization with no network call", async () 
   assert.equal(result.status, "CREATED");
   assert.ok(result.providerReference?.startsWith("demo-auth-"));
   assert.match(result.message, /SIMULATED/);
+  // The simulated hold carries an invented expiry so the expiry surface can be
+  // exercised; it is flagged simulated wherever it is displayed.
+  const expiresAt = Date.parse(result.expiresAt ?? "");
+  assert.ok(Number.isFinite(expiresAt), "expected a parseable simulated expiry");
+  assert.ok(expiresAt > Date.now(), "simulated hold should expire in the future");
 });
 
 test("demo provider: capture is simulated and rejects bad amounts", async () => {

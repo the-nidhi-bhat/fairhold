@@ -205,6 +205,7 @@ export async function loadDealsBy(
             providerOrderId: authRow.provider_order_id ?? null,
             simulated: authRow.simulated as boolean,
             amountCents: toNumber(authRow.amount_cents),
+            expiresAt: ts(authRow.expires_at),
             createdAt: ts(authRow.created_at) as string,
           };
 
