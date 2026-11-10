@@ -735,8 +735,8 @@ async function EvidenceAdvisoryPanel({
       </p>
       {advisory.concerns.length > 0 ? (
         <ul className="mt-2 list-disc pl-5 text-xs text-[var(--warning)]">
-          {advisory.concerns.map((concern) => (
-            <li key={concern}>{concern}</li>
+          {advisory.concerns.map((concern, index) => (
+            <li key={`${index}-${concern}`}>{concern}</li>
           ))}
         </ul>
       ) : null}
@@ -771,8 +771,8 @@ async function AgreementAnalysisPanel({
             Deliverables
           </p>
           <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
-            {analysis.deliverables.map((d) => (
-              <li key={d}>{d}</li>
+            {analysis.deliverables.map((d, index) => (
+              <li key={`${index}-${d}`}>{d}</li>
             ))}
           </ul>
         </>
@@ -783,8 +783,8 @@ async function AgreementAnalysisPanel({
             Acceptance criteria
           </p>
           <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
-            {analysis.acceptanceCriteria.map((c) => (
-              <li key={c}>{c}</li>
+            {analysis.acceptanceCriteria.map((c, index) => (
+              <li key={`${index}-${c}`}>{c}</li>
             ))}
           </ul>
         </>
@@ -795,8 +795,8 @@ async function AgreementAnalysisPanel({
             Missing details
           </p>
           <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
-            {analysis.missingDetails.map((d) => (
-              <li key={d}>{d}</li>
+            {analysis.missingDetails.map((d, index) => (
+              <li key={`${index}-${d}`}>{d}</li>
             ))}
           </ul>
         </>
@@ -807,8 +807,8 @@ async function AgreementAnalysisPanel({
             Ambiguous requirements
           </p>
           <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
-            {analysis.ambiguousRequirements.map((r) => (
-              <li key={r}>{r}</li>
+            {analysis.ambiguousRequirements.map((r, index) => (
+              <li key={`${index}-${r}`}>{r}</li>
             ))}
           </ul>
         </>
@@ -844,8 +844,8 @@ async function EvidenceAnalysisPanel({
             Supported criteria
           </p>
           <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
-            {analysis.supportedCriteria.map((c) => (
-              <li key={c}>{c}</li>
+            {analysis.supportedCriteria.map((c, index) => (
+              <li key={`${index}-${c}`}>{c}</li>
             ))}
           </ul>
         </>
@@ -856,8 +856,8 @@ async function EvidenceAnalysisPanel({
             Missing criteria
           </p>
           <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
-            {analysis.missingCriteria.map((c) => (
-              <li key={c}>{c}</li>
+            {analysis.missingCriteria.map((c, index) => (
+              <li key={`${index}-${c}`}>{c}</li>
             ))}
           </ul>
         </>
@@ -868,8 +868,8 @@ async function EvidenceAnalysisPanel({
             Contradictory evidence
           </p>
           <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
-            {analysis.contradictoryEvidence.map((c) => (
-              <li key={c}>{c}</li>
+            {analysis.contradictoryEvidence.map((c, index) => (
+              <li key={`${index}-${c}`}>{c}</li>
             ))}
           </ul>
         </>
@@ -880,8 +880,8 @@ async function EvidenceAnalysisPanel({
             Insufficient evidence
           </p>
           <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
-            {analysis.insufficientEvidence.map((e) => (
-              <li key={e}>{e}</li>
+            {analysis.insufficientEvidence.map((e, index) => (
+              <li key={`${index}-${e}`}>{e}</li>
             ))}
           </ul>
         </>
