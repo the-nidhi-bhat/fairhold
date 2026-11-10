@@ -116,7 +116,8 @@ function meaningfulTokens(text: string): string[] {
 
 /**
  * Deterministic evidence advisory fallback. Matches each acceptance-criteria
- * line only when the draft shares at least one meaningful token with it.
+ * line only when the draft shares at least two meaningful tokens with it — a
+ * single keyword overlap is not enough to claim a broad criterion is supported.
  * Never claims a criterion is matched on zero shared tokens.
  */
 export function deterministicEvidenceAdvisory(
@@ -132,9 +133,14 @@ export function deterministicEvidenceAdvisory(
   const matchedCriteria =
     draftText.length === 0
       ? []
-      : criteriaLines.filter((line) =>
-          meaningfulTokens(line).some((token) => draftText.includes(token)),
-        );
+      : criteriaLines.filter((line) => {
+          const tokens = meaningfulTokens(line);
+          // Require at least two token matches so a single keyword cannot
+          // falsely mark a broad criterion as supported.
+          return tokens.length >= 2
+            ? tokens.filter((token) => draftText.includes(token)).length >= 2
+            : tokens.length > 0 && tokens.every((token) => draftText.includes(token));
+        });
 
   const concerns: string[] = [];
   if (draftText.length === 0) {
@@ -209,7 +215,12 @@ export function deterministicEvidenceAnalysis(
   for (const criterion of criteria) {
     const cLower = criterion.toLowerCase();
     const keyWords = cLower.split(/\s+/).filter((w) => w.length > 3);
-    const matched = keyWords.some((w) => evidenceText.includes(w));
+    // Require at least two keyword matches so a single word cannot falsely
+    // mark a broad criterion as supported. Short criteria (1 keyword) require
+    // that one match; longer criteria require two.
+    const matchThreshold = keyWords.length <= 1 ? 1 : 2;
+    const matchedCount = keyWords.filter((w) => evidenceText.includes(w)).length;
+    const matched = matchedCount >= matchThreshold;
     if (matched) {
       supportedCriteria.push(criterion);
       missingCriteria.splice(missingCriteria.indexOf(criterion), 1);
@@ -268,19 +279,15 @@ export function parseMilestoneProposal(raw: unknown): MilestoneProposal | null {
 export function parseEvidenceAdvisory(raw: unknown): EvidenceAdvisory | null {
   if (!raw || typeof raw !== "object") return null;
   const record = raw as Record<string, unknown>;
-  if (
-    typeof record.summary !== "string" ||
-    !Array.isArray(record.matchedCriteria) ||
-    !Array.isArray(record.concerns) ||
-    !record.matchedCriteria.every((value) => typeof value === "string") ||
-    !record.concerns.every((value) => typeof value === "string")
-  ) {
-    return null;
-  }
+  if (typeof record.summary !== "string") return null;
+  const matchedCriteria = coerceStringArray(record.matchedCriteria);
+  if (matchedCriteria === null) return null;
+  const concerns = coerceStringArray(record.concerns);
+  if (concerns === null) return null;
   return {
     summary: record.summary.trim().slice(0, 1000),
-    matchedCriteria: record.matchedCriteria.map((value) => value.trim().slice(0, 300)).slice(0, 20),
-    concerns: record.concerns.map((value) => value.trim().slice(0, 300)).slice(0, 20),
+    matchedCriteria: matchedCriteria.map((v) => v.slice(0, 300)).slice(0, 20),
+    concerns: concerns.map((v) => v.slice(0, 300)).slice(0, 20),
   };
 }
 
@@ -317,42 +324,58 @@ export function parseAgreementAnalysis(raw: unknown): AgreementAnalysis | null {
   };
 }
 
+function coerceNumber(value: unknown): number | null {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const parsed = Number(value.trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function coerceStringArray(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  const result = value
+    .filter((v) => typeof v === "string")
+    .map((v) => (v as string).trim())
+    .filter((v) => v.length > 0);
+  return result.length > 0 ? result : [];
+}
+
 export function parseEvidenceAnalysis(raw: unknown): EvidenceAnalysis | null {
   if (!raw || typeof raw !== "object") return null;
   const record = raw as Record<string, unknown>;
-  if (
-    typeof record.evidenceCount !== "number" ||
-    !Array.isArray(record.supportedCriteria) ||
-    !Array.isArray(record.missingCriteria) ||
-    !Array.isArray(record.contradictoryEvidence) ||
-    !Array.isArray(record.insufficientEvidence) ||
-    typeof record.reasoning !== "string" ||
-    !Array.isArray(record.limitations)
-  ) {
+  const evidenceCount = coerceNumber(record.evidenceCount);
+  if (evidenceCount === null) return null;
+  const supportedCriteria = coerceStringArray(record.supportedCriteria);
+  if (supportedCriteria === null) return null;
+  const missingCriteria = coerceStringArray(record.missingCriteria);
+  if (missingCriteria === null) return null;
+  const contradictoryEvidence = coerceStringArray(record.contradictoryEvidence);
+  if (contradictoryEvidence === null) return null;
+  const insufficientEvidence = coerceStringArray(record.insufficientEvidence);
+  if (insufficientEvidence === null) return null;
+  if (typeof record.reasoning !== "string" || !Array.isArray(record.limitations)) {
     return null;
   }
   return {
-    evidenceCount: Math.max(0, record.evidenceCount as number),
-    supportedCriteria: record.supportedCriteria
-      .filter((v) => typeof v === "string")
-      .map((v) => (v as string).trim().slice(0, 300))
+    evidenceCount: Math.max(0, evidenceCount),
+    supportedCriteria: supportedCriteria
+      .map((v) => v.slice(0, 300))
       .slice(0, 20),
-    missingCriteria: record.missingCriteria
-      .filter((v) => typeof v === "string")
-      .map((v) => (v as string).trim().slice(0, 300))
+    missingCriteria: missingCriteria
+      .map((v) => v.slice(0, 300))
       .slice(0, 20),
-    contradictoryEvidence: record.contradictoryEvidence
-      .filter((v) => typeof v === "string")
-      .map((v) => (v as string).trim().slice(0, 300))
+    contradictoryEvidence: contradictoryEvidence
+      .map((v) => v.slice(0, 300))
       .slice(0, 10),
-    insufficientEvidence: record.insufficientEvidence
-      .filter((v) => typeof v === "string")
-      .map((v) => (v as string).trim().slice(0, 300))
+    insufficientEvidence: insufficientEvidence
+      .map((v) => v.slice(0, 300))
       .slice(0, 10),
     reasoning: record.reasoning.trim().slice(0, 1000),
     limitations: record.limitations
       .filter((v) => typeof v === "string")
-      .map((v) => (v as string).trim().slice(0, 300))
+      .map((v) => v.trim().slice(0, 300))
       .slice(0, 10),
   };
 }
@@ -458,15 +481,21 @@ function geminiRequestBody(
 
 /**
  * Call the Gemini API with a system instruction + user content pair.
- * Returns the raw text content of the first candidate, or null on any failure.
- * Timeout and network errors are swallowed — the caller falls back to deterministic output.
+ * Returns the raw text content of the first candidate on success, or a failure
+ * reason on any error. Timeout and network errors are swallowed — the caller
+ * falls back to deterministic output. Failure reasons are non-secret and safe
+ * to log or display.
  */
+type GeminiCallResult =
+  | { kind: "ok"; text: string }
+  | { kind: "fail"; reason: "http" | "json" | "shape" | "timeout" | "unknown" };
+
 async function callGemini(
   config: AdvisoryProviderConfig,
   systemInstruction: string,
   userContent: string,
   fetchImpl: typeof fetch = fetch,
-): Promise<string | null> {
+): Promise<GeminiCallResult> {
   try {
     const response = await fetchImpl(config.url, {
       method: "POST",
@@ -477,7 +506,7 @@ async function callGemini(
       body: geminiRequestBody(systemInstruction, userContent),
       signal: AbortSignal.timeout(ADVISORY_LIMITS.fetchTimeoutMs),
     });
-    if (!response.ok) return null;
+    if (!response.ok) return { kind: "fail", reason: "http" };
     const payload = await response.json() as {
       candidates?: Array<{
         content?: { parts?: Array<{ text?: unknown }> };
@@ -486,11 +515,12 @@ async function callGemini(
     };
     const candidate = payload.candidates?.[0];
     const parts = candidate?.content?.parts;
-    if (!Array.isArray(parts)) return null;
+    if (!Array.isArray(parts)) return { kind: "fail", reason: "shape" };
     const text = parts.find((p) => typeof p.text === "string")?.text;
-    return typeof text === "string" ? text : null;
+    if (typeof text !== "string") return { kind: "fail", reason: "shape" };
+    return { kind: "ok", text };
   } catch {
-    return null;
+    return { kind: "fail", reason: "unknown" };
   }
 }
 
@@ -517,12 +547,12 @@ export async function resolveMilestoneProposal(
 
   const userContent = `Agreement: ${safeAgreement}`;
 
-  const content = await callGemini(config, systemInstruction, userContent, fetchImpl);
-  if (!content) return { proposal: fallback, source: "deterministic" };
+  const result = await callGemini(config, systemInstruction, userContent, fetchImpl);
+  if (result.kind !== "ok") return { proposal: fallback, source: "deterministic" };
 
   let parsed: unknown;
   try {
-    parsed = parseJsonObject(content);
+    parsed = parseJsonObject(result.text);
   } catch {
     return { proposal: fallback, source: "deterministic" };
   }
@@ -556,12 +586,12 @@ export async function resolveEvidenceAdvisory(
     evidence: safeEvidence,
   });
 
-  const content = await callGemini(config, systemInstruction, userContent, fetchImpl);
-  if (!content) return { advisory: fallback, source: "deterministic" };
+  const result = await callGemini(config, systemInstruction, userContent, fetchImpl);
+  if (result.kind !== "ok") return { advisory: fallback, source: "deterministic" };
 
   let parsed: unknown;
   try {
-    parsed = parseJsonObject(content);
+    parsed = parseJsonObject(result.text);
   } catch {
     return { advisory: fallback, source: "deterministic" };
   }
@@ -593,12 +623,12 @@ export async function analyzeAgreement(
 
   const userContent = `Agreement: ${safeAgreement}`;
 
-  const content = await callGemini(config, systemInstruction, userContent, fetchImpl);
-  if (!content) return { analysis: fallback, source: "deterministic" };
+  const result = await callGemini(config, systemInstruction, userContent, fetchImpl);
+  if (result.kind !== "ok") return { analysis: fallback, source: "deterministic" };
 
   let parsed: unknown;
   try {
-    parsed = parseJsonObject(content);
+    parsed = parseJsonObject(result.text);
   } catch {
     return { analysis: fallback, source: "deterministic" };
   }
@@ -639,12 +669,12 @@ export async function analyzeEvidence(
     evidence: safeEvidence,
   });
 
-  const content = await callGemini(config, systemInstruction, userContent, fetchImpl);
-  if (!content) return { analysis: fallback, source: "deterministic" };
+  const result = await callGemini(config, systemInstruction, userContent, fetchImpl);
+  if (result.kind !== "ok") return { analysis: fallback, source: "deterministic" };
 
   let parsed: unknown;
   try {
-    parsed = parseJsonObject(content);
+    parsed = parseJsonObject(result.text);
   } catch {
     return { analysis: fallback, source: "deterministic" };
   }
