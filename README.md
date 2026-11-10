@@ -12,8 +12,8 @@ Work moves forward. Payments move with proof.
 [![React](https://img.shields.io/badge/React-19.3-000000?style=flat-square)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square)](https://www.postgresql.org)
-[![Tests](https://img.shields.io/badge/tests-233%20passing-2f6f4f?style=flat-square)](#quality)
-[![E2E](https://img.shields.io/badge/playwright-9%20journeys-2f6f4f?style=flat-square)](#quality)
+[![Tests](https://img.shields.io/badge/tests-239%20total%20%C2%B7%20215%20passing-2f6f4f?style=flat-square)](#quality)
+[![E2E](https://img.shields.io/badge/playwright-60%20passing-2f6f4f?style=flat-square)](#quality)
 [![PayPal](https://img.shields.io/badge/PayPal-sandbox%20adapter-0070ba?style=flat-square)](#payment-lifecycle)
 
 </div>
@@ -356,9 +356,9 @@ npm run lint
 npm run build
 ```
 
-- Without a test database, the PostgreSQL integration tests skip rather than fail. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, every test runs: 233 pass, 0 skip.
-- `npx playwright test` runs the same buyer/seller journeys against the dev server on desktop, mobile and tablet Chromium.
-- `npm test` never touches the demo database file and never contacts PayPal. `npx playwright test` never contacts PayPal either — the provider adapter is simulated in this build.
+- Without a test database, the PostgreSQL integration tests skip rather than fail: `npm test` reports 239 tests, 215 pass, 24 skipped, exit 0 (`FAIRHOLD_SESSION_SECRET` is required). With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, the 24 skipped suites run too.
+- `npm run test:e2e` builds the app once and then runs each Playwright project in turn (desktop 3100, mobile 3101, tablet 3102), each against its own server, its own data directory under `%TEMP%\fairhold-e2e\`, and its own reset fixture: 20 tests per project, 60 total.
+- `npm test` never touches the demo database file and never contacts PayPal. `npm run test:e2e` never contacts PayPal either — the provider adapter is simulated in this build.
 
 Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./QA_REPORT.md).
 

@@ -9,9 +9,10 @@ Updated 2026-11-08.
 - `npm test` against an isolated PostgreSQL 16 container
   (`127.0.0.1:55432`, database `fairhold_test`): 193 tests, 193 pass, 0 failed,
   0 skipped.
-- `npx playwright test`: 27 passed - 9 journeys across desktop, mobile and tablet
-  Chromium, including search, filtered empty state, fee transparency, the guided
-  demo and its PayPal-request guard.
+- `npm run test:e2e`: 60 passed (20 tests on desktop, mobile and tablet Chromium).
+  Each project gets its own server, port and data directory, and the suite runs
+  against a production build. Coverage includes search, filtered empty state, fee
+  transparency, the guided demo and its PayPal-request guard.
 - Public guided demo at `/demo`: browser-only, localStorage persistence, reuses
   the deterministic rules, labels every payment SIMULATED, never calls a provider.
 - Money is integer cents end to end; typed amounts parse straight to cents.

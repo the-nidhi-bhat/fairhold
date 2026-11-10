@@ -127,7 +127,7 @@ FAIRHOLD_REVIEWER_DEALS="Morgan Reviewer:8f2c4a1e-6b3d-4f7a-9c21-5d0e7b4a3c10"
 | `lint` | `eslint` | Lint with `eslint-config-next`. |
 | `typecheck` | `next typegen && tsc --noEmit` | Generate route types, then type-check. |
 | `test` | `node --test "lib/**/*.test.ts"` | Unit and integration tests. |
-| `test:e2e` | `playwright test` | Browser journeys (desktop, mobile, tablet Chromium). |
+| `test:e2e` | `node scripts/run-e2e.mjs` | Production build, then every Playwright project in turn (desktop 3100, mobile 3101, tablet 3102), each with its own data directory. |
 | `demo:reset` | `node scripts/demo-reset.mjs` | Rewrite the JSON demo store. |
 | `db:migrate` | `node --env-file-if-exists=.env scripts/db-migrate.mjs` | Apply migrations. |
 | `db:import` | `node --env-file-if-exists=.env scripts/db-import-json.mjs` | Import the JSON store into PostgreSQL. |
@@ -144,5 +144,5 @@ FAIRHOLD_REVIEWER_DEALS="Morgan Reviewer:8f2c4a1e-6b3d-4f7a-9c21-5d0e7b4a3c10"
 | Webhook returns `503 webhook not configured` | `PAYPAL_WEBHOOK_ID` missing or still a placeholder. | Register the listener and set the id. |
 | Webhook returns `503 webhook processing requires PostgreSQL` | `DATABASE_URL` unset. | Webhook processing requires durable storage. |
 | Integration tests skip | `FAIRHOLD_TEST_DATABASE_URL` unset. | That is intentional — skipped, never silently passed. |
-| Playwright times out on a slow machine | Dev-mode route compilation on first hit. | The suite allows 90 s per test; warm the server once or use a production build. |
-| Port already in use | A previous `next dev` is still running. | Stop it, or run `npm run dev -- --port 3100` to match the Playwright config. |
+| Playwright times out on a slow machine | A wedged server, or three concurrent dev servers exhausting RAM. | `npm run test:e2e` builds once and runs one project at a time; each test has a 120 s ceiling and each assertion 10 s. |
+| Port already in use | A previous `next dev`/`next start` is still running on 3100, 3101 or 3102. | Stop it: `Get-NetTCPConnection -LocalPort 3102 -State Listen` names the owning process. |

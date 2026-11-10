@@ -63,8 +63,8 @@ The dependency rule is one-directional: domain modules import only domain types;
 | `lib/ai/advisory.ts` | Advisory calls, schema validation, deterministic fallbacks. |
 | `lib/auth/` | `session-token.ts` (HMAC), `session.ts` (cookie + `canAccessDeal`), `demo-allowlist.ts`. |
 | `migrations/` | `0001_initial.sql` … `0004_payment_operations.sql`. |
-| `tests/` | `evidence-lifecycle.spec.ts` — three journeys run across three device profiles. |
-| `scripts/` | `demo-reset.mjs`, `db-migrate.mjs`, `db-import-json.mjs`. |
+| `tests/` | Five Playwright specs (20 tests) run across three device profiles: desktop, mobile, tablet. |
+| `scripts/` | `run-e2e.mjs` (build + per-project E2E runner), `reset-test-data.mjs` (per-project fixture), `demo-reset.mjs`, `db-migrate.mjs`, `db-import-json.mjs`. |
 
 ## Request flows
 
