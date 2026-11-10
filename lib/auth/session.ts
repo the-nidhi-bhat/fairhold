@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { connection } from "next/server";
-import type { Deal } from "@/lib/domain/types";
-import { authorizeDemoLogin, authorizeReviewerDeal } from "./demo-allowlist.ts";
+import { authorizeDemoLogin } from "./demo-allowlist.ts";
 import {
   decodeDemoSession,
   DEMO_ROLES,
@@ -14,6 +13,7 @@ const COOKIE_NAME = "fairhold_session";
 const MAX_AGE_SECONDS = 60 * 60 * 8;
 
 export { DEMO_ROLES };
+export { canAccessDeal } from "./deal-access.ts";
 export type { DemoRole, DemoSession };
 
 export async function getDemoSession(): Promise<DemoSession | null> {
@@ -37,14 +37,4 @@ export async function setDemoSession(session: DemoSession): Promise<void> {
 export async function clearDemoSession(): Promise<void> {
   const store = await cookies();
   store.delete(COOKIE_NAME);
-}
-
-export function canAccessDeal(session: DemoSession, deal: Deal): boolean {
-  const normalizedName = session.name.trim().toLowerCase();
-  if (session.role === "reviewer") {
-    return authorizeReviewerDeal(normalizedName, deal.id);
-  }
-  return session.role === "buyer"
-    ? deal.clientName.trim().toLowerCase() === normalizedName
-    : deal.freelancerName.trim().toLowerCase() === normalizedName;
 }
