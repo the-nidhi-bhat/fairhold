@@ -24,6 +24,8 @@ export function AgreementAdvisory({ textareaId }: { textareaId: string }) {
     setPending(true);
     try {
       setState(await analyzeAgreementAction(formData));
+    } catch {
+      setState({ status: "error", message: "Advisory unavailable. Try again." });
     } finally {
       setPending(false);
     }
@@ -35,13 +37,18 @@ export function AgreementAdvisory({ textareaId }: { textareaId: string }) {
         type="button"
         onClick={handleAnalyze}
         disabled={pending}
+        aria-busy={pending}
         className="secondary-button px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? "Analyzing…" : "Analyze agreement"}
       </button>
 
       {state ? (
-        <div className="surface-inset mt-3 p-4">
+        <div
+          className="surface-inset mt-3 p-4"
+          role={state.status === "ok" ? "status" : undefined}
+          aria-live={state.status === "ok" ? "polite" : undefined}
+        >
           {state.status === "ok" ? (
             <>
               <p className="text-xs font-medium uppercase tracking-wide text-[var(--accent)]">

@@ -43,11 +43,13 @@ function FieldError({ message }: { message?: string }) {
 }
 
 function MilestoneFields({
+  idPrefix,
   errors,
   defaults,
   values,
   onChange,
 }: {
+  idPrefix: string;
   errors: Record<string, string>;
   defaults?: MilestoneFieldValues;
   values?: MilestoneFieldValues;
@@ -57,13 +59,13 @@ function MilestoneFields({
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="sm:col-span-2">
         <label
-          htmlFor="ms-title"
+          htmlFor={`${idPrefix}-title`}
           className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Title
         </label>
         <input
-          id="ms-title"
+          id={`${idPrefix}-title`}
           name="title"
           type="text"
           required
@@ -82,13 +84,13 @@ function MilestoneFields({
 
       <div>
         <label
-          htmlFor="ms-amount"
+          htmlFor={`${idPrefix}-amount`}
           className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Amount (USD)
         </label>
         <input
-          id="ms-amount"
+          id={`${idPrefix}-amount`}
           name="amount"
           type="text"
           inputMode="decimal"
@@ -107,13 +109,13 @@ function MilestoneFields({
 
       <div>
         <label
-          htmlFor="ms-dueDate"
+          htmlFor={`${idPrefix}-dueDate`}
           className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Due date (optional)
         </label>
         <input
-          id="ms-dueDate"
+          id={`${idPrefix}-dueDate`}
           name="dueDate"
           type="date"
           value={values?.dueDate}
@@ -131,13 +133,13 @@ function MilestoneFields({
 
       <div className="sm:col-span-2">
         <label
-          htmlFor="ms-description"
+          htmlFor={`${idPrefix}-description`}
           className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Description
         </label>
         <textarea
-          id="ms-description"
+          id={`${idPrefix}-description`}
           name="description"
           rows={2}
           maxLength={2000}
@@ -156,13 +158,13 @@ function MilestoneFields({
 
       <div className="sm:col-span-2">
         <label
-          htmlFor="ms-acceptanceCriteria"
+          htmlFor={`${idPrefix}-acceptanceCriteria`}
           className="block text-sm font-medium text-[var(--foreground-soft)]"
         >
           Acceptance criteria
         </label>
         <textarea
-          id="ms-acceptanceCriteria"
+          id={`${idPrefix}-acceptanceCriteria`}
           name="acceptanceCriteria"
           rows={3}
           required
@@ -199,8 +201,9 @@ export function AddMilestoneForm({ dealId }: { dealId: string }) {
   const [suggesting, setSuggesting] = useState(false);
 
   useEffect(() => {
+    // The form's onReset handler clears the controlled values and advisory.
     if (state.ok) formRef.current?.reset();
-  }, [state.ok]);
+  }, [state]);
 
   async function handleSuggest() {
     const formData = new FormData();
@@ -212,16 +215,17 @@ export function AddMilestoneForm({ dealId }: { dealId: string }) {
       setAdvisory(result);
       if (result.status !== "ok") return;
 
-      setValues((current) => {
-        const next = { ...current };
-        for (const item of result.items ?? []) {
-          if (item.label === "Title") next.title = item.value;
-          else if (item.label === "Description") next.description = item.value;
-          else if (item.label === "Acceptance criteria") {
-            next.acceptanceCriteria = item.value;
-          }
-        }
-        return next;
+      setValues((current) => ({
+        ...current,
+        title: result.proposal?.title ?? current.title,
+        description: result.proposal?.description ?? current.description,
+        acceptanceCriteria:
+          result.proposal?.acceptanceCriteria ?? current.acceptanceCriteria,
+      }));
+    } catch {
+      setAdvisory({
+        status: "error",
+        message: "Advisory unavailable. Try again.",
       });
     } finally {
       setSuggesting(false);
@@ -245,6 +249,7 @@ export function AddMilestoneForm({ dealId }: { dealId: string }) {
       >
         <input type="hidden" name="dealId" value={dealId} />
         <MilestoneFields
+          idPrefix="ms-add"
           errors={state.errors}
           values={values}
           onChange={(patch) =>
@@ -261,12 +266,13 @@ export function AddMilestoneForm({ dealId }: { dealId: string }) {
             type="button"
             onClick={handleSuggest}
             disabled={suggesting || pending}
+            aria-busy={suggesting}
             className="secondary-button px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
             {suggesting ? "Suggesting…" : "Suggest from agreement"}
           </button>
           {advisory?.status === "ok" ? (
-            <span className="text-xs text-muted">
+            <span role="status" aria-live="polite" className="text-xs text-muted">
               {advisory.label} — Advisory only — review before adding the
               milestone.
             </span>
@@ -306,6 +312,7 @@ export function EditMilestoneForm({
       <input type="hidden" name="dealId" value={dealId} />
       <input type="hidden" name="milestoneId" value={milestone.id} />
       <MilestoneFields
+        idPrefix={`ms-${milestone.id}`}
         errors={state.errors}
         defaults={{
           title: milestone.title,

@@ -94,6 +94,8 @@ export function EvidenceAdvisoryPanel({
     setPending(true);
     try {
       setState(await analyzeEvidenceAction(formData));
+    } catch {
+      setState({ status: "error", message: "Advisory unavailable. Try again." });
     } finally {
       setPending(false);
     }
@@ -109,13 +111,18 @@ export function EvidenceAdvisoryPanel({
           type="button"
           onClick={handleAnalyze}
           disabled={pending}
+          aria-busy={pending}
           className="secondary-button px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending ? "Analyzing…" : "Analyze evidence"}
         </button>
       </div>
       {state ? (
-        <div className="mt-3">
+        <div
+          className="mt-3"
+          role={state.status === "ok" ? "status" : undefined}
+          aria-live={state.status === "ok" ? "polite" : undefined}
+        >
           <AdvisoryDetails state={state} />
         </div>
       ) : (
@@ -143,8 +150,9 @@ export function AddEvidenceForm({
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
+    // The form's onReset handler clears the draft advisory.
     if (state.ok) formRef.current?.reset();
-  }, [state.ok]);
+  }, [state]);
 
   async function handleCheckDraft() {
     const form = formRef.current;
@@ -165,6 +173,11 @@ export function AddEvidenceForm({
     setChecking(true);
     try {
       setDraftState(await advisoryForEvidenceDraftAction(formData));
+    } catch {
+      setDraftState({
+        status: "error",
+        message: "Advisory unavailable. Try again.",
+      });
     } finally {
       setChecking(false);
     }
@@ -255,13 +268,18 @@ export function AddEvidenceForm({
             type="button"
             onClick={handleCheckDraft}
             disabled={checking || pending}
+            aria-busy={checking}
             className="secondary-button px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
             {checking ? "Checking…" : "Check draft"}
           </button>
         </div>
         {draftState ? (
-          <div className="surface-inset mt-3 p-3">
+          <div
+            className="surface-inset mt-3 p-3"
+            role={draftState.status === "ok" ? "status" : undefined}
+            aria-live={draftState.status === "ok" ? "polite" : undefined}
+          >
             <AdvisoryDetails state={draftState} />
           </div>
         ) : null}
