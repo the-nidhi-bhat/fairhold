@@ -40,6 +40,18 @@ export function readDatabaseUrl(
 export function resolveDataBackend(
   env: Record<string, string | undefined> = process.env,
 ): DataBackend {
+  // Explicit, non-production-only escape hatch for test runs. `next dev`
+  // auto-loads .env.local, so a developer with a real DATABASE_URL there would
+  // otherwise have every local run hit PostgreSQL even when the run is meant to
+  // be hermetic. Setting FAIRHOLD_DATA_BACKEND=json pins the JSON store for that
+  // case. It is ignored when NODE_ENV is "production" (Next sets that for
+  // `next build`/`next start`), so deployed behaviour is unchanged and a real
+  // PostgreSQL outage never silently falls back to JSON. The E2E suite itself
+  // runs against `next start`, where this branch is inert: it selects JSON the
+  // normal way, by leaving DATABASE_URL empty for the test servers.
+  if (env.NODE_ENV !== "production" && env.FAIRHOLD_DATA_BACKEND === "json") {
+    return "json";
+  }
   return readDatabaseUrl(env) === null ? "json" : "postgres";
 }
 
