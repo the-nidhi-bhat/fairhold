@@ -106,6 +106,39 @@ test("provider URL substitutes and percent-encodes {model}", () => {
   );
 });
 
+test("provider URL override must use https or loopback http", () => {
+  const rejected = readAdvisoryProviderConfig({
+    GEMINI_API_KEY: "test-key",
+    GEMINI_MODEL: "test-model",
+    GEMINI_API_URL: "http://evil.example/v1beta/models/{model}:generateContent",
+  });
+  assert.equal(rejected, null);
+
+  const localhost = readAdvisoryProviderConfig({
+    GEMINI_API_KEY: "test-key",
+    GEMINI_MODEL: "test-model",
+    GEMINI_API_URL: "http://localhost:8080/v1beta/models/{model}:generateContent",
+  });
+  assert.equal(
+    localhost?.url,
+    "http://localhost:8080/v1beta/models/test-model:generateContent",
+  );
+
+  const loopback = readAdvisoryProviderConfig({
+    GEMINI_API_KEY: "test-key",
+    GEMINI_MODEL: "test-model",
+    GEMINI_API_URL: "http://127.0.0.1:8080/generate",
+  });
+  assert.equal(loopback?.url, "http://127.0.0.1:8080/generate");
+
+  const malformed = readAdvisoryProviderConfig({
+    GEMINI_API_KEY: "test-key",
+    GEMINI_MODEL: "test-model",
+    GEMINI_API_URL: "not a url",
+  });
+  assert.equal(malformed, null);
+});
+
 /* -------------------------------------------------------------------------- */
 /*  Existing: evidence advisory                                               */
 /* -------------------------------------------------------------------------- */
@@ -191,6 +224,33 @@ test("deterministic fallback remains available for AI failures", () => {
   );
 });
 
+test("deterministic evidence advisory never matches criteria without shared tokens", () => {
+  const criteria =
+    "Responsive layouts at 375px\nSource files delivered\nAccessibility audit completed";
+  const result = deterministicEvidenceAdvisory(criteria, ["wip"]);
+
+  assert.equal(result.matchedCriteria.length, 0);
+  assert.ok(result.concerns.length > 0);
+});
+
+test("deterministic evidence advisory matches only criteria with shared keywords", () => {
+  const criteria = "Responsive layouts at 375px\nSource files delivered";
+  const result = deterministicEvidenceAdvisory(criteria, [
+    "Source files are in the shared repository.",
+  ]);
+
+  assert.deepEqual(result.matchedCriteria, ["Source files delivered"]);
+  assert.ok(result.concerns.some((concern) => concern.includes("Responsive")));
+});
+
+test("deterministic evidence advisory reports no matches for an empty draft", () => {
+  const criteria = "Responsive layouts at 375px\nSource files delivered";
+  const result = deterministicEvidenceAdvisory(criteria, []);
+
+  assert.deepEqual(result.matchedCriteria, []);
+  assert.ok(result.concerns.length > 0);
+});
+
 /* -------------------------------------------------------------------------- */
 /*  New: agreement analysis                                                   */
 /* -------------------------------------------------------------------------- */
@@ -212,6 +272,16 @@ test("deterministic agreement analysis flags missing details", () => {
   const result = deterministicAgreementAnalysis("Do some work.");
   assert.ok(result.missingDetails.length > 0);
   assert.ok(result.ambiguousRequirements.length > 0);
+});
+
+test("deterministic agreement analysis detects plain-currency amounts", () => {
+  const result = deterministicAgreementAnalysis(
+    "Build a website. Acceptance criteria: responsive at 375px. 1200 USD due by Friday.",
+  );
+
+  assert.ok(
+    !result.missingDetails.some((detail) => detail.includes("payment amount")),
+  );
 });
 
 test("parseAgreementAnalysis rejects incomplete structures", () => {

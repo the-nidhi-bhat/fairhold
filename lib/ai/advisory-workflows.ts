@@ -41,9 +41,11 @@ export type AdvisoryOutcome<T> =
     }
   | { ok: false; code: "forbidden" | "not_found" | "invalid"; error: string };
 
-const FORBIDDEN_MESSAGE = "You do not have access to this deal.";
+const FORBIDDEN_MESSAGE = "Deal not found or you do not have access.";
 const ROLE_MESSAGE = "This advisory is not available for your current role.";
 const MILESTONE_NOT_FOUND_MESSAGE = "Milestone not found.";
+const DRAFT_FILES_NOT_SENT_MESSAGE =
+  "Add a note or link to check a draft (files are not sent to the advisor).";
 
 function resolved(deps: AdvisoryWorkflowDeps): {
   env: Record<string, string | undefined>;
@@ -134,15 +136,22 @@ export async function analyzeDealEvidence(
   const milestone = deal.milestones.find((item) => item.id === milestoneId);
   if (!milestone) return failure("not_found", MILESTONE_NOT_FOUND_MESSAGE);
 
-  const criteria = milestone.acceptanceCriteria
+  const criteriaLines = milestone.acceptanceCriteria
     .split("\n")
     .map((line) => line.trim())
-    .filter((line) => line.length > 0)
+    .filter((line) => line.length > 0);
+  const truncatedCriteria =
+    criteriaLines.length > ADVISORY_LIMITS.maxEvidenceItems;
+  const criteria = criteriaLines
     .slice(0, ADVISORY_LIMITS.maxEvidenceItems)
     .map((line) => line.slice(0, ADVISORY_LIMITS.maxCriteriaChars));
 
-  const evidence = deal.evidence
-    .filter((item) => item.milestoneId === milestoneId)
+  const milestoneEvidence = deal.evidence.filter(
+    (item) => item.milestoneId === milestoneId,
+  );
+  const truncatedEvidence =
+    milestoneEvidence.length > ADVISORY_LIMITS.maxEvidenceItems;
+  const evidence = milestoneEvidence
     .slice(0, ADVISORY_LIMITS.maxEvidenceItems)
     .map((item) =>
       [item.note, item.url, item.file?.name]
@@ -159,7 +168,26 @@ export async function analyzeDealEvidence(
     env,
     fetchImpl,
   );
-  return success(source, analysis);
+
+  // The model's own count is advisory text; never trust it over the number of
+  // items the server actually sent.
+  const limitations = [...analysis.limitations];
+  if (truncatedCriteria) {
+    limitations.push(
+      `Only the first ${ADVISORY_LIMITS.maxEvidenceItems} acceptance criteria lines were assessed.`,
+    );
+  }
+  if (truncatedEvidence) {
+    limitations.push(
+      `Only the first ${ADVISORY_LIMITS.maxEvidenceItems} evidence items were assessed.`,
+    );
+  }
+
+  return success(source, {
+    ...analysis,
+    evidenceCount: evidence.length,
+    limitations,
+  });
 }
 
 /** Check a not-yet-submitted evidence draft against the milestone criteria. */
@@ -183,6 +211,12 @@ export async function advisoryForEvidenceDraft(
 
   const milestone = deal.milestones.find((item) => item.id === milestoneId);
   if (!milestone) return failure("not_found", MILESTONE_NOT_FOUND_MESSAGE);
+
+  const noteText = typeof note === "string" ? note.trim() : "";
+  const urlText = typeof url === "string" ? url.trim() : "";
+  if (noteText.length === 0 && urlText.length === 0) {
+    return failure("invalid", DRAFT_FILES_NOT_SENT_MESSAGE);
+  }
 
   const validation = validateEvidenceInput({ note, url, file: undefined });
   if (!validation.ok) {

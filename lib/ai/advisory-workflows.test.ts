@@ -281,7 +281,7 @@ test("reviewer granted one deal is denied another deal", async () => {
   assert.equal(outcome.ok, false);
   if (!outcome.ok) {
     assert.equal(outcome.code, "forbidden");
-    assert.equal(outcome.error, "You do not have access to this deal.");
+    assert.equal(outcome.error, "Deal not found or you do not have access.");
   }
 });
 
@@ -451,6 +451,54 @@ test("evidence analysis falls back deterministically when the provider fails", a
   assert.equal(stub.calls(), 1);
 });
 
+test("evidence analysis reports the server-derived evidence count, not the model's", async () => {
+  const stub = countingFetch(() =>
+    geminiResponse(
+      JSON.stringify({
+        ...JSON.parse(EVIDENCE_ANALYSIS_JSON),
+        evidenceCount: 99,
+      }),
+    ),
+  );
+  const outcome = await analyzeDealEvidence(
+    { session: buyer, deal: makeDeal(), milestoneId: "ms-1" },
+    { env: ENV, fetchImpl: stub.fetchImpl },
+  );
+
+  assert.equal(outcome.ok, true);
+  if (outcome.ok) assert.equal(outcome.data.evidenceCount, 2);
+});
+
+test("evidence analysis discloses truncation when more than 20 evidence items exist", async () => {
+  const evidence = Array.from({ length: 21 }, (_, index) => ({
+    id: `ev-extra-${index}`,
+    milestoneId: "ms-1",
+    note: `Delivered work item ${index}.`,
+    url: null,
+    file: null,
+    submittedAt: "2026-01-02T00:00:00.000Z",
+    submittedBy: "seller:Jamie Seller",
+    decision: "pending" as const,
+    reviewedAt: null,
+    reviewNote: null,
+  }));
+
+  const outcome = await analyzeDealEvidence(
+    { session: buyer, deal: makeDeal({ evidence }), milestoneId: "ms-1" },
+    { env: {} },
+  );
+
+  assert.equal(outcome.ok, true);
+  if (outcome.ok) {
+    assert.equal(outcome.data.evidenceCount, 20);
+    assert.ok(
+      outcome.data.limitations.some((limitation) =>
+        limitation.includes("Only the first 20 evidence items were assessed."),
+      ),
+    );
+  }
+});
+
 /* -------------------------------------------------------------------------- */
 /*  Evidence draft advisory                                                   */
 /* -------------------------------------------------------------------------- */
@@ -462,7 +510,13 @@ test("evidence draft advisory rejects an empty draft without calling the provide
     { env: ENV, fetchImpl: stub.fetchImpl },
   );
   assert.equal(outcome.ok, false);
-  if (!outcome.ok) assert.equal(outcome.code, "invalid");
+  if (!outcome.ok) {
+    assert.equal(outcome.code, "invalid");
+    assert.equal(
+      outcome.error,
+      "Add a note or link to check a draft (files are not sent to the advisor).",
+    );
+  }
   assert.equal(stub.calls(), 0);
 });
 

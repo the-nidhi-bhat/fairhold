@@ -27,6 +27,20 @@ export interface AdvisoryState {
   message?: string;
 }
 
+/**
+ * Milestone suggestions carry the proposal as typed data so the client never
+ * has to scrape display labels.
+ */
+export interface MilestoneSuggestionState extends AdvisoryState {
+  proposal?: {
+    title: string;
+    description: string;
+    acceptanceCriteria: string;
+  };
+}
+
+const NO_DEAL_MESSAGE = "Deal not found or you do not have access.";
+
 function field(input: FormData, key: string): string {
   const value = input.get(key);
   return typeof value === "string" ? value : "";
@@ -78,13 +92,13 @@ export async function analyzeAgreementAction(
 
 export async function suggestMilestoneAction(
   input: FormData,
-): Promise<AdvisoryState> {
+): Promise<MilestoneSuggestionState> {
   const session = await getDemoSession();
   if (!session) return errorState("Sign in to use advisory features.");
 
   const dealId = field(input, "dealId");
   const deal = dealId ? await getDeal(dealId) : null;
-  if (!deal) return errorState("Deal not found.");
+  if (!deal) return errorState(NO_DEAL_MESSAGE);
 
   const outcome = await suggestMilestoneForDeal({ session, deal });
   if (!outcome.ok) return errorState(outcome.error);
@@ -100,6 +114,11 @@ export async function suggestMilestoneAction(
       { label: "Description", value: proposal.description },
       { label: "Acceptance criteria", value: proposal.acceptanceCriteria },
     ],
+    proposal: {
+      title: proposal.title,
+      description: proposal.description,
+      acceptanceCriteria: proposal.acceptanceCriteria,
+    },
   };
 }
 
@@ -112,7 +131,8 @@ export async function analyzeEvidenceAction(
   const dealId = field(input, "dealId");
   const milestoneId = field(input, "milestoneId");
   const deal = dealId ? await getDeal(dealId) : null;
-  if (!deal || !milestoneId) return errorState("Deal or milestone not found.");
+  if (!deal) return errorState(NO_DEAL_MESSAGE);
+  if (!milestoneId) return errorState("Milestone not found.");
 
   const outcome = await analyzeDealEvidence({ session, deal, milestoneId });
   if (!outcome.ok) return errorState(outcome.error);
@@ -152,7 +172,8 @@ export async function advisoryForEvidenceDraftAction(
   const dealId = field(input, "dealId");
   const milestoneId = field(input, "milestoneId");
   const deal = dealId ? await getDeal(dealId) : null;
-  if (!deal || !milestoneId) return errorState("Deal or milestone not found.");
+  if (!deal) return errorState(NO_DEAL_MESSAGE);
+  if (!milestoneId) return errorState("Milestone not found.");
 
   const outcome = await advisoryForEvidenceDraft({
     session,

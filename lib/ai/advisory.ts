@@ -86,17 +86,73 @@ export function deterministicMilestoneProposal(agreement: string): MilestoneProp
   };
 }
 
+/**
+ * Common words that carry no matching signal. Kept short: the goal is to
+ * ignore grammar, not to perform stemming or semantic matching.
+ */
+const STOP_WORDS = new Set([
+  "about", "after", "again", "against", "also", "among", "another", "because",
+  "been", "before", "being", "below", "between", "both", "cannot", "could",
+  "does", "doing", "during", "each", "either", "else", "every", "from",
+  "further", "have", "having", "here", "hers", "herself", "himself", "into",
+  "itself", "just", "more", "most", "must", "myself", "never", "only",
+  "other", "otherwise", "ours", "ourselves", "over", "same", "shall",
+  "should", "since", "some", "such", "than", "that", "their", "theirs",
+  "them", "themselves", "then", "there", "these", "they", "this", "those",
+  "through", "under", "until", "upon", "very", "were", "what", "when",
+  "where", "which", "while", "with", "would", "your", "yours", "yourself",
+]);
+
+/**
+ * Split text into lowercased tokens with matching signal: length ≥ 4 and not
+ * a stop word. Used by the conservative keyword-overlap fallbacks.
+ */
+function meaningfulTokens(text: string): string[] {
+  return text
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 4 && !STOP_WORDS.has(word));
+}
+
+/**
+ * Deterministic evidence advisory fallback. Matches each acceptance-criteria
+ * line only when the draft shares at least one meaningful token with it.
+ * Never claims a criterion is matched on zero shared tokens.
+ */
 export function deterministicEvidenceAdvisory(
   criteria: string,
   evidence: string[],
 ): EvidenceAdvisory {
-  const words = evidence.join(" ").trim();
+  const draftText = evidence.join(" ").trim().toLowerCase();
+  const criteriaLines = criteria
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const matchedCriteria =
+    draftText.length === 0
+      ? []
+      : criteriaLines.filter((line) =>
+          meaningfulTokens(line).some((token) => draftText.includes(token)),
+        );
+
+  const concerns: string[] = [];
+  if (draftText.length === 0) {
+    concerns.push("Evidence is missing.");
+  } else {
+    for (const line of criteriaLines) {
+      if (!matchedCriteria.includes(line)) {
+        concerns.push(`No draft text matched this criterion: ${line}`);
+      }
+    }
+  }
+
   return {
     summary: evidence.length === 0
       ? "No evidence has been submitted."
       : `Evidence includes ${evidence.length} submission${evidence.length === 1 ? "" : "s"}.`,
-    matchedCriteria: words.length > 0 ? [criteria.trim() || "Agreed acceptance criteria"] : [],
-    concerns: words.length === 0 ? ["Evidence is missing."] : [],
+    matchedCriteria,
+    concerns,
   };
 }
 
@@ -109,7 +165,10 @@ export function deterministicAgreementAnalysis(agreement: string): AgreementAnal
   const words = compact.split(/\s+/);
   const hasDeliverable = /deliver|build|develop|design|website|launch|create/i.test(compact);
   const hasCriteria = /accept|criterion|must|should|shall|required/i.test(compact);
-  const hasAmount = /\$\d|amount|price|cost|budget/i.test(compact);
+  const hasAmount =
+    /\$\d|\b\d[\d,]*(?:\.\d+)?\s*(?:usd|dollars?)\b|amount|price|cost|budget/i.test(
+      compact,
+    );
   const hasDeadline = /deadline|due|by \d|date/i.test(compact);
 
   const missingDetails: string[] = [];
@@ -309,9 +368,29 @@ export interface AdvisoryProviderConfig {
 }
 
 /**
+ * Only https endpoints are acceptable for the provider override, plus plain
+ * http on loopback for local development. Anything else would send the API key
+ * in cleartext to an arbitrary host.
+ */
+function isAllowedAdvisoryUrl(value: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol === "https:") return true;
+  if (parsed.protocol === "http:") {
+    return parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+  }
+  return false;
+}
+
+/**
  * Reads Gemini provider configuration from the environment.
  * Returns null when GEMINI_API_KEY or GEMINI_MODEL is missing or looks like a
- * placeholder — the app then uses the deterministic fallback.
+ * placeholder, or when GEMINI_API_URL is not an allowed endpoint — the app then
+ * uses the deterministic fallback.
  */
 export function readAdvisoryProviderConfig(
   env: Record<string, string | undefined> = process.env,
@@ -319,14 +398,14 @@ export function readAdvisoryProviderConfig(
   const apiKey = env.GEMINI_API_KEY?.trim();
   const model = env.GEMINI_MODEL?.trim();
   if (!apiKey || !model || /^your_/i.test(apiKey) || /^your_/i.test(model)) return null;
+
   const configuredUrl = env.GEMINI_API_URL?.trim();
-  return {
-    apiKey,
-    model,
-    url: configuredUrl
-      ? configuredUrl.replaceAll("{model}", encodeURIComponent(model))
-      : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-  };
+  const url = configuredUrl
+    ? configuredUrl.replaceAll("{model}", encodeURIComponent(model))
+    : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  if (!isAllowedAdvisoryUrl(url)) return null;
+
+  return { apiKey, model, url };
 }
 
 /** Maximum input lengths treated as untrusted data. */
