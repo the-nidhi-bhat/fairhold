@@ -74,7 +74,7 @@ Processing outcomes:
 
 ## Server actions
 
-All actions live in `app/deals/actions.ts` and `app/login/actions.ts`. They run on the server, read the session cookie themselves, and re-check role and deal access on every call. Two response styles exist:
+All actions live in `app/deals/actions.ts`, `app/deals/advisory-actions.ts`, and `app/login/actions.ts`. They run on the server, read the session cookie themselves, and re-check role and deal access on every call. Two response styles exist:
 
 - **Redirect actions** — `Promise<void>`; failures redirect to `/deals/{dealId}?actionError=<code>`.
 - **Form-state actions** — `Promise<FormState>`; failures return `{ ok: false, errors: { field: message } }` for inline display.
@@ -98,8 +98,8 @@ All actions live in `app/deals/actions.ts` and `app/login/actions.ts`. They run 
 | Action | Form fields | Roles | Behaviour |
 | --- | --- | --- | --- |
 | `createDealAction` | `title`, `clientName`, `freelancerName`, `currency`, `agreement` | buyer, seller | Validates (title 3–120, names ≤ 80, agreement 20–20,000, USD only), creates a `Draft` deal, revalidates, redirects to the new deal. |
-| `addMilestoneAction` | `dealId`, `title`, `description`, `amount`, `dueDate`, `acceptanceCriteria` | buyer, seller | Parses `amount` into integer cents (`90`, `90.5`, `$1,200.00`), validates, refuses when the deal is terminal or already authorized. |
-| `updateMilestoneAction` | as above + `milestoneId` | buyer, seller | Same validation; updates an existing milestone. |
+| `addMilestoneAction` | `dealId`, `title`, `description`, `amount`, `dueDate`, `acceptanceCriteria` | seller, reviewer | Parses `amount` into integer cents (`90`, `90.5`, `$1,200.00`), validates, refuses when the deal is terminal or already authorized. |
+| `updateMilestoneAction` | as above + `milestoneId` | seller, reviewer | Same validation; updates an existing milestone. |
 | `changeMilestoneStatusAction` | `dealId`, `milestoneId`, `status` | seller, reviewer | Must satisfy the milestone state machine. |
 | `changeDealStatusAction` | `dealId`, `status` | seller, reviewer | `Authorized` is rejected outright; only the adapter may set it. |
 
@@ -117,6 +117,17 @@ All actions live in `app/deals/actions.ts` and `app/login/actions.ts`. They run 
 | --- | --- | --- | --- |
 | `submitEvidenceAction` | `dealId`, `milestoneId`, `note`, `url`, `file` | seller, reviewer | At least one of note/url/file; extension allowlist (`png jpg jpeg pdf txt md csv`); ≤ 3 MB; content type from magic numbers; sanitised filename. Buyers may not submit evidence. |
 | `reviewEvidenceAction` | `dealId`, `submissionId`, `decision` (`accepted` \| `rejected`), `reviewNote` | buyer, reviewer | Records the decision; a rejection with a note is what drives the seller's revision loop. |
+
+### Advisory actions
+
+These live in `app/deals/advisory-actions.ts`. All four require a session and return `AdvisoryState` (`status: "ok" | "error"`). None persist anything. They are advisory-only: they never change deal, milestone, approval or payment state, never call the payment provider, and never write audit events. The model or deterministic fallback only produces text for a human to read.
+
+| Action | Form fields | Roles | Behaviour |
+| --- | --- | --- | --- |
+| `analyzeAgreementAction` | `agreement` | buyer, seller | Validates the agreement text (20–20,000 characters) and returns a structure analysis: deliverables, acceptance criteria, missing details, ambiguous requirements, estimated milestones. |
+| `suggestMilestoneAction` | `dealId` | seller, reviewer | Reads the stored deal agreement and returns a proposed milestone (`proposal.title`, `proposal.description`, `proposal.acceptanceCriteria`) alongside display items. |
+| `analyzeEvidenceAction` | `dealId`, `milestoneId` | buyer, reviewer | Rebuilds criteria and evidence from the stored deal, then returns supported/missing criteria, contradictions, insufficient evidence, reasoning and limitations. The reported evidence count is the server-side count, never the model's. |
+| `advisoryForEvidenceDraftAction` | `dealId`, `milestoneId`, `note`, `url` | seller, reviewer | Checks an unsubmitted draft against the milestone's acceptance criteria. Files are not sent; at least a note or link is required. |
 
 ### Session actions
 

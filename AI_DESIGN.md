@@ -21,7 +21,7 @@ Both live in `lib/ai/advisory.ts`. Neither is required for any workflow: with no
 | `GEMINI_MODEL` | No | Same placeholder rule. Sent as `model`. |
 | `GEMINI_API_URL` | No | Defaults to `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`. |
 
-`readAdvisoryProviderConfig(env)` returns `null` unless both key and model are usable. Any OpenAI-compatible chat-completions endpoint that supports `response_format: { type: "json_object" }` works with the existing call shape.
+`readAdvisoryProviderConfig(env)` returns `null` unless both key and model are usable and `GEMINI_API_URL` (when set) is `https:` (or loopback `http:` for local development). The transport is Gemini-native: `systemInstruction`, `contents`, `generationConfig`, and the `X-goog-api-key` header.
 
 ## Call shape
 
@@ -30,7 +30,7 @@ sequenceDiagram
     participant App
     participant P as Provider
     App->>App: slice input to 10,000 characters
-    App->>P: POST chat/completions (temperature 0, json_object)
+    App->>P: POST models/{model}:generateContent (temperature 0, JSON)
     Note over App,P: AbortSignal.timeout(15_000)
     alt 2xx with string content that parses and validates
         P-->>App: structured advisory
@@ -43,7 +43,7 @@ sequenceDiagram
 ```
 
 - `temperature: 0` — the same input should not produce materially different advice.
-- `response_format: { type: "json_object" }` — the model is asked for JSON, but the answer is still parsed and validated locally.
+- `generationConfig.responseMimeType: "application/json"` — the model is asked for JSON, but the answer is still parsed and validated locally.
 - 15-second abort — an advisory that is slow to arrive is worse than a deterministic one.
 - Inputs are truncated to 10,000 characters before they leave the process.
 
@@ -121,4 +121,4 @@ Concretely:
 - **Live provider calls now have call sites, but live verification is still pending in this environment.** No `GEMINI_API_KEY` was configured during verification; the deterministic fallbacks are what the test suite exercises. Do not describe live AI as verified until a real request has been made and its response validated.
 - The advisory is single-shot: no retries, no streaming, no conversation memory.
 - The model never sees the ledger or the provider state, so it cannot comment on payment status.
-- There is no evaluation harness or golden dataset. If the prompts change, only schema validation and the deterministic fallback protect the product.
+- A mock-provider evaluation dataset lives in `lib/ai/evaluation.test.ts`; it records prompt/model versions and covers the deterministic and structured paths. It does not call the live provider. If prompts change, schema validation and the deterministic fallback still protect the product.

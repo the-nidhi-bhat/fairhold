@@ -17,7 +17,7 @@ A deployment that has neither is a demo deployment: it works for browsing, and e
 | `FAIRHOLD_DEMO_BUYERS` / `_SELLERS` / `_REVIEWERS` | Login allowlists | Not set |
 | `FAIRHOLD_REVIEWER_DEALS` | Per-deal reviewer grants | Not set |
 | `PAYPAL_ENV=sandbox` + id + secret + webhook id | Real sandbox payments and webhook verification | Not set |
-| `AI_API_KEY` + `AI_MODEL` | Live advisory | Not set |
+| `GEMINI_API_KEY` + `GEMINI_MODEL` | Live advisory | Not set |
 | Public HTTPS URL registered as a PayPal webhook listener | Webhook delivery | Not configured |
 | Evidence storage | Files are written to local disk today | Not addressed |
 

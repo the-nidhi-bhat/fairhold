@@ -55,7 +55,7 @@ AI is strictly advisory. Deterministic business rules and human approval remain 
 - The proposal is a suggestion only; a human reviewer must accept or revise it.
 
 ### 4.2 Evidence advisory (`resolveEvidenceAdvisory`)
-- Input: acceptance criteria + evidence submissions (≤10,000 chars combined).
+- Input: acceptance criteria (up to 20 lines × 2,000 chars) + evidence submissions (up to 20 items × 5,000 chars).
 - Output: `{ summary, matchedCriteria: string[], concerns: string[] }`.
 - System prompt: *"Do not decide or recommend acceptance: a human reviewer decides. This advisory never changes deal state."*
 - The advisory summarizes and flags concerns; it never sets a review decision.
