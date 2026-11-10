@@ -111,7 +111,7 @@ export function validateEvidenceUrl(
 export function validateEvidenceInput(raw: {
   note: unknown;
   url: unknown;
-  file: EvidenceFileInput | null;
+  file: EvidenceFileInput | null | undefined;
 }): ValidationResult<EvidenceFormValues> {
   const errors: Record<string, string> = {};
 
