@@ -19,6 +19,30 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  /**
+   * Baseline hardening. The deployment served only HSTS (which Vercel adds),
+   * with no framing, MIME-sniffing or referrer protection at all.
+   *
+   * Deliberately conservative: these headers cannot break a Next.js app that
+   * ships inline bootstrap scripts, so no CSP is set here. A real CSP needs a
+   * nonce/hash pipeline and its own verification pass.
+   */
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
