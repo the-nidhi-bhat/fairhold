@@ -11,6 +11,7 @@ import {
   parseEvidenceAdvisory,
   parseEvidenceAnalysis,
   parseMilestoneProposal,
+  readAdvisoryProviderConfig,
   resolveEvidenceAdvisory,
   resolveMilestoneProposal,
 } from "./advisory.ts";
@@ -82,6 +83,27 @@ test("AI milestone advisory falls back when no provider configured", async () =>
   const result = await resolveMilestoneProposal("Build a website", {});
   assert.equal(result.source, "deterministic");
   assert.equal(result.proposal.title, "Deliver agreed work");
+});
+
+test("provider URL is used verbatim when it has no {model} placeholder", () => {
+  const config = readAdvisoryProviderConfig({
+    GEMINI_API_KEY: "test-key",
+    GEMINI_MODEL: "gemini-3.5-flash-lite",
+    GEMINI_API_URL: "https://example.test/custom-generate",
+  });
+  assert.equal(config?.url, "https://example.test/custom-generate");
+});
+
+test("provider URL substitutes and percent-encodes {model}", () => {
+  const config = readAdvisoryProviderConfig({
+    GEMINI_API_KEY: "test-key",
+    GEMINI_MODEL: "gemini 3.5/pro",
+    GEMINI_API_URL: "https://example.test/v1beta/models/{model}:generateContent",
+  });
+  assert.equal(
+    config?.url,
+    "https://example.test/v1beta/models/gemini%203.5%2Fpro:generateContent",
+  );
 });
 
 /* -------------------------------------------------------------------------- */

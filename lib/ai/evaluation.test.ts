@@ -24,7 +24,7 @@ import {
 // Evaluation fixtures (prompt/model versions recorded for reproducibility)
 // ---------------------------------------------------------------------------
 
-const MODEL_VERSION = "gemini-1.5-flash-latest";
+const MODEL_VERSION = "gemini-3.5-flash-lite";
 
 const GEMINI_ENV = {
   GEMINI_API_KEY: "test-key",

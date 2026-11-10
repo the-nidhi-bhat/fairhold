@@ -319,11 +319,13 @@ export function readAdvisoryProviderConfig(
   const apiKey = env.GEMINI_API_KEY?.trim();
   const model = env.GEMINI_MODEL?.trim();
   if (!apiKey || !model || /^your_/i.test(apiKey) || /^your_/i.test(model)) return null;
+  const configuredUrl = env.GEMINI_API_URL?.trim();
   return {
     apiKey,
     model,
-    url: env.GEMINI_API_URL?.trim() ||
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    url: configuredUrl
+      ? configuredUrl.replaceAll("{model}", encodeURIComponent(model))
+      : `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
   };
 }
 

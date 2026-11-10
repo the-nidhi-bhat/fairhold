@@ -6,11 +6,16 @@
  * These are thin: all validation, recommendation, gating, and identity are
  * decided on the server. Nothing here can set a payment status or actor.
  */
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import type {
   MilestoneApproval,
   Recommendation,
 } from "@/lib/domain/types";
+import {
+  advisoryForEvidenceDraftAction,
+  analyzeEvidenceAction,
+  type AdvisoryState,
+} from "../advisory-actions";
 import {
   recordApprovalAction,
   reviewEvidenceAction,
@@ -32,6 +37,96 @@ function FieldError({ message }: { message?: string }) {
   );
 }
 
+function AdvisoryDetails({ state }: { state: AdvisoryState }) {
+  if (state.status === "error") {
+    return (
+      <p role="alert" className="text-sm text-[var(--danger)]">
+        {state.message}
+      </p>
+    );
+  }
+  if (state.status !== "ok") return null;
+
+  return (
+    <>
+      <p className="text-xs font-medium uppercase tracking-wide text-[var(--accent)]">
+        {state.label}
+      </p>
+      {state.summary ? (
+        <p className="mt-1 text-sm text-[var(--foreground-soft)]">
+          {state.summary}
+        </p>
+      ) : null}
+      <dl className="mt-2 space-y-2 text-sm">
+        {(state.items ?? []).map((item) => (
+          <div key={item.label}>
+            <dt className="text-xs font-medium uppercase tracking-wide text-muted">
+              {item.label}
+            </dt>
+            <dd className="mt-0.5 whitespace-pre-wrap text-[var(--foreground-soft)]">
+              {item.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      <p className="mt-3 text-xs text-muted">
+        Advisory only. A human reviewer decides.
+      </p>
+    </>
+  );
+}
+
+export function EvidenceAdvisoryPanel({
+  dealId,
+  milestoneId,
+}: {
+  dealId: string;
+  milestoneId: string;
+}) {
+  const [state, setState] = useState<AdvisoryState | null>(null);
+  const [pending, setPending] = useState(false);
+
+  async function handleAnalyze() {
+    const formData = new FormData();
+    formData.set("dealId", dealId);
+    formData.set("milestoneId", milestoneId);
+
+    setPending(true);
+    try {
+      setState(await analyzeEvidenceAction(formData));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div className="surface-inset mt-3 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+          Evidence advisory
+        </p>
+        <button
+          type="button"
+          onClick={handleAnalyze}
+          disabled={pending}
+          className="secondary-button px-3 py-1.5 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {pending ? "Analyzing…" : "Analyze evidence"}
+        </button>
+      </div>
+      {state ? (
+        <div className="mt-3">
+          <AdvisoryDetails state={state} />
+        </div>
+      ) : (
+        <p className="mt-2 text-xs text-muted">
+          Advisory only. A human reviewer decides.
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function AddEvidenceForm({
   dealId,
   milestoneId,
@@ -44,17 +139,48 @@ export function AddEvidenceForm({
     initialState,
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const [draftState, setDraftState] = useState<AdvisoryState | null>(null);
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     if (state.ok) formRef.current?.reset();
   }, [state.ok]);
+
+  async function handleCheckDraft() {
+    const form = formRef.current;
+    const noteField = form?.elements.namedItem("note");
+    const urlField = form?.elements.namedItem("url");
+    const formData = new FormData();
+    formData.set("dealId", dealId);
+    formData.set("milestoneId", milestoneId);
+    formData.set(
+      "note",
+      noteField instanceof HTMLTextAreaElement ? noteField.value : "",
+    );
+    formData.set(
+      "url",
+      urlField instanceof HTMLInputElement ? urlField.value : "",
+    );
+
+    setChecking(true);
+    try {
+      setDraftState(await advisoryForEvidenceDraftAction(formData));
+    } finally {
+      setChecking(false);
+    }
+  }
 
   return (
     <details className="surface-subtle mt-4 p-4">
       <summary className="cursor-pointer text-sm font-medium text-[var(--foreground-soft)]">
         Submit evidence
       </summary>
-      <form ref={formRef} action={formAction} className="mt-3 space-y-3">
+      <form
+        ref={formRef}
+        action={formAction}
+        className="mt-3 space-y-3"
+        onReset={() => setDraftState(null)}
+      >
         <input type="hidden" name="dealId" value={dealId} />
         <input type="hidden" name="milestoneId" value={milestoneId} />
         <div>
@@ -117,13 +243,28 @@ export function AddEvidenceForm({
             Evidence recorded.
           </p>
         ) : null}
-        <button
-          type="submit"
-          disabled={pending}
-          className="primary-button disabled:opacity-60"
-        >
-          {pending ? "Submitting…" : "Submit evidence"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="submit"
+            disabled={pending}
+            className="primary-button disabled:opacity-60"
+          >
+            {pending ? "Submitting…" : "Submit evidence"}
+          </button>
+          <button
+            type="button"
+            onClick={handleCheckDraft}
+            disabled={checking || pending}
+            className="secondary-button px-3 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {checking ? "Checking…" : "Check draft"}
+          </button>
+        </div>
+        {draftState ? (
+          <div className="surface-inset mt-3 p-3">
+            <AdvisoryDetails state={draftState} />
+          </div>
+        ) : null}
       </form>
     </details>
   );

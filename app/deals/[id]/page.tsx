@@ -44,6 +44,7 @@ import { AddMilestoneForm, EditMilestoneForm } from "./milestone-forms";
 import {
   AddEvidenceForm,
   ApprovalPanel,
+  EvidenceAdvisoryPanel,
   ReviewEvidenceForm,
 } from "./evidence-forms";
 
@@ -576,7 +577,7 @@ async function DealDetail({
                     </p>
                   </div>
 
-                  <EvidenceAdvisoryPanel
+                  <SubmittedEvidenceAdvisory
                     criteria={milestone.acceptanceCriteria}
                     evidence={deal.evidence
                       .filter((item) => item.milestoneId === milestone.id)
@@ -714,7 +715,7 @@ async function MilestoneAdvisory({ agreement }: { agreement: string }) {
   );
 }
 
-async function EvidenceAdvisoryPanel({
+async function SubmittedEvidenceAdvisory({
   criteria,
   evidence,
 }: {
@@ -981,6 +982,10 @@ function MilestoneEvidence({
           Final payment decisions are made by the buyer or an authorized reviewer.
         </p>
       )}
+
+      {role === "buyer" || role === "reviewer" ? (
+        <EvidenceAdvisoryPanel dealId={deal.id} milestoneId={milestone.id} />
+      ) : null}
 
       <div className="mt-4">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">
