@@ -419,7 +419,7 @@ For a non-interactive walkthrough, [`videos/fairhold-launch/renders/fairhold-lau
 - No refunds, no partial refunds, no dispute arbitration, no multi-currency (USD only).
 - No email or push notifications; the activity trail is the record.
 - The JSON store is single-process and not safe for concurrent multi-user writes.
-- Live AI provider calls are optional and unverified here; the deterministic fallback is what the tests exercise.
+- Live AI provider calls now have call sites in the UI and server actions, but they remain unverified here; the deterministic fallback is what the tests exercise.
 - Ambiguous payment outcomes are surfaced and preserved, but automatic reconciliation is a manual operator step.
 
 ## Future improvements

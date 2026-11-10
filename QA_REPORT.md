@@ -199,7 +199,8 @@ Known limitations (not defects introduced here, and not fixed in this pass):
 - The advisory path validates provider output and falls back to the
   deterministic proposal on timeout, non-OK responses, or invalid JSON.
 - With no `GEMINI_API_KEY`/`GEMINI_MODEL`, the UI reports the deterministic fallback
-  source. Live provider calls were not executed and are not claimed.
+  source. The integration now has UI and server-action call sites; live provider
+  calls were not executed and are not claimed.
 - Advisory output never changes deal or payment state; a human decision is
   still required.
 

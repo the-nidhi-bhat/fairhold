@@ -112,7 +112,7 @@ PAYPAL_WEBHOOK_ID=<registered listener id>
 
 # AI (optional, Gemini)
 GEMINI_API_KEY=<key>
-GEMINI_MODEL=<model>
+GEMINI_MODEL=gemini-3.5-flash-lite
 # GEMINI_API_URL=<optional override; defaults to generativelanguage.googleapis.com>
 ```
 

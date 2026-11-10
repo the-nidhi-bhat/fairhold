@@ -118,7 +118,7 @@ Concretely:
 
 ## Limitations
 
-- **Live provider calls are unverified in this environment.** No `GEMINI_API_KEY` was configured; the deterministic fallbacks are what the test suite exercises. Do not describe live AI as verified until a real request has been made and its response validated.
+- **Live provider calls now have call sites, but live verification is still pending in this environment.** No `GEMINI_API_KEY` was configured during verification; the deterministic fallbacks are what the test suite exercises. Do not describe live AI as verified until a real request has been made and its response validated.
 - The advisory is single-shot: no retries, no streaming, no conversation memory.
 - The model never sees the ledger or the provider state, so it cannot comment on payment status.
 - There is no evaluation harness or golden dataset. If the prompts change, only schema validation and the deterministic fallback protect the product.

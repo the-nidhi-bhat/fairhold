@@ -41,7 +41,7 @@ AI is strictly advisory. Deterministic business rules and human approval remain 
 | Variable | Purpose | Required? |
 |----------|---------|-----------|
 | `GEMINI_API_KEY` | AI provider API key | Required for live AI |
-| `GEMINI_MODEL` | Model identifier | Required for live AI |
+| `GEMINI_MODEL` | Model identifier (e.g. `gemini-3.5-flash-lite`) | Required for live AI |
 | `GEMINI_API_URL` | Endpoint (defaults to Gemini generateContent) | Optional |
 
 `readAdvisoryProviderConfig` returns `null` when either key is missing or matches `/^your_/i`. When unconfigured, the deterministic fallback is used automatically — the application never crashes or silently fabricates AI output.
@@ -92,7 +92,7 @@ AI **must never**:
 
 ## 7. What is NOT implemented (honest limits)
 
-- Live AI verification — **NOT VERIFIED** (no `GEMINI_API_KEY`/`GEMINI_MODEL` configured; deterministic fallback is live).
+- Live AI verification — **NOT VERIFIED** (no `GEMINI_API_KEY`/`GEMINI_MODEL` configured during verification). The integration now has UI and server-action call sites, but the deterministic fallback is what the tests exercise.
 - AI-driven automatic evidence acceptance/rejection — intentionally not implemented.
 - AI-initiated payment — intentionally not possible.
 - Multi-model or agentic workflows — not part of the product scope.
