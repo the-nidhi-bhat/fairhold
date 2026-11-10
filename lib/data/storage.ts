@@ -2,72 +2,103 @@
  * Evidence file storage.
  *
  * The database stores only file METADATA (name, size, type) plus a storage key
- * (file_stored_path) — never the bytes. The bytes live behind this module:
+ * (file_stored_path) — never the bytes. The bytes live behind this module, and
+ * which implementation answers is decided by the data backend:
  *
- *   - Development: local disk under the store's data directory (git-ignored),
- *     with the stored name generated server-side so a crafted client filename
- *     can never affect the filesystem path.
- *   - Production: replace writeEvidenceFile with object storage (S3 / R2 /
- *     GCS). The returned key becomes the object key and the database stores
- *     that same key; nothing else in the app changes.
+ *   - PostgreSQL configured: bytes go to the `evidence_files` table
+ *     (see ./postgres/evidence.ts). This is the production path. It is durable
+ *     across instances and cold starts, and the storage key is the primary key,
+ *     so a metadata row can never point at bytes that no longer exist without
+ *     that being a loud read error.
+ *   - Otherwise (development, demo, E2E): local disk under the store's data
+ *     directory, with the stored name generated server-side so a crafted client
+ *     filename can never affect the filesystem path.
  *
- * The directory comes from ./data-dir.ts, the same resolver the JSON store uses,
- * so evidence can never land somewhere the store cannot see. On a read-only host
- * that resolver falls back to the OS temp directory: uploads then work for the
- * lifetime of that instance instead of returning a 500, but they are NOT
- * durable. Durable evidence needs object storage.
+ * The local path is a development convenience, not durability: on a read-only
+ * host ./data-dir.ts falls back to the OS temp directory, which is discarded
+ * with the instance. That is why production uses PostgreSQL here.
  *
- * Files are intentionally NOT stored in PostgreSQL as blobs: evidence can be
- * large and binary, and the relational database should not carry object
- * payloads.
+ * Bytes are never publicly reachable. The download route streams them only after
+ * its own session + deal authorization check; this module has no URL concept.
  */
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
+import { isPostgresConfigured } from "./db.ts";
 import { resolveDataDir } from "./data-dir.ts";
+import {
+  deletePostgresEvidenceFile,
+  readPostgresEvidenceFile,
+  writePostgresEvidenceFile,
+} from "./postgres/evidence.ts";
 
 export const EVIDENCE_DIR_REL = "evidence";
+
+/** True when evidence bytes are kept in PostgreSQL instead of local disk. */
+export function usesDurableEvidenceStorage(): boolean {
+  return isPostgresConfigured();
+}
 
 export async function evidenceStorageDir(): Promise<string> {
   return join(await resolveDataDir(), EVIDENCE_DIR_REL);
 }
 
-/** Persist a validated evidence file and return a storage key (path). */
+/**
+ * A storage key is always exactly "<evidence>/<server-generated name>". Reject
+ * anything else so a crafted key can never escape the evidence namespace, in
+ * either backend.
+ */
+function storedNameFromKey(storageKey: string): string {
+  const normalized = storageKey.replaceAll("/", sep).replaceAll("\\", sep);
+  const segments = normalized.split(sep);
+  if (segments.length !== 2 || segments[0] !== EVIDENCE_DIR_REL || !segments[1]) {
+    throw new Error("Invalid evidence storage key.");
+  }
+  return segments[1];
+}
+
+/** Persist a validated evidence file and return its storage key. */
 export async function writeEvidenceFile(
   sanitizedName: string,
   bytes: Uint8Array,
+  contentType: string | null = null,
 ): Promise<string> {
+  const storageKey = `${EVIDENCE_DIR_REL}/${randomUUID()}-${sanitizedName}`;
+  if (usesDurableEvidenceStorage()) {
+    await writePostgresEvidenceFile({ storageKey, bytes, contentType });
+    return storageKey;
+  }
   const dir = await evidenceStorageDir();
   await mkdir(dir, { recursive: true });
-  const storedName = `${randomUUID()}-${sanitizedName}`;
-  await writeFile(join(dir, storedName), bytes);
-  return join(EVIDENCE_DIR_REL, storedName);
+  await writeFile(join(dir, storedNameFromKey(storageKey)), bytes);
+  return storageKey;
 }
 
-export async function readEvidenceFile(storedPath: string): Promise<Uint8Array> {
-  const root = resolve(await evidenceStorageDir());
-  const normalized = storedPath.replaceAll("/", sep).replaceAll("\\", sep);
-  if (normalized.split(sep).length !== 2 || normalized.split(sep)[0] !== EVIDENCE_DIR_REL) {
-    throw new Error("Invalid evidence storage key.");
+export async function readEvidenceFile(storageKey: string): Promise<Uint8Array> {
+  const storedName = storedNameFromKey(storageKey);
+  if (usesDurableEvidenceStorage()) {
+    return readPostgresEvidenceFile(`${EVIDENCE_DIR_REL}/${storedName}`);
   }
-  const filePath = resolve(root, normalized.slice(EVIDENCE_DIR_REL.length + sep.length));
+  const root = resolve(await evidenceStorageDir());
+  const filePath = resolve(root, storedName);
   if (dirname(filePath) !== root) throw new Error("Invalid evidence storage key.");
   return readFile(filePath);
 }
 
 /**
  * Remove bytes written by writeEvidenceFile when the database row could not be
- * persisted. Without this, a failed submission leaves an orphaned file that no
- * record references. A missing file is not an error: the caller is cleaning up
+ * persisted. Without this, a failed submission leaves orphaned bytes that no
+ * record references. A missing object is not an error: the caller is cleaning up
  * after a failure, and cleanup must be idempotent.
  */
-export async function deleteEvidenceFile(storedPath: string): Promise<void> {
-  const root = resolve(await evidenceStorageDir());
-  const normalized = storedPath.replaceAll("/", sep).replaceAll("\\", sep);
-  if (normalized.split(sep).length !== 2 || normalized.split(sep)[0] !== EVIDENCE_DIR_REL) {
-    throw new Error("Invalid evidence storage key.");
+export async function deleteEvidenceFile(storageKey: string): Promise<void> {
+  const storedName = storedNameFromKey(storageKey);
+  if (usesDurableEvidenceStorage()) {
+    await deletePostgresEvidenceFile(`${EVIDENCE_DIR_REL}/${storedName}`);
+    return;
   }
-  const filePath = resolve(root, normalized.slice(EVIDENCE_DIR_REL.length + sep.length));
+  const root = resolve(await evidenceStorageDir());
+  const filePath = resolve(root, storedName);
   if (dirname(filePath) !== root) throw new Error("Invalid evidence storage key.");
   try {
     await unlink(filePath);

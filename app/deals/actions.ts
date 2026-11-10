@@ -470,6 +470,7 @@ export async function submitEvidenceAction(
     storedPath = await writeEvidenceFile(
       result.value.file.name,
       result.value.file.bytes,
+      result.value.file.type,
     );
   }
 
