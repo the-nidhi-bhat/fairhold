@@ -90,7 +90,8 @@ audit-shots/
 videos/*/.hyperframes/
 videos/*/renders/*.log
 
-# Development/demo persistence (JSON store; no real data)
+# Development/demo persistence (JSON store; no real data). The E2E runner
+# points FAIRHOLD_DATA_DIR at the OS temp directory instead.
 .data/
 playwright-report/
 test-results/

@@ -15,7 +15,7 @@
  * without changing callers.
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import type { Database, Deal } from "../domain/types.ts";
 import { writeEvidenceFile } from "./storage.ts";
@@ -27,9 +27,19 @@ export { writeEvidenceFile };
 // serverless hosts (e.g. Vercel) where the deployment directory is read-only.
 // Data is ephemeral by design — lost on redeploy, which matches the JSON
 // store's documented development/demo role.
+// The FAIRHOLD_DATA_DIR env var can redirect the data directory for test
+// isolation (the E2E runner points it at the OS temp directory so a synced
+// checkout never has to upload and download store writes mid-run). A relative
+// value stays relative to the project, an absolute one is used as-is.
 const DATA_DIR_CANDIDATES = [
-  join(process.cwd(), ".data"),
-  join(tmpdir(), "fairhold"),
+  // turbopackIgnore keeps the build from tracing the whole project just because
+  // this path is computed from an env var (the default, ".data", is statically
+  // scoped and is what development and production actually use).
+  resolve(
+    /*turbopackIgnore: true*/ process.cwd(),
+    process.env.FAIRHOLD_DATA_DIR || ".data",
+  ),
+  resolve(tmpdir(), "fairhold"),
 ];
 
 let resolvedDataDir: string | null = null;
