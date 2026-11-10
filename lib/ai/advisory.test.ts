@@ -197,6 +197,21 @@ test("AI output parsers reject incomplete structures", () => {
   assert.equal(parseEvidenceAdvisory({ summary: "Missing arrays" }), null);
 });
 
+test("AI output parsers coerce arrays and accept valid structures", () => {
+  assert.deepEqual(
+    parseEvidenceAdvisory({
+      summary: "Evidence reviewed.",
+      matchedCriteria: ["Criterion A"],
+      concerns: [],
+    }),
+    {
+      summary: "Evidence reviewed.",
+      matchedCriteria: ["Criterion A"],
+      concerns: [],
+    },
+  );
+});
+
 test("AI output parsers accept bounded structured proposals", () => {
   assert.deepEqual(
     parseMilestoneProposal({
@@ -249,6 +264,18 @@ test("deterministic evidence advisory reports no matches for an empty draft", ()
 
   assert.deepEqual(result.matchedCriteria, []);
   assert.ok(result.concerns.length > 0);
+});
+
+test("deterministic evidence advisory requires multiple token matches for multi-token criteria", () => {
+  const criteria = "Responsive layouts at 375px\nSource files delivered";
+  // Evidence mentions "responsive" but not "layouts" or "375px" — only one
+  // meaningful token matches, which is insufficient for a multi-token criterion.
+  const result = deterministicEvidenceAdvisory(criteria, [
+    "The site is responsive on all devices.",
+  ]);
+  assert.deepEqual(result.matchedCriteria, []);
+  assert.ok(result.concerns.some((c) => c.includes("Responsive layouts")));
+  assert.ok(result.concerns.some((c) => c.includes("Source files")));
 });
 
 /* -------------------------------------------------------------------------- */
@@ -377,6 +404,32 @@ test("parseEvidenceAnalysis accepts bounded structured analysis", () => {
   assert.equal(result?.evidenceCount, 2);
   assert.deepEqual(result?.supportedCriteria, ["Criterion A"]);
   assert.deepEqual(result?.missingCriteria, ["Criterion B"]);
+});
+
+test("parseEvidenceAnalysis coerces string evidenceCount to number", () => {
+  const result = parseEvidenceAnalysis({
+    evidenceCount: "3",
+    supportedCriteria: ["Criterion A"],
+    missingCriteria: [],
+    contradictoryEvidence: [],
+    insufficientEvidence: [],
+    reasoning: "Three submissions evaluated.",
+    limitations: ["Keyword-only matching"],
+  });
+  assert.equal(result?.evidenceCount, 3);
+});
+
+test("parseEvidenceAnalysis rejects non-numeric evidenceCount", () => {
+  const result = parseEvidenceAnalysis({
+    evidenceCount: "not-a-number",
+    supportedCriteria: [],
+    missingCriteria: [],
+    contradictoryEvidence: [],
+    insufficientEvidence: [],
+    reasoning: "ok",
+    limitations: [],
+  });
+  assert.equal(result, null);
 });
 
 test("AI analyzeEvidence uses provider output and validates it", async () => {
