@@ -41,12 +41,9 @@ const MIGRATION_0008 = "0008_payment_capture_nullable_columns.sql";
 const MIGRATIONS_DIR = join(process.cwd(), "migrations");
 
 // Expected Neon Preview database identity (verified by user).
+const EXPECTED_HOSTNAME = "ep-withered-cell-aovz8dra.c-2.ap-southeast-1.aws.neon.tech";
 const EXPECTED_DATABASE = "neondb";
 const EXPECTED_ROLE = "neondb_owner";
-
-// Neon endpoint hostname pattern: ep-<chars>-<chars>-aws-<region>.neon.tech
-// Optionally with -pooler suffix for pooled connections.
-const NEON_HOST_PATTERN = /^ep-[a-z0-9]+-[a-z0-9]+-aws-[a-z0-9-]+\.neon\.tech$/;
 
 async function main() {
   // Parse host from connection string to verify identity.
@@ -64,10 +61,11 @@ async function main() {
     process.exit(1);
   }
 
-  // Verify this is a Neon endpoint hostname (not Production, not arbitrary).
-  if (!NEON_HOST_PATTERN.test(host)) {
+  // Exact-match hostname against verified Neon Preview endpoint.
+  // Production uses a different hostname; any mismatch is rejected.
+  if (host !== EXPECTED_HOSTNAME) {
     console.error(
-      `Refusing to run against non-Neon host: ${host}. Expected ep-*.neon.tech.`,
+      `Refusing to run against unexpected host: ${host}. Expected: ${EXPECTED_HOSTNAME}.`,
     );
     process.exit(1);
   }
