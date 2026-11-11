@@ -7,7 +7,7 @@ import { expect, test } from "@playwright/test";
  */
 test.describe("guided demo", () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto("/demo");
+    await page.goto("/demo", { waitUntil: "networkidle" });
     await expect(page.getByText(/DEMO MODE/)).toBeVisible();
   });
 

@@ -65,6 +65,18 @@ const PROJECTS: ProjectSpec[] = [
     port: 3102,
     dataDir: join(DATA_ROOT, "tablet"),
   },
+  {
+    name: "desktop-firefox",
+    device: devices["Desktop Firefox"],
+    port: 3103,
+    dataDir: join(DATA_ROOT, "firefox"),
+  },
+  {
+    name: "desktop-webkit",
+    device: devices["Desktop Safari"],
+    port: 3104,
+    dataDir: join(DATA_ROOT, "webkit"),
+  },
 ];
 
 const SHARED_ENV = {
