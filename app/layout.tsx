@@ -41,7 +41,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="site-shell flex min-h-full flex-col bg-background text-foreground">
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--surface-raised)] focus:px-4 focus:py-2 focus:text-sm focus:text-[var(--foreground)]"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-[var(--surface-raised)] focus:px-4 focus:py-3 focus:text-sm focus:text-[var(--foreground)] min-h-[44px] min-w-[44px]"
         >
           Skip to content
         </a>
@@ -69,13 +69,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             >
               <Link
                 href="/dashboard"
-                className="hidden min-h-10 items-center rounded-lg px-3 font-medium text-muted transition hover:bg-white/5 hover:text-[var(--foreground)] sm:inline-flex"
+                className="hidden min-h-11 items-center rounded-lg px-3 font-medium text-muted transition hover:bg-white/5 hover:text-[var(--foreground)] sm:inline-flex"
               >
                 Dashboard
               </Link>
               <Link
                 href="/deals/new"
-                className="primary-button min-h-9 px-3.5 py-2 text-[13px]"
+                className="primary-button min-h-11 px-3.5 py-2 text-[13px]"
               >
                 New deal
               </Link>
@@ -112,17 +112,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <p className="section-label">Product</p>
               <ul className="mt-2 space-y-1.5">
                 <li>
-                  <Link className="hover:text-[var(--foreground)]" href="/dashboard">
+                  <Link className="min-h-11 inline-flex items-center hover:text-[var(--foreground)]" href="/dashboard">
                     Dashboard
                   </Link>
                 </li>
                 <li>
-                  <Link className="hover:text-[var(--foreground)]" href="/deals/new">
+                  <Link className="min-h-11 inline-flex items-center hover:text-[var(--foreground)]" href="/deals/new">
                     Create a deal
                   </Link>
                 </li>
                 <li>
-                  <Link className="hover:text-[var(--foreground)]" href="/login">
+                  <Link className="min-h-11 inline-flex items-center hover:text-[var(--foreground)]" href="/login">
                     Demo sign in
                   </Link>
                 </li>

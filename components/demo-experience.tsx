@@ -167,7 +167,7 @@ export function DemoExperience() {
 
   if (!hydrated) {
     return (
-      <div className="page-frame py-16" aria-busy="true">
+      <div className="page-frame py-16 min-h-[1400px]" aria-busy="true">
         <div className="surface p-8">
           <p className="section-label">Loading the guided demo…</p>
           <div className="mt-6 h-24 animate-pulse rounded-xl bg-white/[0.04]" />
@@ -248,10 +248,10 @@ export function DemoExperience() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/" className="secondary-button px-4 text-sm">
+            <Link href="/" className="secondary-button min-h-11 px-4 text-sm">
               Back to overview
             </Link>
-            <Link href="/login" className="ghost-button px-3 text-sm">
+            <Link href="/login" className="ghost-button min-h-11 px-3 text-sm">
               Open the signed-in workspace
             </Link>
           </div>
