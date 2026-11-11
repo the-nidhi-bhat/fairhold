@@ -741,7 +741,16 @@ test("selection: sandbox provider only when configured, demo otherwise", () => {
       PAYPAL_ENV: "sandbox",
       PAYPAL_CLIENT_ID: "paypal-client-id",
       PAYPAL_CLIENT_SECRET: "paypal-client-secret",
+      DATABASE_URL: "postgresql://user:password@localhost:5432/fairhold_test",
     }).mode,
     "sandbox",
+  );
+  assert.equal(
+    getPaymentProvider({
+      PAYPAL_ENV: "sandbox",
+      PAYPAL_CLIENT_ID: "paypal-client-id",
+      PAYPAL_CLIENT_SECRET: "paypal-client-secret",
+    }).mode,
+    "demo",
   );
 });
