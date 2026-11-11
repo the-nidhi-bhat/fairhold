@@ -25,3 +25,9 @@ ALTER TABLE payment_captures
 
 ALTER TABLE payment_captures
   ALTER COLUMN authorization_reference DROP NOT NULL;
+
+-- audit_events.deal_id must also be nullable so orphan capture events
+-- (no matching human approval, deal unknown) can be recorded in the
+-- audit trail without violating NOT NULL.
+ALTER TABLE audit_events
+  ALTER COLUMN deal_id DROP NOT NULL;

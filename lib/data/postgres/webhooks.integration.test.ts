@@ -325,7 +325,7 @@ test("webhook: voided redelivery stays processed without double audits", { skip:
   assert.equal(auditRows.rowCount, 1);
 });
 
-test("webhook: capture_completed without a matching human approval is quarantined — webhooks cannot trigger captures", { skip: skipReason }, async () => {
+test("webhook: capture_completed without a matching human approval is processed as reconciliation exception — captures are durably accounted for", { skip: skipReason }, async () => {
   const outcome = await processWebhookEvent({
     id: `WH-${randomUUID()}`,
     event_type: "PAYMENT.CAPTURE.COMPLETED",
@@ -334,8 +334,23 @@ test("webhook: capture_completed without a matching human approval is quarantine
       amount: { currency_code: "USD", value: "250.00" },
     },
   });
-  assert.equal(outcome.outcome, "quarantined");
-  assert.match((outcome as { reason: string }).reason, /no matching human approval/);
+  // A provider-confirmed capture is always durably accounted for, even without
+  // a matching human approval. The outcome is "processed" (not quarantined)
+  // because the financial fact must not be lost.
+  assert.equal(outcome.outcome, "processed");
+  // The discrepancy must be visible in the audit trail as a reconciliation exception.
+  const auditRows = await pool.query(
+    "SELECT type FROM audit_events WHERE type = 'payment.capture_confirmed_without_approval'",
+  );
+  assert.ok((auditRows.rowCount ?? 0) > 0, "reconciliation exception audit entry must exist");
+  // The capture must be durably recorded in the financial ledger.
+  const captureRows = await pool.query(
+    "SELECT * FROM payment_captures WHERE provider_reference = 'CAP-ROGUE'",
+  );
+  assert.equal(captureRows.rowCount, 1, "capture must be recorded exactly once");
+  assert.equal(captureRows.rows[0].status, "COMPLETED");
+  assert.equal(captureRows.rows[0].deal_id, null, "orphan capture has null deal_id");
+  assert.equal(captureRows.rows[0].milestone_id, null, "orphan capture has null milestone_id");
 });
 
 test("webhook: capture_completed confirms an existing approved+CAPTURE milestone", { skip: skipReason }, async () => {
