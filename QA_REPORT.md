@@ -198,8 +198,9 @@ Known limitations (not defects introduced here, and not fixed in this pass):
 
 - The advisory path validates provider output and falls back to the
   deterministic proposal on timeout, non-OK responses, or invalid JSON.
-- With no `AI_API_KEY`/`AI_MODEL`, the UI reports the deterministic fallback
-  source. Live provider calls were not executed and are not claimed.
+- With no `GEMINI_API_KEY`/`GEMINI_MODEL`, the UI reports the deterministic fallback
+  source. The integration now has UI and server-action call sites; live provider
+  calls were not executed and are not claimed.
 - Advisory output never changes deal or payment state; a human decision is
   still required.
 
@@ -352,7 +353,7 @@ reduced-motion context. Real browser navigation, no mocked data.
 - Live PayPal sandbox: no `DATABASE_URL`, no public HTTPS webhook endpoint and
   no `PAYPAL_WEBHOOK_ID`, so the adapter refuses real actions and the app uses
   the demo provider. No sandbox payment was executed or claimed.
-- Live AI provider: no `AI_API_KEY`/`AI_MODEL`. Only the deterministic fallback
+- Live AI provider: no `GEMINI_API_KEY`/`GEMINI_MODEL`. Only the deterministic fallback
   is verified; the UI reports the fallback source.
 - Hosted PostgreSQL and durable evidence object storage are not configured, so
   a serverless deployment can read the seeded demo data but cannot persist

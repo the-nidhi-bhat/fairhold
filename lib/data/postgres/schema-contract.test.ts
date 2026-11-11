@@ -89,3 +89,19 @@ test("evidence persistence writes every metadata column", () => {
   );
   assert.match(dealsSql, /VALUES \(\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11\)/);
 });
+
+test("durable evidence storage is keyed by the same value the metadata row stores", async () => {
+  // The bytes live in their own table, so nothing may depend on a second
+  // identifier: the storage key written here must be the exact string later
+  // stored in evidence.file_stored_path, otherwise a restart loses the file.
+  const filesSql = await readFile(
+    join(MIGRATIONS_DIR, "0007_evidence_files.sql"),
+    "utf8",
+  );
+  assert.match(filesSql, /CREATE TABLE IF NOT EXISTS evidence_files/);
+  assert.match(filesSql, /storage_key text PRIMARY KEY/);
+  assert.match(filesSql, /content bytea NOT NULL/);
+  assert.match(filesSql, /byte_size bigint NOT NULL CHECK \(byte_size >= 0\)/);
+  // Bytes must not be reachable through any public identifier.
+  assert.doesNotMatch(filesSql, /public_url|signed_url|download_url/i);
+});

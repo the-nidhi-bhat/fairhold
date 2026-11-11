@@ -24,7 +24,17 @@ if (!url || /^your_/i.test(url.trim())) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: url, connectionTimeoutMillis: 5000 });
+/** Resolve pg SSL from the connection string's sslmode parameter (Neon requires TLS). */
+const sslMatch = url.match(/[?&]sslmode=([^&]+)/);
+const sslMode = sslMatch?.[1]?.toLowerCase();
+const ssl = sslMode === "require" || sslMode === "verify-ca" || sslMode === "verify-full";
+
+const pool = new Pool({
+  connectionString: url,
+  max: 1,
+  connectionTimeoutMillis: 5000,
+  ssl,
+});
 
 try {
   const { applied, skipped } = await runMigrations(pool);

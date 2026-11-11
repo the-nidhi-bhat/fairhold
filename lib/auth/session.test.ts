@@ -32,6 +32,7 @@ test("demo login allowlist rejects unlisted roles and identities", () => {
     FAIRHOLD_DEMO_REVIEWERS: "Morgan Reviewer",
   };
   assert.equal(authorizeDemoLogin({ name: "Alex Buyer", role: "buyer" }, env), true);
+  assert.equal(authorizeDemoLogin({ name: "Jamie Seller", role: "seller" }, env), true);
   assert.equal(authorizeDemoLogin({ name: "Unknown", role: "buyer" }, env), false);
   assert.equal(authorizeDemoLogin({ name: "Morgan Reviewer", role: "reviewer" }, env), true);
   assert.equal(authorizeDemoLogin({ name: "Alex Buyer", role: "reviewer" }, env), false);

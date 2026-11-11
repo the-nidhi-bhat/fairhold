@@ -15,6 +15,23 @@ import { readDatabaseUrl } from "../db.ts";
 
 let pool: Pool | null = null;
 
+/**
+ * Resolve the pg SSL option from the connection string's sslmode parameter.
+ *
+ * Neon provides connection strings with sslmode=require, so TLS is used for
+ * Neon deployments. Local PostgreSQL connection strings typically omit
+ * sslmode, so TLS is not required locally. When TLS is used, certificate
+ * verification remains enabled (pg default: rejectUnauthorized=true) — this
+ * never weakens TLS.
+ */
+function resolveSsl(connectionString: string): boolean {
+  const match = connectionString.match(/[?&]sslmode=([^&]+)/);
+  const mode = match?.[1]?.toLowerCase();
+  return mode === "require" || mode === "verify-ca" || mode === "verify-full";
+}
+
+export { resolveSsl };
+
 export function getPool(): Pool {
   if (pool) return pool;
   const url = readDatabaseUrl();
@@ -25,8 +42,9 @@ export function getPool(): Pool {
   }
   pool = new Pool({
     connectionString: url,
-    max: 10,
+    max: 2,
     connectionTimeoutMillis: 5000,
+    ssl: resolveSsl(url),
   });
   pool.on("error", (error) => {
     // Idle-client errors must not crash the process. The message never

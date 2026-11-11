@@ -52,3 +52,24 @@
   fails writes.
 - The launch video is silent by design because no TTS/music provider credential
   exists; on-screen copy plus SRT captions carry the narration.
+
+## 2026-11-10 - E2E architecture decisions
+
+- **The browser suite runs against a production build, one device project at a
+  time** (`scripts/run-e2e.mjs`). Dev-mode on-demand compilation was the dominant
+  source of nondeterminism here, and three concurrent dev servers exceed the
+  available memory on this machine. Sequential runs keep full isolation (own
+  port, own data directory, own reset fixture) with one server resident, and the
+  suite now exercises the artifact that ships.
+- **Tablet emulation uses a Chromium user agent at tablet geometry**, not
+  `devices["iPad (gen 7)"]`. That descriptor's iOS Safari UA pushed Next's client
+  router into Safari-only paths inside Chromium, which failed deterministically
+  on tablet only. Viewport, DPR and touch are preserved, so the layout and
+  interaction coverage is unchanged.
+- **E2E backend selection is explicit and non-production**: the test servers set
+  `DATABASE_URL: ""` and `FAIRHOLD_DATA_BACKEND=json`. The pin is honoured only
+  when `NODE_ENV !== "production"`; deployed environments keep the existing
+  "DATABASE_URL configured => PostgreSQL, errors propagate" rule. No silent JSON
+  fallback exists in any environment.
+- **Test data lives outside the repository** (`%TEMP%\fairhold-e2e\<device>`) so a
+  synchronised OneDrive checkout cannot re-upload store writes mid-run.

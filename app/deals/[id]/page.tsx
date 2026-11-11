@@ -4,10 +4,13 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { canAccessDeal, getDemoSession } from "@/lib/auth/session";
 import {
+  analyzeAgreement,
+  analyzeEvidence,
   resolveEvidenceAdvisory,
   resolveMilestoneProposal,
 } from "@/lib/ai/advisory";
 import { getDeal } from "@/lib/data";
+import { isValidUUID } from "@/lib/domain/validation";
 import { formatCents } from "@/lib/domain/format";
 import { summarizeDealMoney } from "@/lib/domain/money";
 import { approvalIsStale, recommendMilestone } from "@/lib/domain/rules";
@@ -42,6 +45,7 @@ import { AddMilestoneForm, EditMilestoneForm } from "./milestone-forms";
 import {
   AddEvidenceForm,
   ApprovalPanel,
+  EvidenceAdvisoryPanel,
   ReviewEvidenceForm,
 } from "./evidence-forms";
 
@@ -102,6 +106,10 @@ export default async function DealPage({
   // Resolve existence and access before streaming any markup: `notFound()`
   // thrown after the shell has flushed cannot replace the already-sent
   // response, which left a blank page with HTTP 200.
+  // Reject non-UUID deal IDs before they reach the database query, which
+  // expects a UUID column. Invalid IDs (e.g. "new" from a mistyped URL)
+  // must produce a proper 404, not a database error.
+  if (!isValidUUID(id)) notFound();
   const deal = await getDeal(id);
   if (!deal) notFound();
   const session = await getDemoSession();
@@ -460,6 +468,9 @@ async function DealDetail({
         </p>
       </section>
 
+      {/* AI agreement analysis */}
+      <AgreementAnalysisPanel agreement={deal.agreement} />
+
       {/* Deal status controls */}
       {dealTransitions.length > 0 &&
       (session.role === "seller" || session.role === "reviewer") ? (
@@ -571,7 +582,7 @@ async function DealDetail({
                     </p>
                   </div>
 
-                  <EvidenceAdvisoryPanel
+                  <SubmittedEvidenceAdvisory
                     criteria={milestone.acceptanceCriteria}
                     evidence={deal.evidence
                       .filter((item) => item.milestoneId === milestone.id)
@@ -580,6 +591,14 @@ async function DealDetail({
                           .filter((value): value is string => Boolean(value))
                           .join(" "),
                       )}
+                  />
+
+                  <EvidenceAnalysisPanel
+                    criteria={[milestone.acceptanceCriteria]}
+                    evidence={deal.evidence
+                      .filter((item) => item.milestoneId === milestone.id)
+                      .map((item) => item.note)
+                      .filter(Boolean)}
                   />
 
                   <MilestoneEvidence
@@ -701,7 +720,7 @@ async function MilestoneAdvisory({ agreement }: { agreement: string }) {
   );
 }
 
-async function EvidenceAdvisoryPanel({
+async function SubmittedEvidenceAdvisory({
   criteria,
   evidence,
 }: {
@@ -722,13 +741,162 @@ async function EvidenceAdvisoryPanel({
       </p>
       {advisory.concerns.length > 0 ? (
         <ul className="mt-2 list-disc pl-5 text-xs text-[var(--warning)]">
-          {advisory.concerns.map((concern) => (
-            <li key={concern}>{concern}</li>
+          {advisory.concerns.map((concern, index) => (
+            <li key={`${index}-${concern}`}>{concern}</li>
           ))}
         </ul>
       ) : null}
       <p className="mt-2 text-xs text-muted">
         Advisory only; it cannot approve evidence or execute payment.
+      </p>
+    </div>
+  );
+}
+
+async function AgreementAnalysisPanel({
+  agreement,
+}: {
+  agreement: string;
+}) {
+  const { analysis, source } = await analyzeAgreement(agreement);
+  return (
+    <section className="surface mt-6 p-5 sm:p-6">
+      <p className="text-xs font-medium uppercase tracking-wide text-[var(--accent)]">
+        AI agreement analysis
+      </p>
+      <h3 className="mt-1 text-base font-semibold text-[var(--foreground)]">
+        Suggested milestone structure
+      </h3>
+      <p className="mt-1 text-sm text-[var(--foreground-soft)]">
+        Estimated <strong>{analysis.estimatedMilestones}</strong>{" "}
+        {analysis.estimatedMilestones === 1 ? "milestone" : "milestones"}
+      </p>
+      {analysis.deliverables.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted">
+            Deliverables
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.deliverables.map((d, index) => (
+              <li key={`${index}-${d}`}>{d}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.acceptanceCriteria.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-muted">
+            Acceptance criteria
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.acceptanceCriteria.map((c, index) => (
+              <li key={`${index}-${c}`}>{c}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.missingDetails.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--warning)]">
+            Missing details
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.missingDetails.map((d, index) => (
+              <li key={`${index}-${d}`}>{d}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.ambiguousRequirements.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--warning)]">
+            Ambiguous requirements
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.ambiguousRequirements.map((r, index) => (
+              <li key={`${index}-${r}`}>{r}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      <p className="mt-3 text-xs text-muted">
+        Source: {source === "ai" ? "configured AI provider" : "deterministic fallback"}{" "}
+        · Advisory only. A human defines milestones and acceptance criteria;
+        deterministic rules decide payment.
+      </p>
+    </section>
+  );
+}
+
+async function EvidenceAnalysisPanel({
+  criteria,
+  evidence,
+}: {
+  criteria: string[];
+  evidence: string[];
+}) {
+  const { analysis, source } = await analyzeEvidence(criteria, evidence);
+  return (
+    <div className="surface-inset mt-3 p-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-[var(--accent)]">
+        AI evidence analysis
+      </p>
+      <p className="mt-1 text-sm text-[var(--foreground-soft)]">
+        {analysis.reasoning}
+      </p>
+      {analysis.supportedCriteria.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--success)]">
+            Supported criteria
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.supportedCriteria.map((c, index) => (
+              <li key={`${index}-${c}`}>{c}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.missingCriteria.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--warning)]">
+            Missing criteria
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.missingCriteria.map((c, index) => (
+              <li key={`${index}-${c}`}>{c}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.contradictoryEvidence.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--danger)]">
+            Contradictory evidence
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.contradictoryEvidence.map((c, index) => (
+              <li key={`${index}-${c}`}>{c}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      {analysis.insufficientEvidence.length > 0 ? (
+        <>
+          <p className="mt-2 text-xs font-medium uppercase tracking-wide text-[var(--warning)]">
+            Insufficient evidence
+          </p>
+          <ul className="mt-1 list-disc pl-5 text-sm text-[var(--foreground-soft)]">
+            {analysis.insufficientEvidence.map((e, index) => (
+              <li key={`${index}-${e}`}>{e}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+      <p className="mt-3 text-xs text-muted">
+        Source: {source === "ai" ? "configured AI provider" : "deterministic fallback"}{" "}
+        · Advisory only. A human reviewer must open and assess each evidence file
+        directly; this analysis uses keyword overlap only and does not understand
+        document contents.
       </p>
     </div>
   );
@@ -819,6 +987,10 @@ function MilestoneEvidence({
           Final payment decisions are made by the buyer or an authorized reviewer.
         </p>
       )}
+
+      {role === "buyer" || role === "reviewer" ? (
+        <EvidenceAdvisoryPanel dealId={deal.id} milestoneId={milestone.id} />
+      ) : null}
 
       <div className="mt-4">
         <h4 className="text-xs font-semibold uppercase tracking-wide text-muted">

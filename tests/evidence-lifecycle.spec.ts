@@ -93,8 +93,26 @@ async function submitEvidence(
   await expect(evidenceItem(scope, note)).toBeVisible();
 }
 
-test.beforeEach(() => {
-  execFileSync(process.execPath, ["scripts/demo-reset.mjs"], { stdio: "inherit" });
+// The dev server for each Playwright project was started with that project's
+// FAIRHOLD_DATA_DIR, so reading it back from the project config keeps the reset
+// and the server pointing at exactly the same store — there is no second copy of
+// the path to drift out of sync.
+test.beforeEach(({}, testInfo) => {
+  const dataDir = (testInfo.project.use as unknown as Record<string, unknown>)
+    .FAIRHOLD_DATA_DIR;
+  if (typeof dataDir !== "string" || dataDir.length === 0) {
+    throw new Error(
+      `Project ${testInfo.project.name} has no FAIRHOLD_DATA_DIR; see playwright.config.ts.`,
+    );
+  }
+  execFileSync(process.execPath, ["scripts/reset-test-data.mjs"], {
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      FAIRHOLD_DATA_DIR: dataDir,
+      FAIRHOLD_DATA_BACKEND: "json",
+    },
+  });
 });
 
 test("buyer and seller complete authorization, review, revision, acceptance and a simulated capture", async ({
@@ -312,7 +330,15 @@ test("buyer creates a deal, the seller adds a milestone, and both see persisted 
   await expect(page.getByText("None is implemented in this build")).toBeVisible();
 
   await page.goto("/dashboard");
-  await expect(page.getByRole("heading", { level: 3, name: title })).toBeVisible();
+  // Scope the deal title lookup to the dashboard deals list so we don't match
+  // h3 headings from milestones, panels, or other UI elements.
+  // Each deal in the list has an h3 with the deal title inside a panel link.
+  const dashboardDealItems = page.locator(
+    ".mt-4.space-y-3 > li > .panel > .flex > .min-w-0 > h3",
+  );
+  await expect(
+    dashboardDealItems.filter({ hasText: title }).first(),
+  ).toBeVisible();
 
   // The onboarding explainer starts collapsed and expands to the four steps.
   // `<details>` keeps its content in the DOM, so the assertion is visibility,
@@ -338,12 +364,14 @@ test("buyer creates a deal, the seller adds a milestone, and both see persisted 
   await page.getByLabel("Search deals").fill(title);
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(page.getByText(/\d+ of \d+ shown/)).toBeVisible();
-  await expect(page.getByRole("heading", { level: 3, name: title })).toBeVisible();
+  // Scope the deal title lookup to the dashboard deals list (reusing dashboardDealItems from earlier).
+  const dashboardDealTitle = dashboardDealItems.filter({ hasText: title }).first();
+  await expect(dashboardDealTitle).toBeVisible();
 
   // A term with no match shows the filtered empty state, and Clear restores it.
   await page.getByLabel("Search deals").fill("no-such-deal-xyz");
   await page.getByRole("button", { name: "Apply" }).click();
   await expect(page.getByText("No deals match those filters")).toBeVisible();
   await page.getByRole("link", { name: "Clear filters" }).click();
-  await expect(page.getByRole("heading", { level: 3, name: title })).toBeVisible();
+  await expect(dashboardDealTitle).toBeVisible();
 });

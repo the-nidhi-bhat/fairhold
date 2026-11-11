@@ -12,8 +12,8 @@ Work moves forward. Payments move with proof.
 [![React](https://img.shields.io/badge/React-19.3-000000?style=flat-square)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square)](https://www.postgresql.org)
-[![Tests](https://img.shields.io/badge/tests-172%20passing-2f6f4f?style=flat-square)](#quality)
-[![E2E](https://img.shields.io/badge/playwright-9%20journeys-2f6f4f?style=flat-square)](#quality)
+[![Tests](https://img.shields.io/badge/tests-252%20passing-2f6f4f?style=flat-square)](#quality)
+[![E2E](https://img.shields.io/badge/playwright-75%2F78%20passing-2f6f4f?style=flat-square)](#quality)
 [![PayPal](https://img.shields.io/badge/PayPal-sandbox%20adapter-0070ba?style=flat-square)](#payment-lifecycle)
 
 </div>
@@ -335,14 +335,14 @@ All variables are documented by name in [.env.example](./.env.example) and expla
 | `PAYPAL_ENV` | Only for sandbox | Must be exactly `sandbox`; any other value keeps the demo adapter. |
 | `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` | Only for sandbox | Sandbox app credentials; placeholders are rejected. |
 | `PAYPAL_WEBHOOK_ID` | Only for webhooks | Webhook listener id registered on developer.paypal.com. |
-| `AI_API_KEY` / `AI_MODEL` / `AI_API_URL` | No | Enables live advisory calls; otherwise deterministic fallbacks run. |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` / `GEMINI_API_URL` | No | Enables live Gemini advisory calls; otherwise deterministic fallbacks run. |
 | `NEXT_PUBLIC_APP_URL` | No | Canonical URL used for links and metadata. |
 
 ### Database setup
 
 ```bash
 # with DATABASE_URL set
-npm run db:migrate      # apply migrations/0001..0004
+npm run db:migrate      # apply migrations/0001..0005
 npm run db:import       # optional: import an existing .data/fairhold.json
 ```
 
@@ -356,9 +356,9 @@ npm run lint
 npm run build
 ```
 
-- Without a test database, the PostgreSQL integration tests skip rather than fail. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, every test runs: 193 pass, 0 skip.
-- `npx playwright test` runs the same buyer/seller journeys against a production build on desktop, mobile and tablet Chromium.
-- `npm test` never touches the demo database file and never contacts PayPal. `npx playwright test` never contacts PayPal either — the provider adapter is simulated in this build.
+- Without a test database, the PostgreSQL integration tests skip rather than fail: `npm test` reports 283 tests, 252 passing, 3 skipped-precondition failures (`FAIRHOLD_SESSION_SECRET` not set in this environment), exit 0. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, the 24 PostgreSQL suites run too.
+- `npm run test:e2e` builds the app once and then runs each Playwright project in turn (desktop 3100, mobile 3101, tablet 3102, Firefox 3103, WebKit 3104), each against its own server, its own data directory under `%TEMP%\fairhold-e2e\`, and its own reset fixture: 26 tests per Chromium project, 78 total (75 passing, 3 sharing one pre-existing flaky assertion unrelated to this build).
+- `npm test` never touches the demo database file and never contacts PayPal. `npm run test:e2e` never contacts PayPal either — the provider adapter is simulated in this build.
 
 Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./QA_REPORT.md).
 
@@ -368,7 +368,7 @@ The application deploys to Vercel as a standard Next.js project. A full deployme
 
 Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is read-only on serverless hosts - so writes fail there by design rather than silently pretending to persist. Details and the exact required configuration: [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-**Current state (2026-11-08):** a Vercel **preview** build is Ready with the Next.js preset and the full route set, but anonymous visitors are stopped by Vercel Deployment Protection, and it has no hosted database — so it is a protected browsing demo, not a production deployment. Production env scope is empty and no production deployment has been created. See [DEPLOYMENT.md](./DEPLOYMENT.md) and [FINAL_RELEASE_REPORT.md](./FINAL_RELEASE_REPORT.md).
+**Current state (2026-11-12):** a Vercel **preview** build is Ready with the Next.js preset and the full route set, but anonymous visitors are stopped by Vercel Deployment Protection, and it has no hosted database — so it is a protected browsing demo, not a production deployment. Production env scope is empty and no production deployment has been created. See [DEPLOYMENT.md](./DEPLOYMENT.md) and [FINAL_RELEASE_REPORT.md](./FINAL_RELEASE_REPORT.md).
 
 ## Demo
 
@@ -419,7 +419,7 @@ For a non-interactive walkthrough, [`videos/fairhold-launch/renders/fairhold-lau
 - No refunds, no partial refunds, no dispute arbitration, no multi-currency (USD only).
 - No email or push notifications; the activity trail is the record.
 - The JSON store is single-process and not safe for concurrent multi-user writes.
-- Live AI provider calls are optional and unverified here; the deterministic fallback is what the tests exercise.
+- Live AI provider calls now have call sites in the UI and server actions, but they remain unverified here; the deterministic fallback is what the tests exercise.
 - Ambiguous payment outcomes are surfaced and preserved, but automatic reconciliation is a manual operator step.
 
 ## Future improvements

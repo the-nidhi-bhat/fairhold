@@ -106,7 +106,7 @@ decisions or credentials and are left as documented limits rather than patched.
    a three-minute cut of the demo script (gate item 16). Both are doc/code-only.
 4. **Credentials:** provide `DATABASE_URL`, object storage, PayPal sandbox
    credentials and `PAYPAL_WEBHOOK_ID`, then run the sandbox kill-test.
-5. **Credentials:** provide `AI_API_KEY` and `AI_MODEL` to replace the
+5. **Credentials:** provide `GEMINI_API_KEY` and `GEMINI_MODEL` to replace the
    deterministic advisory fallback with a live model.
 6. **Product decision:** real authentication method before any real-user beta.
 

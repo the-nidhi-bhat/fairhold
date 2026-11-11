@@ -51,6 +51,33 @@ function isIsoDate(value: string): boolean {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
+/**
+ * Validate that a string is a UUID. Used before passing route parameters to
+ * PostgreSQL queries that expect UUID columns, preventing database errors
+ * from non-UUID path segments such as "new".
+ */
+export function isValidUUID(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+export function validateAgreementText(raw: unknown): ValidationResult<string> {
+  const agreement = str(raw);
+  if (agreement.length < 20) {
+    return {
+      ok: false,
+      errors: { agreement: "Agreement must be at least 20 characters." },
+    };
+  }
+  if (agreement.length > 20000) {
+    return {
+      ok: false,
+      errors: { agreement: "Agreement is too long (20,000 character limit)." },
+    };
+  }
+  return { ok: true, value: agreement };
+}
+
 export function validateDealInput(
   raw: Record<string, unknown>,
 ): ValidationResult<DealFormValues> {
@@ -76,16 +103,19 @@ export function validateDealInput(
   if (currency !== "USD")
     errors.currency = "Only USD is supported in this build.";
 
-  const agreement = str(raw.agreement);
-  if (agreement.length < 20)
-    errors.agreement = "Agreement must be at least 20 characters.";
-  else if (agreement.length > 20000)
-    errors.agreement = "Agreement is too long (20,000 character limit).";
+  const agreementResult = validateAgreementText(raw.agreement);
+  if (!agreementResult.ok) errors.agreement = agreementResult.errors.agreement;
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return {
     ok: true,
-    value: { title, clientName, freelancerName, currency: "USD", agreement },
+    value: {
+      title,
+      clientName,
+      freelancerName,
+      currency: "USD",
+      agreement: agreementResult.ok ? agreementResult.value : "",
+    },
   };
 }
 

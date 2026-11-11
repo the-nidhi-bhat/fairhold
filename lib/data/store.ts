@@ -14,15 +14,26 @@
  * ./deals.ts are written so this file can be swapped for a real database
  * without changing callers.
  */
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Database, Deal } from "../domain/types.ts";
+import { resolveDataDir } from "./data-dir.ts";
 import { writeEvidenceFile } from "./storage.ts";
 
 export { writeEvidenceFile };
 
-const DATA_DIR = join(process.cwd(), ".data");
-const DATA_FILE = join(DATA_DIR, "fairhold.json");
+// The store and the evidence bytes share one directory decision: see
+// ./data-dir.ts for the candidate order (FAIRHOLD_DATA_DIR / .data, then the OS
+// temp directory on read-only hosts). Data is ephemeral by design — lost on
+// redeploy, which matches the JSON store's documented development/demo role.
+// The FAIRHOLD_DATA_DIR env var can redirect the data directory for test
+// isolation (the E2E runner points it at the OS temp directory so a synced
+// checkout never has to upload and download store writes mid-run). A relative
+// value stays relative to the project, an absolute one is used as-is.
+
+export async function dataFilePath(): Promise<string> {
+  return join(await resolveDataDir(), "fairhold.json");
+}
 
 function emptyDatabase(): Database {
   return { version: 1, deals: [], paymentOperations: [] };
@@ -47,7 +58,7 @@ function normalizeDeal(deal: Deal): Deal {
 
 export async function readDatabase(): Promise<Database> {
   try {
-    const raw = await readFile(DATA_FILE, "utf8");
+    const raw = await readFile(await dataFilePath(), "utf8");
     const parsed = JSON.parse(raw) as Database;
     if (!parsed || !Array.isArray(parsed.deals)) return emptyDatabase();
     return { ...parsed, deals: parsed.deals.map(normalizeDeal) };
@@ -60,8 +71,8 @@ export async function readDatabase(): Promise<Database> {
 }
 
 export async function writeDatabase(db: Database): Promise<void> {
-  await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(DATA_FILE, JSON.stringify(db, null, 2), "utf8");
+  // resolveDataDir() has already created the directory it returns.
+  await writeFile(await dataFilePath(), JSON.stringify(db, null, 2), "utf8");
 }
 
 // Serialize writes so two requests cannot interleave read-modify-write cycles.

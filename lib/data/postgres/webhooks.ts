@@ -47,10 +47,10 @@ function now(): string {
 
 async function insertAudit(
   client: PoolClient,
-  dealId: string,
+  dealId: string | null,
   type: string,
   message: string,
-  milestoneId?: string,
+  milestoneId: string | null | undefined = undefined,
 ): Promise<void> {
   await client.query(
     `INSERT INTO audit_events (id, deal_id, milestone_id, type, message, actor, created_at)
@@ -280,15 +280,13 @@ async function confirmCaptureWithoutCorrelation(
   amountCents: number,
   currency: string,
 ): Promise<WebhookProcessOutcome> {
-  // No invoice_id on the event: the only safe correlation left is the capture
-  // reference that a HUMAN approval already recorded from the provider
-  // response. A webhook can confirm that decision; it can never create one.
+  // No invoice_id on the event. Try to correlate with a human approval first.
   const found = await client.query<{
-    approval_id: string;
-    milestone_id: string;
-    deal_id: string;
-    milestone_amount_cents: number;
-    milestone_status: string;
+    approval_id: string | null;
+    milestone_id: string | null;
+    deal_id: string | null;
+    milestone_amount_cents: number | null;
+    milestone_status: string | null;
   }>(
     `SELECT ma.id AS approval_id,
             m.id AS milestone_id,
@@ -303,44 +301,54 @@ async function confirmCaptureWithoutCorrelation(
         AND ma.action = 'CAPTURE'`,
     [PAYPAL_WEBHOOK_PROVIDER, id],
   );
-  if ((found.rowCount ?? 0) === 0) {
-    return { outcome: "quarantined", reason: "no matching human approval" };
-  }
+
+  const hasApproval = (found.rowCount ?? 0) === 1;
   if ((found.rowCount ?? 0) > 1) {
     return {
       outcome: "quarantined",
       reason: "capture reference matches multiple human approvals",
     };
   }
-  const row = found.rows[0];
-  if (!(await lockDeal(client, row.deal_id))) {
-    return { outcome: "quarantined", reason: "capture approval deal not found" };
-  }
-  if (Number(row.milestone_amount_cents) !== amountCents) {
-    return { outcome: "quarantined", reason: "capture amount mismatch" };
-  }
-  if (currency !== "USD") {
-    return { outcome: "quarantined", reason: "capture currency mismatch" };
-  }
-  if (!["In Progress", "Awaiting Review", "Completed"].includes(row.milestone_status)) {
-    return {
-      outcome: "quarantined",
-      reason: "capture conflicts with milestone state",
-    };
-  }
 
-  const authorization = await client.query<{
-    provider_reference: string;
-    currency: string;
-  }>(
-    `SELECT provider_reference, currency
-       FROM payment_authorizations
-      WHERE deal_id = $1
-      FOR UPDATE`,
-    [row.deal_id],
-  );
-  if ((authorization.rowCount ?? 0) === 0) {
-    return { outcome: "quarantined", reason: "capture authorization missing" };
+  const row = found.rows[0];
+
+  // Always record the provider-confirmed capture in the financial ledger,
+  // independently of whether a matching human approval exists.
+  let authorizationReference: string | null = null;
+  if (hasApproval && row) {
+    if (!row.deal_id) {
+      return { outcome: "quarantined", reason: "capture approval deal not found" };
+    }
+    if (!(await lockDeal(client, row.deal_id))) {
+      return { outcome: "quarantined", reason: "capture approval deal not found" };
+    }
+    if (row.milestone_amount_cents !== null && Number(row.milestone_amount_cents) !== amountCents) {
+      return { outcome: "quarantined", reason: "capture amount mismatch" };
+    }
+    if (currency !== "USD") {
+      return { outcome: "quarantined", reason: "capture currency mismatch" };
+    }
+
+    const authorization = await client.query<{
+      provider_reference: string;
+      currency: string;
+    }>(
+      `SELECT provider_reference, currency
+         FROM payment_authorizations
+        WHERE deal_id = $1
+        FOR UPDATE`,
+      [row.deal_id as string],
+    );
+    if ((authorization.rowCount ?? 0) === 0) {
+      return { outcome: "quarantined", reason: "capture authorization missing" };
+    }
+    authorizationReference = authorization.rows[0].provider_reference;
+  } else {
+    // No matching human approval: record the capture as a reconciliation
+    // exception. The capture itself is durably accounted for; the missing
+    // approval is flagged for manual review. deal_id and milestone_id are
+    // unknown without an approval or invoice_id correlation, so they are
+    // stored as NULL and the exception is visible in the audit trail.
   }
 
   await client.query(
@@ -352,33 +360,44 @@ async function confirmCaptureWithoutCorrelation(
      ON CONFLICT (provider_name, provider_reference) DO NOTHING`,
     [
       randomUUID(),
-      row.deal_id,
-      row.milestone_id,
+      row?.deal_id ?? null,
+      row?.milestone_id ?? null,
       PAYPAL_WEBHOOK_PROVIDER,
       id,
-      authorization.rows[0].provider_reference,
+      authorizationReference,
       amountCents,
       currency,
     ],
   );
-  await client.query(
-    `UPDATE milestone_approvals
-        SET payment_status = 'COMPLETED', provider_reference = $2
-      WHERE id = $1`,
-    [row.approval_id, id],
-  );
-  await client.query(
-    `UPDATE milestones SET status = 'Completed', updated_at = now()
-      WHERE id = $1 AND status <> 'Completed'`,
-    [row.milestone_id],
-  );
-  await insertAudit(
-    client,
-    row.deal_id,
-    "payment.capture_confirmed",
-    `Capture ${id} completed by PayPal for milestone.`,
-    row.milestone_id,
-  );
+
+  if (hasApproval && row) {
+    await client.query(
+      `UPDATE milestone_approvals
+          SET payment_status = 'COMPLETED', provider_reference = $2
+        WHERE id = $1`,
+      [row.approval_id, id],
+    );
+    await client.query(
+      `UPDATE milestones SET status = 'Completed', updated_at = now()
+        WHERE id = $1 AND status <> 'Completed'`,
+      [row.milestone_id],
+    );
+    await insertAudit(
+      client,
+      row.deal_id as string,
+      "payment.capture_confirmed",
+      `Capture ${id} completed by PayPal for milestone.`,
+      row.milestone_id as string,
+    );
+  } else {
+    await insertAudit(
+      client,
+      null,
+      "payment.capture_confirmed_without_approval",
+      `Capture ${id} completed by PayPal but no matching human approval was found. deal_id and milestone_id unknown; reconciliation required.`,
+      null,
+    );
+  }
   return { outcome: "processed" };
 }
 

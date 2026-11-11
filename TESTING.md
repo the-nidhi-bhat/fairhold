@@ -44,49 +44,109 @@ npm test
 ### Verified result
 
 ```
-npm test   (FAIRHOLD_TEST_DATABASE_URL pointing at an isolated PostgreSQL 16)
-tests 193   pass 193   fail 0   skipped 0   cancelled 0   todo 0
-duration ~13.9s
+$env:FAIRHOLD_SESSION_SECRET="fairhold-test-session-secret"   # required, no fallback
+npm test
+
+tests 239   pass 215   fail 0   skipped 24   cancelled 0   todo 0
+exit code 0
 ```
 
-Without `FAIRHOLD_TEST_DATABASE_URL` the PostgreSQL suites skip instead of failing; nothing is skipped to make a run green.
+The 24 skips are the PostgreSQL integration suites (`lib/data/postgres/*.integration.test.ts`). They skip when `FAIRHOLD_TEST_DATABASE_URL` is not set, and run for real when it is. Nothing is skipped to make a run green.
 
 ## Browser journeys
 
 ```bash
-npm run test:e2e
+npm run test:e2e          # node scripts/run-e2e.mjs: build, then each project
+node scripts/run-e2e.mjs --skip-build                      # reuse the last build
+node scripts/run-e2e.mjs --project=tablet-chromium         # one project only
 ```
 
-Playwright starts its own dev server on port 3100 (reusing one already running), with demo allowlists injected through the config:
+`scripts/run-e2e.mjs` runs `next build` once and then executes one Playwright
+project at a time. Two reasons, both measured on the reference machine:
+
+- **Production build, not `next dev`.** With on-demand compilation a route compile
+  on a contended machine can stall a server-action round trip for minutes, which
+  is indistinguishable from an application hang. `next start` serves prebuilt
+  routes, so the suite exercises the artifact that ships and no assertion depends
+  on compile timing. A failed build aborts the run before any test starts.
+- **One server at a time.** A single `playwright test` invocation boots every
+  configured webServer up front. Three Next servers plus browsers do not fit in
+  this machine's free RAM (~1–2 GB of 16 GB), and the server that loses that race
+  stalls. Sequential runs keep full isolation — own port, own data directory, own
+  reset fixture — while capping peak usage at one server. Playwright tears each
+  server down before the next project starts.
+
+### Isolation
+
+| Project | Port | Data directory | Viewport |
+| --- | --- | --- | --- |
+| `desktop-chromium` | 3100 | `%TEMP%\fairhold-e2e\desktop` | Desktop Chrome |
+| `mobile-chromium` | 3101 | `%TEMP%\fairhold-e2e\mobile` | Pixel 5 |
+| `tablet-chromium` | 3102 | `%TEMP%\fairhold-e2e\tablet` | 810×1080, DPR 2, touch |
+
+Each project's server is started with `FAIRHOLD_DATA_DIR` pointing at that
+directory, and `tests/evidence-lifecycle.spec.ts` reads the same value back from
+`testInfo.project.use` before running `scripts/reset-test-data.mjs`, so the reset
+and the server can never disagree. The store lives outside the repository so a
+synchronised OneDrive checkout does not re-upload writes mid-run.
+
+The tablet project deliberately does **not** use `devices["iPad (gen 7)"]`. That
+descriptor injects an iOS Safari user agent, and Next's client router then takes
+Safari-specific code paths even though the engine is Chromium, producing
+deterministic `due to access control checks` fetch failures and a bounce to
+`/login` on that project only. The project therefore runs a Chromium user agent
+at tablet geometry.
+
+### Backend selection for E2E
+
+The test servers get `DATABASE_URL: ""` (an empty value means "no database
+configured", so the normal selection rule picks the JSON store) plus
+`FAIRHOLD_DATA_BACKEND=json`. The explicit pin is the non-production escape hatch
+in `lib/data/db.ts`; it exists for running the specs against `next dev`, where a
+developer's `.env.local` `DATABASE_URL` would otherwise be picked up. `next start`
+runs as production and ignores the pin — which is why `DATABASE_URL` is blanked
+as well. Neither path touches the real database configuration, and neither
+invokes PostgreSQL.
+
+Demo allowlists are injected through the config, never through a committed file:
 
 - `FAIRHOLD_DEMO_BUYERS=Alex Buyer`
 - `FAIRHOLD_DEMO_SELLERS=Jamie Seller`
 - `FAIRHOLD_DEMO_REVIEWERS=Morgan Reviewer`
 
-Projects: `desktop-chromium`, `mobile-chromium` (Pixel 5), `tablet-chromium` (iPad gen 7). Each journey resets the demo store first via `scripts/demo-reset.mjs`.
+### What the 20 tests cover (per project)
 
-### The nine journeys
-
-1. **Full milestone lifecycle.** Sign in as seller → submit evidence with a file → download it and byte-compare the content → sign in as buyer → reject with a revision note → seller resubmits → buyer accepts → simulated authorization → simulated capture → attempt a second capture and confirm it is blocked.
-2. **Access control.** A non-participant is refused the deal and its evidence; a reviewer without a grant is refused; a granted reviewer is allowed.
-3. **Deal creation, milestone authoring, search and fees.** Create a deal, add milestones with amounts and due dates, verify validation failures, verify the deal detail renders the persisted state, verify the "Costs and limits" section, then narrow the dashboard by search and confirm the filtered empty state and Clear.
-4. **Guided demo lifecycle.** `/demo` runs the whole story and the money summary follows it; the test fails if any request URL mentions PayPal.
-5. **Guided demo role boundaries.** A reviewer cannot approve or review evidence in the demo.
-6. **Guided demo validation.** Requesting changes requires a reason and blocks approval.
-7. **Guided demo persistence.** State survives a reload and resets on demand.
-8. **Guided demo responsive fit.** The page never scrolls horizontally.
-
-9. **Progressive enhancement.** With client JavaScript disabled, the sign-in form still posts and authenticates, returning the buyer to `/dashboard` (`tests/progressive-enhancement.spec.ts`). The Suspense-streamed dashboard body does not complete without hydration — a documented limit, not a regression.
+| Spec | Tests | Coverage |
+| --- | --- | --- |
+| `tests/audit-screenshots.spec.ts` | 10 | Landing, login, demo and buyer dashboard render at desktop, mobile and tablet widths; all three demo roles can sign in; screenshots written to `audit-shots/` (gitignored). |
+| `tests/deal-creation-repro.spec.ts` | 1 | Buyer creates a deal through the form — regression for the read-only-filesystem 500 on Preview. |
+| `tests/demo.spec.ts` | 5 | Guided demo lifecycle and money summary; reviewer cannot approve or review evidence; requesting changes requires a reason; state survives reload and resets on demand; no horizontal scrolling. |
+| `tests/evidence-lifecycle.spec.ts` | 3 | Full lifecycle: seller submits evidence with a file → buyer downloads and byte-compares → revision request → resubmission → acceptance → simulated authorization → simulated capture → second capture blocked. Access control: non-participant, ungranted reviewer and granted reviewer. Deal creation, milestone authoring, "Costs and limits", dashboard search and filtered empty state. |
+| `tests/progressive-enhancement.spec.ts` | 1 | With client JavaScript disabled, the sign-in form still posts and authenticates (`/dashboard`). The Suspense-streamed dashboard body needs hydration — a documented limit, not a regression. |
 
 ### Verified result
 
 ```
-npx playwright test   → 27 passed (9 journeys × 3 projects)
+npm run test:e2e
+
+Production build:            passed
+Playwright: desktop-chromium: 20 passed
+Playwright: mobile-chromium:  20 passed
+Playwright: tablet-chromium:  20 passed
+exit code 0
 ```
 
-### Timeouts
+Run twice back to back after the final fixes: 60/60 both times, exit code 0,
+~2 min 20 s per full run (build ~14 s). No retries, no skipped tests, no sleeps.
 
-`playwright.config.ts` sets `timeout: 90_000` and `expect: { timeout: 10_000 }`. The default 30 s was too short on this checkout: the dev server compiles routes on demand, and the checkout lives on a synchronised OneDrive folder, which makes first-hit compilation slow. The long lifecycle journey legitimately needs roughly 53 s wall-clock. Raising the timeout changed no assertion — every failure observed at 30 s was a timeout, never a mismatch, and the same assertions pass at 90 s.
+### Timeouts and interaction settings
+
+`playwright.config.ts` sets `timeout: 120_000` and `expect: { timeout: 10_000 }`
+so a genuinely hung request fails instead of running forever; every assertion
+keeps its own expect timeout. `reducedMotion: "reduce"` is applied to all
+projects: `globals.css` disables smooth scrolling and entrance animations under
+`prefers-reduced-motion`, so clicks are not racing a moving target and the suite
+also covers the path real reduced-motion users get.
 
 ## Static checks
 
@@ -116,7 +176,7 @@ All three pass. The build emits these routes:
 | Gap | Why | Consequence |
 | --- | --- | --- |
 | Live PayPal sandbox transactions | No sandbox credentials or webhook id configured | Authorization, capture, void and webhook delivery are verified against the adapter contract and injected transports, not against PayPal. Do not claim otherwise. |
-| Live AI provider calls | No `AI_API_KEY` | Only deterministic fallbacks and schema validation are exercised. |
+| Live AI provider calls | No `GEMINI_API_KEY` | Only deterministic fallbacks and schema validation are exercised. |
 | Firefox and WebKit | Not installed in this environment | Browser coverage is Chromium only, at three viewport profiles. |
 | Automated accessibility audit | No axe/Lighthouse wired in | Keyboard, focus and contrast checked manually; see [QA_REPORT.md](./QA_REPORT.md). |
 | Load, concurrency beyond the ledger tests, and chaos | Out of scope | Concurrent capture protection is asserted at the ledger level only. |

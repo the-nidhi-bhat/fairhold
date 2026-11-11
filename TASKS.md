@@ -9,9 +9,10 @@ Updated 2026-11-08.
 - `npm test` against an isolated PostgreSQL 16 container
   (`127.0.0.1:55432`, database `fairhold_test`): 193 tests, 193 pass, 0 failed,
   0 skipped.
-- `npx playwright test`: 27 passed - 9 journeys across desktop, mobile and tablet
-  Chromium, including search, filtered empty state, fee transparency, the guided
-  demo and its PayPal-request guard.
+- `npm run test:e2e`: 60 passed (20 tests on desktop, mobile and tablet Chromium).
+  Each project gets its own server, port and data directory, and the suite runs
+  against a production build. Coverage includes search, filtered empty state, fee
+  transparency, the guided demo and its PayPal-request guard.
 - Public guided demo at `/demo`: browser-only, localStorage persistence, reuses
   the deterministic rules, labels every payment SIMULATED, never calls a provider.
 - Money is integer cents end to end; typed amounts parse straight to cents.
@@ -24,7 +25,7 @@ Updated 2026-11-08.
 
 - Live PayPal sandbox lifecycle: no credentials, no public HTTPS webhook, no
   `PAYPAL_WEBHOOK_ID`.
-- Live AI provider: no `AI_API_KEY`/`AI_MODEL`; only the deterministic fallback.
+- Live AI provider: no `GEMINI_API_KEY`/`GEMINI_MODEL`; only the deterministic fallback.
 - Hosted PostgreSQL, durable object storage, production deployment.
 - Anonymous access to the deployed preview: Vercel Deployment Protection returns
   302 to SSO.
@@ -57,7 +58,7 @@ Updated 2026-11-08.
   is an owner-side configuration decision.
 - Live PayPal sandbox lifecycle: requires `DATABASE_URL`, a public HTTPS webhook
   endpoint and `PAYPAL_WEBHOOK_ID`.
-- Live AI provider calls: require non-placeholder `AI_API_KEY` and `AI_MODEL`.
+- Live AI provider calls: require non-placeholder `GEMINI_API_KEY` and `GEMINI_MODEL`.
 - Hosted PostgreSQL, backups/restore, durable evidence storage, monitoring,
   email notifications: require accounts or paid resources.
 

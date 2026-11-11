@@ -54,6 +54,7 @@ try {
 }
 
 const deals = Array.isArray(parsed?.deals) ? parsed.deals : [];
+const paymentOperations = Array.isArray(parsed?.paymentOperations) ? parsed.paymentOperations : [];
 
 const pool = new Pool({ connectionString: url, connectionTimeoutMillis: 5000 });
 
@@ -62,6 +63,8 @@ const counts = {
   skipped: 0,
   invalid: 0,
   failed: 0,
+  paymentOperations: 0,
+  paymentOperationsSkipped: 0,
 };
 
 async function importDeal(deal) {
@@ -174,13 +177,70 @@ async function importDeal(deal) {
   }
 }
 
+async function importPaymentOperation(op) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const inserted = await client.query(
+      `INSERT INTO payment_operations
+         (id, deal_id, milestone_id, authorization_reference, action,
+          requested_amount_cents, currency, idempotency_key, provider_name,
+          provider_reference, status, final_capture, created_at, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       ON CONFLICT (idempotency_key) DO NOTHING`,
+      [
+        op.id,
+        op.dealId,
+        op.milestoneId,
+        op.authorizationReference,
+        op.action,
+        op.requestedAmountCents,
+        op.currency,
+        op.idempotencyKey,
+        op.providerName,
+        op.providerReference,
+        op.status,
+        op.finalCapture ?? false,
+        op.createdAt,
+        op.updatedAt,
+      ],
+    );
+    if ((inserted.rowCount ?? 0) === 0) {
+      counts.paymentOperationsSkipped += 1;
+      await client.query("ROLLBACK");
+      return false;
+    }
+
+    await client.query("COMMIT");
+    counts.paymentOperations += 1;
+    return true;
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    counts.failed += 1;
+    console.error(
+      `  FAILED payment operation ${op.idempotencyKey ?? op.id}: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return false;
+  } finally {
+    client.release();
+  }
+}
+
 console.log(`Importing from '${path}' (${deals.length} deal(s))...`);
 for (const deal of deals) {
   await importDeal(deal);
 }
 
+// Import top-level payment operations with their cross-deal relationships.
+// Each operation references deal_id and milestone_id; both must already exist
+// (imported above) for the foreign key and trigger validation to pass.
+for (const op of paymentOperations ?? []) {
+  await importPaymentOperation(op);
+}
+
 console.log(
-  `Done. imported=${counts.imported} skipped(existing)=${counts.skipped} invalid=${counts.invalid} failed=${counts.failed}`,
+  `Done. imported=${counts.imported} skipped(existing)=${counts.skipped} invalid=${counts.invalid} failed=${counts.failed} paymentOperations=${counts.paymentOperations} paymentOperationsSkipped=${counts.paymentOperationsSkipped}`,
 );
 if (counts.invalid > 0 || counts.failed > 0) process.exitCode = 1;
 

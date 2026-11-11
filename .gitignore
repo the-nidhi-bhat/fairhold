@@ -80,6 +80,9 @@ temp/
 .cache/
 *.bak
 
+# UI/UX audit screenshots (binary artifacts, not source)
+audit-shots/
+
 # Release gate logs (local verification only)
 .gate/
 
@@ -87,7 +90,8 @@ temp/
 videos/*/.hyperframes/
 videos/*/renders/*.log
 
-# Development/demo persistence (JSON store; no real data)
+# Development/demo persistence (JSON store; no real data). The E2E runner
+# points FAIRHOLD_DATA_DIR at the OS temp directory instead.
 .data/
 playwright-report/
 test-results/
@@ -99,3 +103,4 @@ scripts/.paypal-kill-test-state.json
 .vercel/
 .env*.local
 .env.vercel
+.env*

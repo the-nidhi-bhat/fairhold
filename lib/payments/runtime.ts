@@ -29,7 +29,11 @@ export function paymentRuntime(
   env: Record<string, string | undefined> = process.env,
 ): PaymentRuntime {
   const config = readPayPalConfig(env);
-  const isProduction = env.NODE_ENV === "production";
+  // VERCEL_ENV is "production" only on actual production deployments.
+  // Preview deployments report VERCEL_ENV="preview" even though NODE_ENV
+  // is "production" on both, so we use VERCEL_ENV to avoid treating a
+  // preview as production and throwing when PostgreSQL is unconfigured.
+  const isProduction = env.VERCEL_ENV === "production";
   const allowSimulated = env.FAIRHOLD_ALLOW_SIMULATED_PAYMENTS === "true";
 
   if (!config) {

@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local artifacts that are not source and not covered by the defaults.
+    "audit-shots/**",
+    ".gate/**",
+    "tmp/**",
   ]),
 ]);
 

@@ -21,6 +21,7 @@
 import { randomUUID } from "node:crypto";
 import type { PoolClient } from "pg";
 import { canTransitionDeal, canTransitionMilestone } from "../../domain/status.ts";
+import { isValidUUID } from "../../domain/validation.ts";
 import type {
   Deal,
   DealEventType,
@@ -109,6 +110,10 @@ export async function listDeals(): Promise<Deal[]> {
 }
 
 export async function getDeal(id: string): Promise<Deal | null> {
+  // Reject non-UUID IDs before they reach the PostgreSQL UUID query.
+  // Invalid IDs (e.g. "new" from a mistyped URL) must produce a null result,
+  // not a database error.
+  if (!isValidUUID(id)) return null;
   const client = await getPool().connect();
   try {
     return await loadDealOrNull(client, id);

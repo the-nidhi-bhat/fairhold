@@ -21,7 +21,7 @@ preview satisfies.
 
 - Live PayPal sandbox verification: blocked, no sandbox credentials or public
   webhook endpoint in this environment.
-- Live AI provider verification: blocked, no `AI_API_KEY`/`AI_MODEL`.
+- Live AI provider verification: blocked, no `GEMINI_API_KEY`/`GEMINI_MODEL`.
 - Hosted PostgreSQL + durable evidence storage in production: not configured.
   The Vercel preview therefore serves reads from an empty JSON store and
   refuses writes instead of pretending to persist them.
@@ -344,7 +344,7 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
     producing invalid blank-page results. Playwright now owns port 3100.
   - Still blocked, not faked: live PayPal sandbox (needs `DATABASE_URL`, public
     HTTPS webhook endpoint, `PAYPAL_WEBHOOK_ID`; app currently runs the demo
-    provider) and live AI provider calls (needs `AI_API_KEY`/`AI_MODEL`).
+    provider) and live AI provider calls (needs `GEMINI_API_KEY`/`GEMINI_MODEL`).
   - Browser coverage is Chromium-only; no axe/Lighthouse run. Mobile and tablet
     are emulated viewports.
   - See `QA_REPORT.md` for the full evidence matrix and `TASKS.md` for the
@@ -447,3 +447,51 @@ Recommended next task: payment-safe buyer/seller flow hardening or final QA:
 2. Decide whether the hackathon demo should be publicly reachable; if so,
    adjust Deployment Protection in the Vercel dashboard (owner action).
 3. Optionally connect the GitHub repository for automatic deployments.
+
+## Session 2026-11-10 - E2E reliability closeout (verified)
+
+The browser suite is now deterministic on this machine. Nothing was skipped,
+retried or softened to get there.
+
+### Defects found and fixed
+
+| Defect | Root cause | Fix |
+| --- | --- | --- |
+| `evidence-lifecycle.spec.ts` could not find "Simulate authorization hold" | `next dev` auto-loads `.env.local`, so a real `DATABASE_URL` made `resolveDataBackend()` return `postgres`; `isPostgresConfigured()` then made `paymentRuntime()` select `PayPalSandboxProvider`, and the button rendered as "Create PayPal sandbox authorization". | Test servers get `DATABASE_URL: ""` (no database configured -> JSON by the normal rule) plus `FAIRHOLD_DATA_BACKEND=json`, a non-production-only pin in `lib/data/db.ts` used when the specs run against `next dev`. Production behaviour is unchanged and there is still no silent JSON fallback. |
+| Deal heading matched the wrong element | Ambiguous locator: several `h3` elements on the dashboard. | Locator scoped to the deals-list item (`.mt-4.space-y-3 > li > .panel > .flex > .min-w-0 > h3`), and reuse for the search step so it asserts the same card. |
+| Tablet project failed deterministically while desktop and mobile passed | `devices["iPad (gen 7)"]` injects an iOS Safari user agent; Next's client router then takes Safari-only code paths inside a Chromium engine, producing `due to access control checks` fetch failures and a bounce to `/login`. | Tablet project uses a Chromium user agent (derived from Pixel 5) at 810x1080, DPR 2, touch. |
+| Suite stalled for minutes at a time | On-demand dev compilation plus three concurrent dev servers on a machine with ~1-2 GB free RAM; the server that lost the race stalled a server-action round trip. | `scripts/run-e2e.mjs` builds once and runs one project at a time (`next start`), so at most one server is resident and the tests exercise the shipped artifact. |
+| Duplicate React keys in the advisory panels | Repeated strings were used as keys. | Index-qualified keys on all nine lists in `app/deals/[id]/page.tsx`. |
+
+### Verified evidence
+
+```
+npm run test:e2e     # build + desktop + mobile + tablet, twice
+  Production build:  passed (13-14s)
+  desktop-chromium:  20 passed (37-40s)
+  mobile-chromium:   20 passed (45-46s)
+  tablet-chromium:   20 passed (43-46s)
+  exit code 0 both runs (60/60)
+
+npm test             # FAIRHOLD_SESSION_SECRET set
+  tests 239  pass 215  fail 0  skipped 24  exit 0
+  (the 24 skips are the PostgreSQL integration suites, skipped only because
+   FAIRHOLD_TEST_DATABASE_URL is unset)
+
+npm run typecheck    # exit 0
+npm run lint         # exit 0, no warnings
+git diff --check     # exit 0
+```
+
+### Isolation
+
+Each project owns port, data directory and reset fixture: desktop 3100 /
+`%TEMP%\fairhold-e2e\desktop`, mobile 3101 / `...\mobile`, tablet 3102 /
+`...\tablet`. `tests/evidence-lifecycle.spec.ts` reads `FAIRHOLD_DATA_DIR` back
+from `testInfo.project.use`, so the reset script and the server cannot disagree.
+
+### Not verified here (unchanged)
+
+Live PayPal sandbox operations, live Gemini calls, non-Chromium engines, a real
+PostgreSQL run of the integration suites, and anything on the deployed Preview
+that needs SSO or owner credentials. These remain unverified, not passing.

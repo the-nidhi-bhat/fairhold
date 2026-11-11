@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createDealAction, type FormState } from "@/app/deals/actions";
+import { AgreementAdvisory } from "./agreement-advisory";
 
 const initialState: FormState = { ok: false, errors: {} };
 
@@ -129,6 +130,7 @@ export function NewDealForm() {
             placeholder="Describe the work, deliverables, and payment terms agreed between both parties."
           />
           <FieldError message={state.errors.agreement} />
+          <AgreementAdvisory textareaId="agreement" />
         </div>
       </div>
 

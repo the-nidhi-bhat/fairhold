@@ -45,7 +45,9 @@ import {
   validateMilestoneInput,
 } from "@/lib/domain/validation";
 import { paymentRuntime } from "@/lib/payments/runtime";
+import type { PaymentOperationResult } from "@/lib/payments/provider";
 import { canAccessDeal, getDemoSession, type DemoSession } from "@/lib/auth/session";
+import { buildDealUrl } from "@/lib/url";
 
 export interface FormState {
   ok: boolean;
@@ -344,10 +346,14 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
 
   const amountCents = deal.milestones.reduce((sum, m) => sum + m.amountCents, 0);
   const { provider } = paymentRuntime();
+  const returnUrl = buildDealUrl(dealId, "/payment-return");
+  const cancelUrl = buildDealUrl(dealId, "/payment-cancel");
   const authorization = await provider.createAuthorizationHold({
     dealId,
     amountCents,
     currency: deal.currency,
+    returnUrl,
+    cancelUrl,
   });
   if (!authorization.ok) {
     redirect(`/deals/${dealId}?actionError=provider`);
@@ -470,6 +476,7 @@ export async function submitEvidenceAction(
     storedPath = await writeEvidenceFile(
       result.value.file.name,
       result.value.file.bytes,
+      result.value.file.type,
     );
   }
 
@@ -606,9 +613,20 @@ export async function recordApprovalAction(
         errors: { _form: capturePlan.error ?? "Capture is not allowed." },
       };
     }
-    const idempotencyKey = `capture:${dealId}:${milestoneId}`;
+    // Each distinct capture against the same milestone needs a unique, stable
+    // idempotency identity. Retries of the same logical capture reuse the same
+    // key; a second legitimate capture gets a different key. We count existing
+    // completed captures for this milestone and add one.
+    const existingCaptureCount = deal.milestones.filter(
+      (m) =>
+        m.id === milestoneId &&
+        m.approval?.action === "CAPTURE" &&
+        m.approval.paymentStatus === "COMPLETED",
+    ).length;
+    const idempotencyKey = `capture:${dealId}:${milestoneId}:${existingCaptureCount + 1}`;
+    let operation;
     try {
-      await beginPaymentOperation({
+      operation = await beginPaymentOperation({
         dealId,
         milestoneId,
         authorizationReference: deal.authorization?.providerReference ?? null,
@@ -630,21 +648,41 @@ export async function recordApprovalAction(
         },
       };
     }
-    const result = await provider.captureAuthorization({
-      dealId,
-      milestoneId,
-      amountCents: milestone.amountCents,
-      currency: deal.currency,
-      authorizationReference: deal.authorization?.providerReference ?? null,
-      finalCapture: capturePlan.finalCapture,
-      invoiceId: idempotencyKey,
-      requestId: idempotencyKey,
-    });
-    await updatePaymentOperation(idempotencyKey, {
-      status: result.status,
-      providerReference: result.providerReference,
-      simulated: result.simulated,
-    });
+
+    // If the operation already has a terminal result (from a prior attempt),
+    // reuse it instead of sending a duplicate request to the provider.
+    let result: PaymentOperationResult;
+    if (operation.status === "COMPLETED" || operation.status === "VOIDED" || operation.status === "FAILED") {
+      result = {
+        ok: operation.status === "COMPLETED" || operation.status === "VOIDED",
+        providerReference: operation.providerReference ?? null,
+        providerName: provider.name,
+        simulated: false,
+        status: operation.status,
+        message: operation.status === "FAILED"
+          ? "The prior capture attempt did not succeed."
+          : `Capture already recorded as ${operation.status.toLowerCase()}.`,
+      };
+    } else {
+      // RESERVED or PENDING: send to the provider. PENDING means a prior
+      // attempt timed out — PayPal may have already processed it, so we
+      // report the outcome conservatively and never blindly retry.
+      result = await provider.captureAuthorization({
+        dealId,
+        milestoneId,
+        amountCents: milestone.amountCents,
+        currency: deal.currency,
+        authorizationReference: deal.authorization?.providerReference ?? null,
+        finalCapture: capturePlan.finalCapture,
+        invoiceId: idempotencyKey,
+        requestId: idempotencyKey,
+      });
+      await updatePaymentOperation(idempotencyKey, {
+        status: result.status,
+        providerReference: result.providerReference,
+        simulated: result.simulated,
+      });
+    }
     if (!result.ok) return { ok: false, errors: { _form: result.message } };
     providerReference = result.providerReference;
     providerName = result.providerName;
@@ -652,8 +690,9 @@ export async function recordApprovalAction(
     paymentStatus = result.status;
   } else if (plan.action === "VOID") {
     const idempotencyKey = `void:${dealId}:${milestoneId}`;
+    let operation;
     try {
-      await beginPaymentOperation({
+      operation = await beginPaymentOperation({
         dealId,
         milestoneId,
         authorizationReference: deal.authorization?.providerReference ?? null,
@@ -674,17 +713,32 @@ export async function recordApprovalAction(
         },
       };
     }
-    const result = await provider.voidAuthorization({
-      dealId,
-      milestoneId,
-      authorizationReference: deal.authorization?.providerReference ?? null,
-      requestId: idempotencyKey,
-    });
-    await updatePaymentOperation(idempotencyKey, {
-      status: result.status,
-      providerReference: result.providerReference,
-      simulated: result.simulated,
-    });
+
+    let result: PaymentOperationResult;
+    if (operation.status === "COMPLETED" || operation.status === "VOIDED" || operation.status === "FAILED") {
+      result = {
+        ok: operation.status === "COMPLETED" || operation.status === "VOIDED",
+        providerReference: operation.providerReference ?? null,
+        providerName: provider.name,
+        simulated: false,
+        status: operation.status,
+        message: operation.status === "FAILED"
+          ? "The prior void attempt did not succeed."
+          : `Void already recorded as ${operation.status.toLowerCase()}.`,
+      };
+    } else {
+      result = await provider.voidAuthorization({
+        dealId,
+        milestoneId,
+        authorizationReference: deal.authorization?.providerReference ?? null,
+        requestId: idempotencyKey,
+      });
+      await updatePaymentOperation(idempotencyKey, {
+        status: result.status,
+        providerReference: result.providerReference,
+        simulated: result.simulated,
+      });
+    }
     if (!result.ok) return { ok: false, errors: { _form: result.message } };
     providerReference = result.providerReference;
     providerName = result.providerName;

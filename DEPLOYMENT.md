@@ -17,7 +17,7 @@ A deployment that has neither is a demo deployment: it works for browsing, and e
 | `FAIRHOLD_DEMO_BUYERS` / `_SELLERS` / `_REVIEWERS` | Login allowlists | Not set |
 | `FAIRHOLD_REVIEWER_DEALS` | Per-deal reviewer grants | Not set |
 | `PAYPAL_ENV=sandbox` + id + secret + webhook id | Real sandbox payments and webhook verification | Not set |
-| `AI_API_KEY` + `AI_MODEL` | Live advisory | Not set |
+| `GEMINI_API_KEY` + `GEMINI_MODEL` | Live advisory | Not set |
 | Public HTTPS URL registered as a PayPal webhook listener | Webhook delivery | Not configured |
 | Evidence storage | Files are written to local disk today | Not addressed |
 
@@ -110,10 +110,10 @@ PAYPAL_CLIENT_ID=<sandbox app client id>
 PAYPAL_CLIENT_SECRET=<sandbox app secret>
 PAYPAL_WEBHOOK_ID=<registered listener id>
 
-# AI (optional)
-AI_API_KEY=<key>
-AI_MODEL=<model>
-AI_API_URL=<optional OpenAI-compatible endpoint>
+# AI (optional, Gemini)
+GEMINI_API_KEY=<key>
+GEMINI_MODEL=gemini-3.5-flash-lite
+# GEMINI_API_URL=<optional override; defaults to generativelanguage.googleapis.com>
 ```
 
 Register `https://<host>/api/paypal/webhook` on developer.paypal.com and subscribe it to the authorization and capture events the app normalises: `authorization_created`, `authorization_voided`, `capture_completed`, `capture_pending`. Copy the resulting listener id into `PAYPAL_WEBHOOK_ID`.
