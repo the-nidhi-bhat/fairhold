@@ -11,7 +11,7 @@
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path -Path (Join-Path $PSScriptRoot "..")
-$migrateScript = Join-Path $repoRoot "scripts" "migrate-0008.mjs"
+$migrateScript = Join-Path $repoRoot "scripts\migrate-0008.mjs"
 
 if (-not (Test-Path -Path $migrateScript)) {
     Write-Error "Migration script not found: $migrateScript"
