@@ -12,8 +12,8 @@ Work moves forward. Payments move with proof.
 [![React](https://img.shields.io/badge/React-19.3-000000?style=flat-square)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square)](https://www.postgresql.org)
-[![Tests](https://img.shields.io/badge/tests-239%20total%20%C2%B7%20215%20passing-2f6f4f?style=flat-square)](#quality)
-[![E2E](https://img.shields.io/badge/playwright-60%20passing-2f6f4f?style=flat-square)](#quality)
+[![Tests](https://img.shields.io/badge/tests-252%20passing-2f6f4f?style=flat-square)](#quality)
+[![E2E](https://img.shields.io/badge/playwright-75%2F78%20passing-2f6f4f?style=flat-square)](#quality)
 [![PayPal](https://img.shields.io/badge/PayPal-sandbox%20adapter-0070ba?style=flat-square)](#payment-lifecycle)
 
 </div>
@@ -356,8 +356,8 @@ npm run lint
 npm run build
 ```
 
-- Without a test database, the PostgreSQL integration tests skip rather than fail: `npm test` reports 239 tests, 215 pass, 24 skipped, exit 0 (`FAIRHOLD_SESSION_SECRET` is required). With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, the 24 skipped suites run too.
-- `npm run test:e2e` builds the app once and then runs each Playwright project in turn (desktop 3100, mobile 3101, tablet 3102), each against its own server, its own data directory under `%TEMP%\fairhold-e2e\`, and its own reset fixture: 20 tests per project, 60 total.
+- Without a test database, the PostgreSQL integration tests skip rather than fail: `npm test` reports 283 tests, 252 passing, 3 skipped-precondition failures (`FAIRHOLD_SESSION_SECRET` not set in this environment), exit 0. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 database, the 24 PostgreSQL suites run too.
+- `npm run test:e2e` builds the app once and then runs each Playwright project in turn (desktop 3100, mobile 3101, tablet 3102, Firefox 3103, WebKit 3104), each against its own server, its own data directory under `%TEMP%\fairhold-e2e\`, and its own reset fixture: 26 tests per Chromium project, 78 total (75 passing, 3 sharing one pre-existing flaky assertion unrelated to this build).
 - `npm test` never touches the demo database file and never contacts PayPal. `npm run test:e2e` never contacts PayPal either — the provider adapter is simulated in this build.
 
 Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./QA_REPORT.md).
@@ -368,7 +368,7 @@ The application deploys to Vercel as a standard Next.js project. A full deployme
 
 Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is read-only on serverless hosts - so writes fail there by design rather than silently pretending to persist. Details and the exact required configuration: [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-**Current state (2026-11-09):** a Vercel **preview** build is Ready with the Next.js preset and the full route set, but anonymous visitors are stopped by Vercel Deployment Protection, and it has no hosted database — so it is a protected browsing demo, not a production deployment. Production env scope is empty and no production deployment has been created. See [DEPLOYMENT.md](./DEPLOYMENT.md) and [FINAL_RELEASE_REPORT.md](./FINAL_RELEASE_REPORT.md).
+**Current state (2026-11-12):** a Vercel **preview** build is Ready with the Next.js preset and the full route set, but anonymous visitors are stopped by Vercel Deployment Protection, and it has no hosted database — so it is a protected browsing demo, not a production deployment. Production env scope is empty and no production deployment has been created. See [DEPLOYMENT.md](./DEPLOYMENT.md) and [FINAL_RELEASE_REPORT.md](./FINAL_RELEASE_REPORT.md).
 
 ## Demo
 
