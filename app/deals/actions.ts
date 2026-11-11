@@ -616,7 +616,17 @@ export async function recordApprovalAction(
         errors: { _form: capturePlan.error ?? "Capture is not allowed." },
       };
     }
-    const idempotencyKey = `capture:${dealId}:${milestoneId}`;
+    // Each distinct capture against the same milestone needs a unique, stable
+    // idempotency identity. Retries of the same logical capture reuse the same
+    // key; a second legitimate capture gets a different key. We count existing
+    // completed captures for this milestone and add one.
+    const existingCaptureCount = deal.milestones.filter(
+      (m) =>
+        m.id === milestoneId &&
+        m.approval?.action === "CAPTURE" &&
+        m.approval.paymentStatus === "COMPLETED",
+    ).length;
+    const idempotencyKey = `capture:${dealId}:${milestoneId}:${existingCaptureCount + 1}`;
     let operation;
     try {
       operation = await beginPaymentOperation({

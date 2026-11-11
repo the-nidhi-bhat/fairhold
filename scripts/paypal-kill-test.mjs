@@ -103,7 +103,7 @@ const CANCEL_URL =
 // so importing it from tests never reads .env.
 // ---------------------------------------------------------------------------
 function loadDotEnv() {
-  const path = join(ROOT, ".env");
+  const path = join(ROOT, ".env.local");
   if (!existsSync(path)) return;
   for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
     const match = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*?)\s*$/);
