@@ -4,6 +4,7 @@ import {
   parseAmountToCents,
   validateDealInput,
   validateMilestoneInput,
+  isValidUUID,
 } from "./validation.ts";
 
 test("parseAmountToCents: accepts common money formats", () => {
@@ -90,4 +91,30 @@ test("validateMilestoneInput: allows an omitted due date", () => {
   });
   assert.equal(result.ok, true);
   if (result.ok) assert.equal(result.value.dueDate, null);
+});
+
+test("isValidUUID: accepts valid UUIDs", () => {
+  assert.equal(isValidUUID("550e8400-e29b-41d4-a716-446655440000"), true);
+  assert.equal(isValidUUID("550e8400-e29b-41d4-a716-446655440001"), true);
+  assert.equal(isValidUUID("f47ac10b-58cc-4372-a567-0e02b2c3d479"), true);
+});
+
+test("isValidUUID: rejects non-UUID strings", () => {
+  assert.equal(isValidUUID("new"), false);
+  assert.equal(isValidUUID("new."), false);
+  assert.equal(isValidUUID("abc"), false);
+  assert.equal(isValidUUID(""), false);
+  assert.equal(isValidUUID("not-a-uuid"), false);
+});
+
+test("isValidUUID: rejects non-strings", () => {
+  assert.equal(isValidUUID(null), false);
+  assert.equal(isValidUUID(undefined), false);
+  assert.equal(isValidUUID(123), false);
+  assert.equal(isValidUUID({}), false);
+});
+
+test("isValidUUID: rejects wrong-length UUIDs", () => {
+  assert.equal(isValidUUID("550e8400-e29b-41d4-a716-44665544000"), false);
+  assert.equal(isValidUUID("550e8400-e29b-41d4-a716-4466554400000"), false);
 });

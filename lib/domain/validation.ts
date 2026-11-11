@@ -51,6 +51,16 @@ function isIsoDate(value: string): boolean {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
+/**
+ * Validate that a string is a UUID. Used before passing route parameters to
+ * PostgreSQL queries that expect UUID columns, preventing database errors
+ * from non-UUID path segments such as "new".
+ */
+export function isValidUUID(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 export function validateAgreementText(raw: unknown): ValidationResult<string> {
   const agreement = str(raw);
   if (agreement.length < 20) {

@@ -10,6 +10,7 @@ import {
   resolveMilestoneProposal,
 } from "@/lib/ai/advisory";
 import { getDeal } from "@/lib/data";
+import { isValidUUID } from "@/lib/domain/validation";
 import { formatCents } from "@/lib/domain/format";
 import { summarizeDealMoney } from "@/lib/domain/money";
 import { approvalIsStale, recommendMilestone } from "@/lib/domain/rules";
@@ -105,6 +106,10 @@ export default async function DealPage({
   // Resolve existence and access before streaming any markup: `notFound()`
   // thrown after the shell has flushed cannot replace the already-sent
   // response, which left a blank page with HTTP 200.
+  // Reject non-UUID deal IDs before they reach the database query, which
+  // expects a UUID column. Invalid IDs (e.g. "new" from a mistyped URL)
+  // must produce a proper 404, not a database error.
+  if (!isValidUUID(id)) notFound();
   const deal = await getDeal(id);
   if (!deal) notFound();
   const session = await getDemoSession();
