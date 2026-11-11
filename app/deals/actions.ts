@@ -47,6 +47,7 @@ import {
 import { paymentRuntime } from "@/lib/payments/runtime";
 import type { PaymentOperationResult } from "@/lib/payments/provider";
 import { canAccessDeal, getDemoSession, type DemoSession } from "@/lib/auth/session";
+import { buildDealUrl } from "@/lib/url";
 
 export interface FormState {
   ok: boolean;
@@ -56,10 +57,6 @@ export interface FormState {
 function field(formData: FormData, key: string): string {
   const value = formData.get(key);
   return typeof value === "string" ? value : "";
-}
-
-function envOrDefault(key: string, fallback: string): string {
-  return process.env[key] ?? fallback;
 }
 
 function isDealStatus(value: string): value is DealStatus {
@@ -349,8 +346,8 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
 
   const amountCents = deal.milestones.reduce((sum, m) => sum + m.amountCents, 0);
   const { provider } = paymentRuntime();
-  const returnUrl = `${envOrDefault("NEXT_PUBLIC_APP_URL", "http://localhost:3000")}/deals/${dealId}/payment-return`;
-  const cancelUrl = `${envOrDefault("NEXT_PUBLIC_APP_URL", "http://localhost:3000")}/deals/${dealId}/payment-cancel`;
+  const returnUrl = buildDealUrl(dealId, "/payment-return");
+  const cancelUrl = buildDealUrl(dealId, "/payment-cancel");
   const authorization = await provider.createAuthorizationHold({
     dealId,
     amountCents,
