@@ -1,6 +1,7 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { connection } from "next/server";
 import { authorizeDemoLogin } from "./demo-allowlist.ts";
+import { sessionCookieRequiresSecure } from "./secure-cookie.ts";
 import {
   decodeDemoSession,
   DEMO_ROLES,
@@ -25,10 +26,14 @@ export async function getDemoSession(): Promise<DemoSession | null> {
 
 export async function setDemoSession(session: DemoSession): Promise<void> {
   const store = await cookies();
+  const requestHeaders = await headers();
   store.set(COOKIE_NAME, encodeDemoSession(session), {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    // Follow the actual request scheme, not NODE_ENV: a production build over
+    // plain HTTP must still work (WebKit drops Secure cookies on http origins),
+    // and TLS proxies (Vercel) mark requests https so the cookie stays Secure.
+    secure: sessionCookieRequiresSecure(requestHeaders.get("x-forwarded-proto")),
     maxAge: MAX_AGE_SECONDS,
     path: "/",
   });

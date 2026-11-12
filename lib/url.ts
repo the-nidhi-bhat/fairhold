@@ -50,10 +50,28 @@ function isPrivateHost(host: string): boolean {
 }
 
 export function resolveAppUrl(env: Record<string, string | undefined> = process.env): string {
-  const raw = env.NEXT_PUBLIC_APP_URL ?? env.VERCEL_URL;
-  if (!raw || /^\s*$/.test(raw)) {
+  const isDev = env.NODE_ENV !== "production";
+  const explicit = env.NEXT_PUBLIC_APP_URL?.trim() || undefined;
+  const fromVercel = env.VERCEL_URL?.trim() || undefined;
+  const configured = explicit ?? fromVercel;
+
+  if (!configured) {
+    // Documented local-dev fallback: provider callbacks resolve to this dev
+    // server when nothing is configured. Production never guesses — a real
+    // deployment must set NEXT_PUBLIC_APP_URL (or run on Vercel, which sets
+    // VERCEL_URL).
+    if (isDev) return "http://localhost:3000";
     throw new AppUrlError("MISSING_URL", "No public application URL configured. Set NEXT_PUBLIC_APP_URL or ensure VERCEL_URL is available.");
   }
+
+  // VERCEL_URL arrives without a scheme (example.vercel.app); the documented
+  // fallback is https, which production requires anyway. An explicit
+  // NEXT_PUBLIC_APP_URL is used verbatim so misconfiguration surfaces as a
+  // precise error instead of being silently rewritten.
+  const raw =
+    explicit || /^https?:\/\//i.test(configured)
+      ? configured
+      : `https://${configured}`;
 
   let parsed: URL;
   try {
@@ -66,8 +84,6 @@ export function resolveAppUrl(env: Record<string, string | undefined> = process.
     throw new AppUrlError("INVALID_URL", `Invalid APP_URL scheme "${parsed.protocol}". Only http: and https: are allowed.`);
   }
 
-  const isDev = env.NODE_ENV !== "production";
-
   // In production (or non-dev), only https is allowed and no local/private hosts.
   if (!isDev) {
     if (parsed.protocol !== "https:") {
@@ -78,9 +94,11 @@ export function resolveAppUrl(env: Record<string, string | undefined> = process.
     }
   }
 
-  // Normalize: strip trailing slash from origin so path concatenation is stable.
-  parsed.pathname = parsed.pathname.replace(/\/+$/, "") || "/";
-  return parsed.origin + parsed.pathname;
+  // Normalize: strip any trailing slash from the path so concatenating
+  // "/deals/..." can never produce a double slash. A root URL stays an origin
+  // with no trailing slash for the same reason.
+  const path = parsed.pathname.replace(/\/+$/, "");
+  return path ? parsed.origin + path : parsed.origin;
 }
 
 export function buildDealUrl(dealId: string, path: string, env: Record<string, string | undefined> = process.env): string {

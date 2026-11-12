@@ -346,8 +346,15 @@ export async function authorizeDealAction(formData: FormData): Promise<void> {
 
   const amountCents = deal.milestones.reduce((sum, m) => sum + m.amountCents, 0);
   const { provider } = paymentRuntime();
-  const returnUrl = buildDealUrl(dealId, "/payment-return");
-  const cancelUrl = buildDealUrl(dealId, "/payment-cancel");
+  // Return/cancel URLs are PayPal redirect targets. The demo provider never
+  // redirects a buyer, so resolving a public app URL here would fail demo mode
+  // in environments that intentionally have none (local `next start`, E2E).
+  // The sandbox/live adapters still resolve them — and fail loudly when the
+  // deployment has no public URL — because PayPal requires them.
+  const returnUrl =
+    provider.mode === "demo" ? undefined : buildDealUrl(dealId, "/payment-return");
+  const cancelUrl =
+    provider.mode === "demo" ? undefined : buildDealUrl(dealId, "/payment-cancel");
   const authorization = await provider.createAuthorizationHold({
     dealId,
     amountCents,

@@ -160,6 +160,9 @@ export default defineConfig({
     env: {
       ...SHARED_ENV,
       FAIRHOLD_DATA_DIR: project.dataDir,
+      // The E2E server is exactly this origin; provider return/cancel URLs
+      // resolve to it instead of depending on external configuration.
+      NEXT_PUBLIC_APP_URL: `http://localhost:${project.port}`,
     },
   })),
 });

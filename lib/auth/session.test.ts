@@ -6,6 +6,12 @@ import {
   type DemoSession,
 } from "./session-token.ts";
 import { authorizeDemoLogin, authorizeReviewerDeal } from "./demo-allowlist.ts";
+import { sessionCookieRequiresSecure } from "./secure-cookie.ts";
+
+// session-token.ts intentionally refuses to fall back to a default secret, so the
+// suite configures one itself (as CI does) rather than the product hiding a
+// missing secret. Test-only value; never used outside this process.
+process.env.FAIRHOLD_SESSION_SECRET ??= "unit-test-session-secret-placeholder";
 
 const session: DemoSession = { name: "Alex Buyer", role: "buyer" };
 
@@ -23,6 +29,23 @@ test("demo session expires at the signed server-side timestamp", () => {
   const token = encodeDemoSession(session, now);
   assert.deepEqual(decodeDemoSession(token, now + 1), session);
   assert.equal(decodeDemoSession(token, now + 8 * 60 * 60 * 1000 + 1), null);
+});
+
+test("a missing session secret fails closed — no silent fallback is used", () => {
+  const saved = process.env.FAIRHOLD_SESSION_SECRET;
+  delete process.env.FAIRHOLD_SESSION_SECRET;
+  try {
+    assert.throws(
+      () => encodeDemoSession(session),
+      /FAIRHOLD_SESSION_SECRET is required/,
+    );
+    assert.throws(
+      () => decodeDemoSession("payload.signature"),
+      /FAIRHOLD_SESSION_SECRET is required/,
+    );
+  } finally {
+    process.env.FAIRHOLD_SESSION_SECRET = saved ?? "unit-test-session-secret-placeholder";
+  }
 });
 
 test("demo login allowlist rejects unlisted roles and identities", () => {
@@ -66,4 +89,18 @@ test("malformed or role-impersonating reviewer grants fail closed", () => {
   assert.equal(authorizeReviewerDeal("Morgan Reviewer", "deal-1", env), false);
   assert.equal(authorizeReviewerDeal("Morgan Reviewer", "deal-1:extra", env), false);
   assert.equal(authorizeDemoLogin({ name: "Morgan Reviewer", role: "buyer" }, env), false);
+});
+
+test("session cookie Secure flag follows the request scheme, not NODE_ENV", () => {
+  // Plain-HTTP server (local `next start` / Playwright E2E): WebKit rejects
+  // Secure cookies on http origins and silently drops the session, so this
+  // must be false even in a production build.
+  assert.equal(sessionCookieRequiresSecure(null), false);
+  assert.equal(sessionCookieRequiresSecure("http"), false);
+  assert.equal(sessionCookieRequiresSecure("http, https"), false);
+  // TLS deployments (Vercel sets X-Forwarded-Proto: https) stay Secure.
+  assert.equal(sessionCookieRequiresSecure("https"), true);
+  assert.equal(sessionCookieRequiresSecure("HTTPS"), true);
+  assert.equal(sessionCookieRequiresSecure("  https  "), true);
+  assert.equal(sessionCookieRequiresSecure("https, http"), true);
 });
