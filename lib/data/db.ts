@@ -14,6 +14,11 @@
  * the configured database is unreachable the app fails; it never quietly
  * switches to the JSON store and then claims data was persisted.
  *
+ * The single exception is an explicit, auditable operator pin:
+ * FAIRHOLD_DATA_BACKEND=json selects the JSON store, but only when no real
+ * database is configured. It can never mask a configured PostgreSQL, and it is
+ * never inferred — the deployed production scope does not set it.
+ *
  * This module never prints, logs, or returns connection strings or secrets.
  */
 export type DataBackend = "postgres" | "json";
@@ -40,23 +45,37 @@ export function readDatabaseUrl(
 export function resolveDataBackend(
   env: Record<string, string | undefined> = process.env,
 ): DataBackend {
-  // Explicit, non-production-only escape hatch for test runs. `next dev`
-  // auto-loads .env.local, so a developer with a real DATABASE_URL there would
-  // otherwise have every local run hit PostgreSQL even when the run is meant to
-  // be hermetic. Setting FAIRHOLD_DATA_BACKEND=json pins the JSON store for that
-  // case. It is ignored when NODE_ENV is "production" (Next sets that for
-  // `next build`/`next start`), so deployed behaviour is unchanged and a real
-  // PostgreSQL outage never silently falls back to JSON. The E2E suite itself
-  // runs against `next start`, where this branch is inert: it selects JSON the
-  // normal way, by leaving DATABASE_URL empty for the test servers.
-  if (env.NODE_ENV !== "production" && env.FAIRHOLD_DATA_BACKEND === "json") {
+  const databaseUrl = readDatabaseUrl(env);
+  const explicitJson = env.FAIRHOLD_DATA_BACKEND === "json";
+
+  // Explicit, auditable JSON pin.
+  //
+  // In development it always wins: `next dev` auto-loads .env.local, so a
+  // developer with a real DATABASE_URL there would otherwise have every local
+  // run hit PostgreSQL even when the run is meant to be hermetic.
+  if (env.NODE_ENV !== "production" && explicitJson) {
     return "json";
   }
-  // Development (non-production): fall back to JSON if no DATABASE_URL.
-  // Production: PostgreSQL is required — never silently fall back to JSON.
-  if (env.NODE_ENV !== "production") {
-    return readDatabaseUrl(env) === null ? "json" : "postgres";
+
+  // In production the pin is honoured only when NO real database is
+  // configured. It can therefore never mask a configured PostgreSQL, and a
+  // real PostgreSQL outage still fails loudly instead of silently switching to
+  // the JSON store. The deployed production scope does not set
+  // FAIRHOLD_DATA_BACKEND, so production keeps requiring PostgreSQL.
+  //
+  // The E2E suite runs against `next start` (NODE_ENV=production) with
+  // DATABASE_URL blanked so no real database is touched; it pins the JSON store
+  // explicitly through this variable. That is the one intended production
+  // consumer of the pin, and it is opt-in rather than inferred.
+  if (env.NODE_ENV === "production" && explicitJson && databaseUrl === null) {
+    return "json";
   }
+
+  // Development (non-production): fall back to JSON if no DATABASE_URL.
+  if (env.NODE_ENV !== "production") {
+    return databaseUrl === null ? "json" : "postgres";
+  }
+
   // Production: PostgreSQL is required; no silent fallback to JSON.
   return "postgres";
 }

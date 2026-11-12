@@ -374,6 +374,6 @@ Three allowlisted demo identities exist on the server (controlled by `FAIRHOLD_D
 
 **No steps invented** — every action documented from actual application implementation.
 
-**Recorded journeys verified** against localhost:3000 running instance with 267 passing unit tests and all safety checks in place.
+**Recorded journeys verified** against localhost:3000 running instance with 268 passing unit tests and all safety checks in place.
 
 **Next:** Record the demo video following this sequence. No narration or video script yet (Stage 5 is separate).

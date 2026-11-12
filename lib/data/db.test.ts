@@ -80,6 +80,47 @@ test("resolveDataBackend: production without DATABASE_URL returns postgres", () 
   );
 });
 
+test("resolveDataBackend: an explicit JSON pin in production is honoured only when no database is configured", () => {
+  // The E2E suite runs `next start` (NODE_ENV=production) with DATABASE_URL
+  // blanked so it never touches a real database, and pins the JSON store
+  // explicitly. That pin is an auditable operator choice, not an inferred
+  // downgrade.
+  assert.equal(
+    resolveDataBackend({
+      NODE_ENV: "production",
+      DATABASE_URL: "",
+      FAIRHOLD_DATA_BACKEND: "json",
+    }),
+    "json",
+  );
+  // A placeholder value is still "no database configured".
+  assert.equal(
+    resolveDataBackend({
+      NODE_ENV: "production",
+      DATABASE_URL: "your_postgres_url",
+      FAIRHOLD_DATA_BACKEND: "json",
+    }),
+    "json",
+  );
+  // The pin must never mask a real database: PostgreSQL still wins.
+  assert.equal(
+    resolveDataBackend({
+      NODE_ENV: "production",
+      DATABASE_URL: "postgres://u:p@localhost:5432/fh",
+      FAIRHOLD_DATA_BACKEND: "json",
+    }),
+    "postgres",
+  );
+  assert.equal(
+    isPostgresConfigured({
+      NODE_ENV: "production",
+      DATABASE_URL: "",
+      FAIRHOLD_DATA_BACKEND: "json",
+    }),
+    false,
+  );
+});
+
 test("isPostgresConfigured agrees with resolveDataBackend", () => {
   assert.equal(isPostgresConfigured({}), false);
   assert.equal(

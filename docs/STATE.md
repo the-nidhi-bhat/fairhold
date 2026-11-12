@@ -19,11 +19,12 @@ request, so the release was published with `git merge --ff-only` + `git push ori
 - `npm ci` → clean install completed (8 vulnerabilities: 7 moderate, 1 high — advisory only)
 - `npm run typecheck` → exit 0
 - `npm run lint` → exit 0
-- `npm test` → 266 pass, 28 skip, 0 fail, exit 0 (28 PostgreSQL suites skip without
-  `FAIRHOLD_TEST_DATABASE_URL`; with an isolated PostgreSQL 16 the figure is 294/294)
+- `npm test` → 268 pass, 28 skip, 0 fail, exit 0 (28 PostgreSQL suites skip without
+  `FAIRHOLD_TEST_DATABASE_URL`; with an isolated PostgreSQL 16 the figure is 296/296)
 - `npm run build` → production build succeeds
-- `npm run test:e2e` → 130/130 across five Playwright projects (desktop/mobile/tablet
-  Chromium, desktop Firefox, desktop WebKit), 26 each, exit 0
+- `npm run test:e2e` → 78/78 across the three default Playwright Chromium projects
+  (desktop, mobile, tablet), 26 each, exit 0. Firefox and WebKit are opt-in by name
+  (`node scripts/run-e2e.mjs --project=desktop-firefox`)
 - Vercel production deployment `dpl_EdWck3xKW1vTeRCUPgfJuHfdPtgw` (Ready, target
   `production`) built from `githubCommitSha = 38385906f21ac1daeb8ca159f2f0ef1827a4dbb8`,
   identical to `origin/main`
@@ -51,7 +52,11 @@ navbar mark in `app/layout.tsx`. Red-and-black identity preserved.
 
 ## Safety corrections carried in this release
 - `resolveDataBackend()` in `lib/data/db.ts` — production **requires** PostgreSQL;
-  there is no silent JSON fallback. Covered by regression tests in `lib/data/db.test.ts`.
+  there is no silent JSON fallback. The only exception is an explicit, auditable
+  operator pin (`FAIRHOLD_DATA_BACKEND=json`), honoured in production only when no
+  real `DATABASE_URL` is configured, so it can never mask a configured database.
+  The deployed production scope does not set it. Covered by regression tests in
+  `lib/data/db.test.ts`.
 - `getPaymentProvider()` — returns the demo provider when PayPal credentials are
   absent; no silent downgrade mid-flow, no PayPal Live path.
 - No PayPal Live, no real money movement, the original $600 capture was not touched.

@@ -100,13 +100,23 @@ at tablet geometry.
 ### Backend selection for E2E
 
 The test servers get `DATABASE_URL: ""` (an empty value means "no database
-configured", so the normal selection rule picks the JSON store) plus
-`FAIRHOLD_DATA_BACKEND=json`. The explicit pin is the non-production escape hatch
-in `lib/data/db.ts`; it exists for running the specs against `next dev`, where a
-developer's `.env.local` `DATABASE_URL` would otherwise be picked up. `next start`
-runs as production and ignores the pin — which is why `DATABASE_URL` is blanked
-as well. Neither path touches the real database configuration, and neither
-invokes PostgreSQL.
+configured") plus an explicit `FAIRHOLD_DATA_BACKEND=json` pin.
+
+`lib/data/db.ts` treats that pin as an explicit, auditable operator choice:
+
+- **In development** the pin always wins, so the specs can run against `next dev`
+  without a developer's `.env.local` `DATABASE_URL` being picked up.
+- **In production** the pin is honoured *only* when no real database is
+  configured (`DATABASE_URL` blank or absent). If a real `DATABASE_URL` is
+  present, production always selects PostgreSQL — the pin can never mask a
+  configured database, and a genuine PostgreSQL outage still fails loudly
+  instead of silently switching stores. The deployed Vercel production scope
+  does not set `FAIRHOLD_DATA_BACKEND`, so production requires PostgreSQL.
+
+`next start` runs as production, which is why the E2E servers blank
+`DATABASE_URL` as well as pinning the backend. Neither path touches a real
+database, and neither invokes PostgreSQL. Both behaviours are covered by
+regression tests in `lib/data/db.test.ts`.
 
 Demo allowlists are injected through the config, never through a committed file:
 

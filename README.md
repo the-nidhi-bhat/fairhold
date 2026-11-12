@@ -12,8 +12,8 @@ Work moves forward. Payments move with proof.
 [![React](https://img.shields.io/badge/React-19.3-000000?style=flat-square)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square)](https://www.postgresql.org)
-[![Unit tests](https://img.shields.io/badge/unit-295%20passing-2f6f4f?style=flat-square)](#development-and-testing)
-[![E2E](https://img.shields.io/badge/E2E-130%2F130-2f6f4f?style=flat-square)](#development-and-testing)
+[![Unit tests](https://img.shields.io/badge/unit-296%20passing-2f6f4f?style=flat-square)](#development-and-testing)
+[![E2E](https://img.shields.io/badge/E2E-78%2F78-2f6f4f?style=flat-square)](#development-and-testing)
 [![PayPal](https://img.shields.io/badge/PayPal-sandbox%20only-0070ba?style=flat-square)](#milestone-and-payment-lifecycle)
 
 </div>
@@ -445,9 +445,9 @@ npm run lint
 npm run build
 ```
 
-- **Without a test database:** the PostgreSQL integration suites skip rather than fail — `npm test` reports 295 tests, 267 passing, 28 skipped, exit 0.
-- **With `FAIRHOLD_TEST_DATABASE_URL`** pointing at an isolated PostgreSQL 16 database: **295 tests, 295 passing, 0 failing, exit 0.**
-- `npm run test:e2e` builds the app once, then runs each Playwright project against its own server, its own data directory under the OS temp dir, and its own reset fixture. The full matrix — desktop, mobile and tablet Chromium, Firefox, and WebKit — passes **26 tests each: 130/130.** Chromium runs by default; Firefox and WebKit run by name: `node scripts/run-e2e.mjs --project=desktop-firefox` (or `--project=desktop-webkit`).
+- **Without a test database:** the PostgreSQL integration suites skip rather than fail — `npm test` reports 296 tests, 268 passing, 28 skipped, exit 0.
+- **With `FAIRHOLD_TEST_DATABASE_URL`** pointing at an isolated PostgreSQL 16 database: **296 tests, 296 passing, 0 failing, exit 0.**
+- `npm run test:e2e` builds the app once, then runs each Playwright project against its own server, its own data directory under the OS temp dir, and its own reset fixture. By default it fans out over the three Chromium projects — desktop, mobile and tablet — **26 tests each: 78/78 passing.** Firefox and WebKit are opt-in by name: `node scripts/run-e2e.mjs --project=desktop-firefox` (or `--project=desktop-webkit`).
 - `npm test` never touches the demo database file and never contacts PayPal. `npm run test:e2e` never contacts PayPal either — the provider adapter is simulated in this build.
 
 Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./docs/archive/QA_REPORT.md).
@@ -488,8 +488,8 @@ Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is r
 | Area | Status |
 | --- | --- |
 | Local implementation, typecheck, lint, build | ✅ Verified passing |
-| Unit + integration tests | ✅ 295/295 with test database |
-| E2E (desktop/mobile/tablet Chromium + Firefox + WebKit) | ✅ 130/130 (26 per project, five projects) |
+| Unit + integration tests | ✅ 296/296 with test database |
+| E2E (desktop/mobile/tablet Chromium) | ✅ 78/78 (26 per project, three default projects; Firefox and WebKit opt-in by name) |
 | Vercel preview deployment | ✅ Built and Ready — **protected by Vercel Deployment Protection** (anonymous visitors are redirected to Vercel SSO; deliberately not bypassed) |
 | Vercel production deployment | ✅ Deployed from verified main commit `3838590`. **Public judge URL: https://fairhold-beta.vercel.app** — open it, no account needed. Deployment ID `dpl_EdWck3xKW1vTeRCUPgfJuHfdPtgw`. The per-deployment URLs (`fairhold-dk6j0fd1i-…`) are behind Vercel Deployment Protection (SSO) and are not the judge entry point. The production scope is configured with `FAIRHOLD_SESSION_SECRET`, the three demo allowlists and `FAIRHOLD_ALLOW_SIMULATED_PAYMENTS=true`, so sign-in works and every payment action stays clearly labelled as simulated ([DEPLOYMENT.md](./DEPLOYMENT.md)) |
 | Hosted PostgreSQL (`DATABASE_URL`) | ⚠️ Set in Vercel's Production and Preview scopes, but connectivity could not be verified from this environment; all verification here used an isolated local PostgreSQL 16 |

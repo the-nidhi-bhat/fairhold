@@ -1,10 +1,10 @@
 # FairHold Release Report
 
 **Release Date:** November 12, 2026
-**Release commit:** `__RELEASE_SHA__` — [view on GitHub](https://github.com/the-nidhi-bhat/fairhold/commit/__RELEASE_SHA__)
+**Release commit:** `05c42747d45dcc7122f2b395e2366df830459d70` — [view on GitHub](https://github.com/the-nidhi-bhat/fairhold/commit/05c42747d45dcc7122f2b395e2366df830459d70)
 **GitHub PR:** None — the repository has no branch protection requiring a PR, so the release was published with a **fast-forward merge** (`git merge --ff-only`) from `feat/sprint-functional-completion` and a normal `git push origin main`. No force-push, no history rewrite, no `reset --hard`.
 **Public judge URL:** https://fairhold-beta.vercel.app
-**Vercel Deployment ID:** `__DEPLOY_ID__`
+**Vercel Deployment ID:** `dpl_65bSqD6iedq987YQpuG4rAzysops`
 
 ---
 
@@ -63,11 +63,13 @@ All commands were run against the release tree. No test was deleted, no assertio
 | `npm ci` | 0 | ✅ Clean install |
 | `npm run typecheck` | 0 | ✅ `next typegen` + `tsc --noEmit` clean |
 | `npm run lint` | 0 | ✅ ESLint clean, 0 errors |
-| `npm test` | 0 | ✅ **295 tests — 267 passed, 0 failed, 28 skipped, 0 cancelled** (1515 ms) |
+| `npm test` | 0 | ✅ **296 tests — 268 passed, 0 failed, 28 skipped, 0 cancelled** (2041 ms) |
 | `npm run build` | 0 | ✅ Next.js 16.4.3 Turbopack — compiled in 2.0 s, TypeScript in 5.4 s, 10 static pages |
-| `npm run test:e2e` | 0 | ✅ __E2E_RESULT__ |
+| `npm run test:e2e` | 0 | ✅ **78/78 passing** — the three default Chromium projects (desktop, mobile, tablet), 26 tests each, exit 0 |
 
-The 28 skipped tests are exactly the PostgreSQL-requiring suites (14 `postgres:` data suites + 14 `webhook:` integration suites). They print `# set FAIRHOLD_TEST_DATABASE_URL (isolated Postgres) to run these tests` and skip rather than fail. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 instance the figure is **295/295 passing, 0 failing**.
+The 28 skipped tests are exactly the PostgreSQL-requiring suites (14 `postgres:` data suites + 14 `webhook:` integration suites). They print `# set FAIRHOLD_TEST_DATABASE_URL (isolated Postgres) to run these tests` and skip rather than fail. With `FAIRHOLD_TEST_DATABASE_URL` pointing at an isolated PostgreSQL 16 instance the figure is **296/296 passing, 0 failing**.
+
+`npm run test:e2e` fans out over the three Chromium projects by default (`scripts/run-e2e.mjs` sets `PROJECTS = ["desktop-chromium", "mobile-chromium", "tablet-chromium"]`). Firefox and WebKit are opt-in by name: `node scripts/run-e2e.mjs --project=desktop-firefox` (or `--project=desktop-webkit`).
 
 ---
 
@@ -85,7 +87,7 @@ Verified from a **fresh anonymous Chromium context** (no cookies, no stored sess
 | 6 | Official shield logo | ✅ Navbar `<use href="/fairhold-shield.svg">` renders at 28×28 with a non-zero bounding box; favicon link points at `/fairhold-shield.svg`; the asset itself returns HTTP 200 `image/svg+xml` |
 | 7 | Guided `/demo` experience | ✅ HTTP 200, title `Guided demo \| FairHold`, milestone + evidence copy present, payments labelled simulated |
 | 8 | `/login` renders a working form | ✅ HTTP 200, `input[name=name]` + `select[name=role]` (Buyer / Seller / Reviewer) + `Continue` |
-| 9 | Sign-in as `Alex Buyer` | ✅ __LOGIN_RESULT__ |
+| 9 | Sign-in as `Alex Buyer` | ✅ Signed in as `Alex Buyer` -> redirected to `/dashboard` with no deny banner (200). |
 | 10 | `/dashboard` for an anonymous visitor | ✅ HTTP 200 and a **safe empty state** — no deal names, no user names, no cross-party data |
 | 11 | `/deals/new` | ✅ HTTP 200 |
 | 12 | Console and page errors | ✅ None |
@@ -100,7 +102,7 @@ Screenshots from the verification run are in the local working directory under `
 
 | Item | State |
 | --- | --- |
-| Production data backend | ✅ PostgreSQL. `resolveDataBackend()` returns `postgres` unconditionally in production — there is no silent JSON fallback, and this is enforced by a regression test (`lib/data/db.test.ts`). |
+| Production data backend | ✅ PostgreSQL. `resolveDataBackend()` selects PostgreSQL in production — there is no silent JSON fallback. The single exception is an explicit, auditable operator pin (`FAIRHOLD_DATA_BACKEND=json`), which is honoured in production *only* when no real `DATABASE_URL` is configured, so it can never mask a configured database. The deployed production scope does not set that variable. Enforced by regression tests in `lib/data/db.test.ts`. |
 | Migrations | ✅ Eight forward-only migrations (`0001_initial` … `0008_payment_capture_nullable_columns`). No destructive statements, no data resets, no table drops. |
 | Hosted provider | Neon (serverless PostgreSQL). TLS is resolved from `sslmode`; the pool is sized for serverless. |
 | Evidence bytes | ⚠️ Stored in PostgreSQL when the backend is PostgreSQL (`migrations/0007_evidence_files.sql`). Access-controlled download route, `nosniff`, sniffed content type. |
@@ -151,7 +153,7 @@ Screenshots from the verification run are in the local working directory under `
 
 | # | Criterion | State |
 | --- | --- | --- |
-| 1 | Verified finished project on GitHub `main` | ✅ `__RELEASE_SHA__` |
+| 1 | Verified finished project on GitHub `main` | ✅ `05c42747d45dcc7122f2b395e2366df830459d70` |
 | 2 | Vercel production deployment accessible | ✅ https://fairhold-beta.vercel.app |
 | 3 | A fresh user can enter the application | ✅ Landing page, `/demo` and `/login` are public |
 | 4 | Buyer, seller and reviewer workflows function | ✅ Verified against the public URL |
