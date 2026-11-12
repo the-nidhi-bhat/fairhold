@@ -52,7 +52,13 @@ export function resolveDataBackend(
   if (env.NODE_ENV !== "production" && env.FAIRHOLD_DATA_BACKEND === "json") {
     return "json";
   }
-  return readDatabaseUrl(env) === null ? "json" : "postgres";
+  // Development (non-production): fall back to JSON if no DATABASE_URL.
+  // Production: PostgreSQL is required — never silently fall back to JSON.
+  if (env.NODE_ENV !== "production") {
+    return readDatabaseUrl(env) === null ? "json" : "postgres";
+  }
+  // Production: PostgreSQL is required; no silent fallback to JSON.
+  return "postgres";
 }
 
 export function isPostgresConfigured(

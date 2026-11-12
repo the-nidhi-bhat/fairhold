@@ -39,7 +39,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-scroll-behavior="smooth"
     >
       <head>
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="icon" href="/fairhold-shield.svg" type="image/svg+xml" />
       </head>
       <body className="site-shell flex min-h-full flex-col bg-background text-foreground">
         <a
@@ -62,7 +62,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
                 height="28"
                 aria-hidden="true"
               >
-                <use href="/shield-wordmark.svg" />
+                <use href="/fairhold-shield.svg" />
               </svg>
               <span className="text-[17px] font-semibold tracking-[-0.045em] text-[var(--foreground)]">
                 FairHold
