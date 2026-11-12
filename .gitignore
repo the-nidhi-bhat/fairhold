@@ -83,6 +83,12 @@ temp/
 # UI/UX audit screenshots (binary artifacts, not source)
 audit-shots/
 
+# Lighthouse / performance audit output (generated reports)
+lighthouse-*.json
+*.lighthouse.json
+lighthouse-report/
+.lighthouseci/
+
 # Release gate logs (local verification only)
 .gate/
 

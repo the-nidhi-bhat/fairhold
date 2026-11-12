@@ -60,6 +60,13 @@ const SELLER_POINTS = [
   "Track payment progress without guessing",
 ] as const;
 
+const REVIEWER_POINTS = [
+  "Reach only the deals you were explicitly granted",
+  "Read the submitted evidence and the milestone criteria",
+  "Accept or reject with a written reason",
+  "Never see a payment control you were not given",
+] as const;
+
 export default function Home() {
   return (
     <div className="pb-24">
@@ -239,14 +246,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Two sides, distinct views */}
+      {/* Roles, distinct views */}
       <section className="border-t border-[var(--hairline)]">
         <div className="page-frame py-16 md:py-20">
-          <p className="section-label">Two sides, one record</p>
-          <h2 className="headline mt-3 max-w-[22ch] text-[clamp(1.9rem,3.4vw,2.75rem)]">
-            The buyer and the seller see the work that belongs to them.
+          <p className="section-label">Three roles, one record</p>
+          <h2 className="headline mt-3 max-w-[26ch] text-[clamp(1.9rem,3.4vw,2.75rem)]">
+            The buyer, the seller and an authorised reviewer each see the work that
+            belongs to them.
           </h2>
-          <div className="mt-10 grid gap-5 md:grid-cols-2">
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
             <article className="panel p-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold tracking-[-0.02em]">Buyer</h3>
@@ -276,6 +284,25 @@ export default function Home() {
               </p>
               <ul className="mt-5 space-y-3">
                 {SELLER_POINTS.map((point) => (
+                  <li key={point} className="flex gap-3 text-sm text-[var(--foreground-soft)]">
+                    <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </article>
+            <article className="panel p-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold tracking-[-0.02em]">Reviewer</h3>
+                <span className="chip">Granted per deal</span>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                A third party granted access to one specific deal. The grant is
+                checked on the server for every action, and it never widens into
+                access to anything else.
+              </p>
+              <ul className="mt-5 space-y-3">
+                {REVIEWER_POINTS.map((point) => (
                   <li key={point} className="flex gap-3 text-sm text-[var(--foreground-soft)]">
                     <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" />
                     {point}

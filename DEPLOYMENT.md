@@ -21,7 +21,7 @@ A deployment that has neither is a demo deployment: it works for browsing, and e
 | Public HTTPS URL registered as a PayPal webhook listener | Webhook delivery | Not configured |
 | Evidence storage | Files are written to local disk today | Not addressed |
 
-Because the evidence store is local-disk, a PostgreSQL-only deployment still loses uploaded files on redeploy. Treat storage as a known gap, listed in [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md).
+Because the evidence store is local-disk, a PostgreSQL-only deployment still loses uploaded files on redeploy. Treat storage as a known gap, listed in [RELEASE_CHECKLIST.md](./docs/archive/RELEASE_CHECKLIST.md).
 
 ## Build
 

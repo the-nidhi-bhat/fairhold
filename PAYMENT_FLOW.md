@@ -157,4 +157,4 @@ Every capture event must match an existing human approval, the expected amount a
 - Unit and integration coverage of the adapter logic, capture planning, reservation arithmetic, webhook signature decision table and quarantine reasons.
 - The webhook HTTP contract (status codes, header requirements, body limits, retry semantics) exercised through the endpoint with injected dependencies.
 
-To run a real sandbox verification, see the configuration in [DEPLOYMENT.md](./DEPLOYMENT.md) and the checklist in [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md). Do not record the outcome as verified until a sandbox transaction report has been compared against the ledger.
+To run a real sandbox verification, see the configuration in [DEPLOYMENT.md](./DEPLOYMENT.md) and the checklist in [RELEASE_CHECKLIST.md](./docs/archive/RELEASE_CHECKLIST.md). Do not record the outcome as verified until a sandbox transaction report has been compared against the ledger.

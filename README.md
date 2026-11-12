@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./public/fairhold-hero.svg" alt="FairHold — work moves forward, payments move with proof" width="100%" />
+<img src="./public/fairhold-shield.svg" alt="FairHold — work moves forward, payments move with proof" width="100%" />
 
 # FairHold
 
@@ -12,11 +12,28 @@ Work moves forward. Payments move with proof.
 [![React](https://img.shields.io/badge/React-19.3-000000?style=flat-square)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square)](https://www.postgresql.org)
-[![Unit tests](https://img.shields.io/badge/unit-294%20passing-2f6f4f?style=flat-square)](#development-and-testing)
+[![Unit tests](https://img.shields.io/badge/unit-295%20passing-2f6f4f?style=flat-square)](#development-and-testing)
 [![E2E](https://img.shields.io/badge/E2E-130%2F130-2f6f4f?style=flat-square)](#development-and-testing)
 [![PayPal](https://img.shields.io/badge/PayPal-sandbox%20only-0070ba?style=flat-square)](#milestone-and-payment-lifecycle)
 
 </div>
+
+---
+
+## Live demo
+
+**Open it now → https://fairhold-beta.vercel.app**
+
+No account, no install, no API key. Two ways in:
+
+| Path | What you get |
+| --- | --- |
+| **Guided demo** — [`/demo`](https://fairhold-beta.vercel.app/demo) | The full lifecycle against a fixed scenario, running in your browser with simulated payments. No server writes, no provider calls. |
+| **Full roles** — [`/login`](https://fairhold-beta.vercel.app/login) | Sign in as `Alex Buyer`, `Jamie Seller` or `Morgan Reviewer` and drive real server-side actions. |
+
+> **Payments are simulated.** No PayPal Live account is configured and no real money moves. Every payment control in the interface is labelled `SIMULATED`, and the provider is the in-app demo adapter — not PayPal. See [What FairHold is not](#what-fairhold-is-not).
+
+**The five-minute judge path** is written out in [DEMO_GUIDE.md](./DEMO_GUIDE.md), and the full twelve-step buyer → seller → reviewer journey is in [DEMO_RECORDING_GUIDE.md](./DEMO_RECORDING_GUIDE.md).
 
 ---
 
@@ -428,12 +445,12 @@ npm run lint
 npm run build
 ```
 
-- **Without a test database:** the PostgreSQL integration suites skip rather than fail — `npm test` reports 294 tests, 266 passing, 28 skipped, exit 0.
-- **With `FAIRHOLD_TEST_DATABASE_URL`** pointing at an isolated PostgreSQL 16 database: **294 tests, 294 passing, 0 failing, exit 0.**
+- **Without a test database:** the PostgreSQL integration suites skip rather than fail — `npm test` reports 295 tests, 267 passing, 28 skipped, exit 0.
+- **With `FAIRHOLD_TEST_DATABASE_URL`** pointing at an isolated PostgreSQL 16 database: **295 tests, 295 passing, 0 failing, exit 0.**
 - `npm run test:e2e` builds the app once, then runs each Playwright project against its own server, its own data directory under the OS temp dir, and its own reset fixture. The full matrix — desktop, mobile and tablet Chromium, Firefox, and WebKit — passes **26 tests each: 130/130.** Chromium runs by default; Firefox and WebKit run by name: `node scripts/run-e2e.mjs --project=desktop-firefox` (or `--project=desktop-webkit`).
 - `npm test` never touches the demo database file and never contacts PayPal. `npm run test:e2e` never contacts PayPal either — the provider adapter is simulated in this build.
 
-Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./QA_REPORT.md).
+Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./docs/archive/QA_REPORT.md).
 
 ---
 
@@ -452,14 +469,13 @@ Verified results and the exact configuration used: [TESTING.md](./TESTING.md) an
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Vercel configuration and production requirements. |
 | [USER_GUIDE.md](./USER_GUIDE.md) | Buyer, seller and reviewer instructions. |
 | [DEMO_GUIDE.md](./DEMO_GUIDE.md) | A repeatable five-minute demonstration script. |
+| [DEMO_RECORDING_GUIDE.md](./DEMO_RECORDING_GUIDE.md) | Twelve-step buyer → seller → reviewer recording journey. |
 | [DEMO_SCRIPT_3MIN.md](./DEMO_SCRIPT_3MIN.md) | Spoken three-minute demo script, with timing beats and what not to claim. |
-| [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md) | Release acceptance checklist. |
+| [RELEASE_REPORT.md](./RELEASE_REPORT.md) | **Current release report** — commit, deployment, test results and remaining manual actions. |
 | [CHANGELOG.md](./CHANGELOG.md) | Implementation history. |
-| [QA_REPORT.md](./QA_REPORT.md) | Latest verification evidence. |
-| [HANDOFF.md](./HANDOFF.md) | Current state, blockers and next actions. |
-| [FINAL_RELEASE_REPORT.md](./FINAL_RELEASE_REPORT.md) | The final evidence-based release report and verdicts. |
-| [FINAL_REMAINING_WORK.md](./FINAL_REMAINING_WORK.md) | Gap matrix: every remaining item, its priority and its blocker. |
 | [videos/fairhold-launch/](./videos/fairhold-launch/) | Launch video source, storyboard, captions and renders. |
+
+Historical reports, prior release verdicts and the superseded gap matrix are kept for provenance under [`docs/archive/`](./docs/archive/) and [`docs/release/`](./docs/release/). The canonical current report is [RELEASE_REPORT.md](./RELEASE_REPORT.md); the archived ones record earlier sprints.
 
 ## Deployment and current status
 
@@ -472,10 +488,10 @@ Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is r
 | Area | Status |
 | --- | --- |
 | Local implementation, typecheck, lint, build | ✅ Verified passing |
-| Unit + integration tests | ✅ 294/294 with test database |
+| Unit + integration tests | ✅ 295/295 with test database |
 | E2E (desktop/mobile/tablet Chromium + Firefox + WebKit) | ✅ 130/130 (26 per project, five projects) |
 | Vercel preview deployment | ✅ Built and Ready — **protected by Vercel Deployment Protection** (anonymous visitors are redirected to Vercel SSO; deliberately not bypassed) |
-| Vercel production deployment | ✅ Created by the Vercel Git integration from `main` — deployment `githubCommitSha` verified identical to `origin/main` (`cc60145`). Direct deployment URLs are protected by Vercel SSO (not bypassed); the `fairhold-beta.vercel.app` alias serves the app. Production environment scope still lacks `FAIRHOLD_SESSION_SECRET`, `PAYPAL_*` and the demo allowlists, so login and payment actions **fail closed** until an owner adds them ([DEPLOYMENT.md](./DEPLOYMENT.md)) |
+| Vercel production deployment | ✅ Deployed from verified main commit `3838590`. **Public judge URL: https://fairhold-beta.vercel.app** — open it, no account needed. Deployment ID `dpl_EdWck3xKW1vTeRCUPgfJuHfdPtgw`. The per-deployment URLs (`fairhold-dk6j0fd1i-…`) are behind Vercel Deployment Protection (SSO) and are not the judge entry point. The production scope is configured with `FAIRHOLD_SESSION_SECRET`, the three demo allowlists and `FAIRHOLD_ALLOW_SIMULATED_PAYMENTS=true`, so sign-in works and every payment action stays clearly labelled as simulated ([DEPLOYMENT.md](./DEPLOYMENT.md)) |
 | Hosted PostgreSQL (`DATABASE_URL`) | ⚠️ Set in Vercel's Production and Preview scopes, but connectivity could not be verified from this environment; all verification here used an isolated local PostgreSQL 16 |
 | PayPal Sandbox end-to-end (live credentials) | ⛔ Blocked — no sandbox credentials, public webhook URL or `PAYPAL_WEBHOOK_ID` available here; the adapter and webhook path are implemented and unit-tested, but a real Sandbox lifecycle has **not** been executed |
 | Gemini live advisory calls | ⛔ Unverified — `GEMINI_API_KEY` exists in Vercel's scopes but is not available in this local environment; live calls were never executed here, and the deterministic fallback runs and is labelled in the UI |

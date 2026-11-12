@@ -105,7 +105,7 @@ the audit trail is the product."
 - Say "hold, not escrow" out loud at least once. It is the most common
   misunderstanding and the most likely judge question.
 - If asked what is missing: refunds, multi-currency, real accounts, monitoring.
-  All four are listed with evidence in `FINAL_REMAINING_WORK.md`.
+  All four are listed with evidence in `docs/archive/FINAL_REMAINING_WORK.md`.
 - If the deployed preview redirects to a Vercel login page, say so plainly and
   run the local demo instead. Do not claim public access that has not been
   verified.

@@ -87,7 +87,7 @@ sequenceDiagram
     end
 ```
 
-The access check happens **before** the shell is streamed. An earlier build returned a blank streamed page when `notFound()` fired inside a Suspense child; the guard is now synchronous in the page body (see `DECISIONS.md`).
+The access check happens **before** the shell is streamed. An earlier build returned a blank streamed page when `notFound()` fired inside a Suspense child; the guard is now synchronous in the page body (see `docs/archive/DECISIONS.md`).
 
 ### Write path — booking a capture
 
