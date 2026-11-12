@@ -20,6 +20,32 @@ Work moves forward. Payments move with proof.
 
 ---
 
+## Watch FairHold
+
+**Three minutes on the real product.** Every frame is a live recording of the deployed application — the
+landing page, a signed-in deal with its milestones, a seller submitting evidence, a buyer reviewing and
+approving it, and the guided demo's clearly-labelled simulated capture. Narrated, scored and captioned.
+
+[![FairHold — trust, backed by accountability](production/brag-video/thumbnail.png)](production/brag-video/final-master.mp4)
+
+<video controls poster="production/brag-video/thumbnail.png" width="100%">
+  <source src="production/brag-video/final-master.mp4" type="video/mp4">
+  Your browser cannot play this file. <a href="production/brag-video/final-master.mp4">Download the master (26.8 MB, 1920×1080)</a>.
+</video>
+
+| | |
+| --- | --- |
+| **Master (16:9)** | [`final-master.mp4`](production/brag-video/final-master.mp4) — 1920×1080, 30 fps, 180.0 s |
+| **Vertical (9:16)** | [`final-vertical.mp4`](production/brag-video/final-vertical.mp4) — 1080×1920, same 180.0 s |
+| **Subtitles** | [`subtitles.srt`](production/brag-video/subtitles.srt) |
+| **How it was made** | [`production-report.md`](production/brag-video/production-report.md) — sources, mix, licensing, QA |
+
+> **Payments in the film are simulated.** No PayPal Live account is configured, no real money moves, and no
+> payment was created, captured, voided or refunded while making it. The capture scene is labelled
+> `SIMULATED PAYMENT · DEMO ONLY` on screen.
+
+---
+
 ## Live demo
 
 **Open it now → https://fairhold-beta.vercel.app**
@@ -474,6 +500,7 @@ Verified results and the exact configuration used: [TESTING.md](./TESTING.md) an
 | [RELEASE_REPORT.md](./RELEASE_REPORT.md) | **Current release report** — commit, deployment, test results and remaining manual actions. |
 | [CHANGELOG.md](./CHANGELOG.md) | Implementation history. |
 | [videos/fairhold-launch/](./videos/fairhold-launch/) | Launch video source, storyboard, captions and renders. |
+| [production/brag-video/](./production/brag-video/) | **The 3-minute product film** — master, vertical cut, thumbnail, subtitles, source scripts and the production report. |
 
 Historical reports, prior release verdicts and the superseded gap matrix are kept for provenance under [`docs/archive/`](./docs/archive/) and [`docs/release/`](./docs/release/). The canonical current report is [RELEASE_REPORT.md](./RELEASE_REPORT.md); the archived ones record earlier sprints.
 

@@ -1,0 +1,36 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+ScaledBorderAndShadow: yes
+WrapStyle: 0
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Sub,Segoe UI,40,&H00F2F2F5,&H000000FF,&H00101012,&H96000000,0,0,0,0,100,100,0,0,1,2,1,2,120,120,58,1
+Style: Cap,ARIALNB,66,&H00FFFFFF,&H000000FF,&H00101012,&H96000000,1,0,0,0,100,100,2,0,1,4,3,5,140,140,60,1
+Style: Badge,bahnschrift,25,&H00B0B2B8,&H000000FF,&H00101012,&H96000000,0,0,0,0,100,100,3,0,3,0,0,3,80,80,60,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+
+Dialogue: 0,0:00:01.60,0:00:11.29,Sub,,0,0,0,,{\fad(280,320)}Every project starts with an agreement. But when work, milestones, and money come together, trust alone isn't always enough.
+Dialogue: 0,0:00:22.20,0:00:31.03,Sub,,0,0,0,,{\fad(280,320)}Meet FairHold. A milestone based platform designed to bring structure, evidence, and accountability to payments.
+Dialogue: 0,0:00:41.40,0:00:50.03,Sub,,0,0,0,,{\fad(280,320)}FairHold brings buyers and sellers into a structured deal workflow, where expectations and milestones are clearly defined.
+Dialogue: 0,0:01:01.40,0:01:10.43,Sub,,0,0,0,,{\fad(280,320)}Instead of treating an entire project as one uncertain transaction, FairHold organizes the work into individual milestones.
+Dialogue: 0,0:01:21.60,0:01:28.65,Sub,,0,0,0,,{\fad(280,320)}Work can be supported with evidence, giving reviewers something concrete to evaluate before a decision.
+Dialogue: 0,0:01:36.60,0:01:48.88,Sub,,0,0,0,,{\fad(280,320)}Submitted evidence enters a review process. The decision remains with the authorized human reviewer. AI can assist, but it does not replace human judgment.
+Dialogue: 0,0:02:05.60,0:02:12.92,Sub,,0,0,0,,{\fad(280,320)}The guided demo illustrates the capture stage using a simulated payment flow, without moving real money.
+Dialogue: 0,0:02:16.60,0:02:28.57,Sub,,0,0,0,,{\fad(280,320)}That's the principle behind FairHold. AI provides assistance. Humans make the decisions. Deterministic rules govern payment operations.
+Dialogue: 0,0:02:42.40,0:02:48.95,Sub,,0,0,0,,{\fad(280,320)}FairHold. Bringing structure and accountability to milestone based payments.
+
+Dialogue: 0,0:00:42.20,0:00:47.20,Cap,,0,0,0,,{\an5\pos(960,790)\fad(450,450)}One structured agreement.
+Dialogue: 0,0:00:50.20,0:00:55.20,Cap,,0,0,0,,{\an5\pos(960,790)\fad(450,450)}Clearly defined milestones.
+Dialogue: 0,0:01:02.60,0:01:07.60,Cap,,0,0,0,,{\an5\pos(960,790)\fad(450,450)}Break work into milestones.
+Dialogue: 0,0:01:09.60,0:01:14.60,Cap,,0,0,0,,{\an5\pos(960,790)\fad(450,450)}Make progress visible.
+Dialogue: 0,0:01:22.60,0:01:28.20,Cap,,0,0,0,,{\an5\pos(960,790)\fad(450,450)}Evidence before approval.
+Dialogue: 0,0:01:37.60,0:01:42.60,Cap,,0,0,0,,{\an5\pos(960,790)\fad(450,450)}Evidence gets reviewed.
+Dialogue: 0,0:01:45.20,0:01:50.20,Cap,,0,0,0,,{\an5\pos(960,790)\fad(450,450)}Humans retain control.
+Dialogue: 0,0:01:53.20,0:01:58.20,Cap,,0,0,0,,{\an5\pos(960,790)\fad(450,450)}Approval matters.
+
+Dialogue: 0,0:00:40.00,0:02:15.00,Badge,,0,0,0,,{\an3\pos(1840,1040)\fad(600,600)}DEMO MODE · SIMULATED PAYMENTS

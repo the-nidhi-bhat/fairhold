@@ -1,0 +1,36 @@
+1
+00:00:01,600 --> 00:00:11,290
+Every project starts with an agreement. But when work, milestones, and money come together, trust alone isn't always enough.
+
+2
+00:00:22,200 --> 00:00:31,030
+Meet FairHold. A milestone based platform designed to bring structure, evidence, and accountability to payments.
+
+3
+00:00:41,400 --> 00:00:50,030
+FairHold brings buyers and sellers into a structured deal workflow, where expectations and milestones are clearly defined.
+
+4
+00:01:01,400 --> 00:01:10,430
+Instead of treating an entire project as one uncertain transaction, FairHold organizes the work into individual milestones.
+
+5
+00:01:21,600 --> 00:01:28,650
+Work can be supported with evidence, giving reviewers something concrete to evaluate before a decision.
+
+6
+00:01:36,600 --> 00:01:48,880
+Submitted evidence enters a review process. The decision remains with the authorized human reviewer. AI can assist, but it does not replace human judgment.
+
+7
+00:02:05,600 --> 00:02:12,920
+The guided demo illustrates the capture stage using a simulated payment flow, without moving real money.
+
+8
+00:02:16,600 --> 00:02:28,570
+That's the principle behind FairHold. AI provides assistance. Humans make the decisions. Deterministic rules govern payment operations.
+
+9
+00:02:42,400 --> 00:02:48,950
+FairHold. Bringing structure and accountability to milestone based payments.
+
