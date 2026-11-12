@@ -1,53 +1,73 @@
-# FairHold — session state (2026-11-12)
+# FairHold — session state (2026-11-12, final delivery)
 
 ## Branch
-`feat/deal-milestone-foundation`. Working tree has uncommitted changes (see diff below). Not yet committed.
+`main` at `cc60145` (matches `origin/main` before this delivery's commits).
+This session's uncommitted work is split into two commits: `fix:` (source +
+tests) and `docs(readme): rewrite project documentation for final release`
+(docs + `.env.example`), then pushed to `origin/main` per user authorization.
 
-## Baseline (already verified, do not re-report as new)
-- `npm run typecheck`: pass
-- `npm run lint`: pass
-- `npm run build`: pass (10 routes including /demo)
-- `npm test`: 252 pass, 3 fail (all pre-existing: `FAIRHOLD_SESSION_SECRET` env var missing; unrelated to this session's changes)
-- `npm run test:e2e`: 75/78 pass across desktop/mobile/tablet Chromium. 3 failures all the same pre-existing flaky test — `tests/evidence-lifecycle.spec.ts:118` ("Authorization: simulated (demo)" not visible after clicking simulate). This test was passing in the prior baseline run; the failure is unrelated to this session's changes (CSS-only touch-target edits on layout/demo pages cannot affect deal-page JS state). Recorded as a known issue, not a regression.
-- `npx hyperframes check`: 0 errors
-- Contrast AA: 53/53
+## Verified this session (evidence)
+- `npm run typecheck` → exit 0 (`next typegen` + `tsc --noEmit`)
+- `npm run lint` → exit 0
+- `npm test` with `FAIRHOLD_TEST_DATABASE_URL` (isolated PostgreSQL 16,
+  `127.0.0.1:55432/fairhold_test`) → **294 tests, 294 pass, 0 fail, 0 skip,
+  exit 0**; without a database → 266 pass, 28 skip, 0 fail, exit 0
+- `npm run test:e2e` full matrix, production build each run:
+  desktop-chromium 26/26, mobile-chromium 26/26, tablet-chromium 26/26,
+  desktop-firefox 26/26, desktop-webkit 26/26 = **130/130, all exit 0**
+- Vercel production deployment `dpl_6CkYub9fX7Ezf4NLPJmTbNPro2d5` (Ready):
+  `githubCommitSha = cc6014561e2ff776f74c70c7860c394018a419c2` identical to
+  `origin/main`; direct deployment + preview URLs → 302 Vercel SSO (never
+  bypassed); `fairhold-beta.vercel.app` serves `/`, `/login`, `/demo`,
+  `/dashboard` at HTTP 200 with correct titles
 
-## Completed this session (all locally achievable work)
-
+## Completed this session
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 1 | Onboarding Playwright assertion | Complete | `tests/onboarding.spec.ts` — passes on desktop/mobile/tablet Chromium |
-| 2 | Three-minute demo script | Complete | `DEMO_SCRIPT_3MIN.md` already meets all requirements; no changes needed |
-| 3 | Firefox + WebKit | Complete | Projects added to `playwright.config.ts` (ports 3103/3104), browsers installed, demo tests pass on both |
-| 4 | Accessibility (axe) + Lighthouse | Complete | `tests/accessibility.spec.ts` — 5 routes, zero critical/serious violations. Lighthouse: landing 96/100/100/100, login 100/100/100/100, dashboard 100/100/100/100, demo 95/100/100/100/CLS 0.010 after skeleton min-height fix |
-| 5 | Review remaining journeys | Complete | All demo/onboarding/audit/evidence-lifecycle journeys reviewed; only pre-existing flaky test noted above |
-| 6 | Re-run all tests | Complete | Typecheck, lint, build, unit tests, E2E all executed |
-| 7 | Git commits | Pending | See diff below |
-| 8 | Final completion report | Pending | See final report below |
+| 1 | Fix 3 unit failures | Complete | `lib/auth/session.test.ts`: sets `FAIRHOLD_SESSION_SECRET` in-test + new fail-closed regression test |
+| 2 | Fix E2E evidence-lifecycle failures | Complete | Root cause: `buildDealUrl()` threw `MISSING_URL` before the demo provider ran. `app/deals/actions.ts` builds return/cancel URLs only for non-demo providers; `lib/url.ts` `resolveAppUrl` rewritten (dev fallback, `VERCEL_URL` https normalization, no `//`); `playwright.config.ts` sets per-project `NEXT_PUBLIC_APP_URL`; new `lib/url.test.ts` (9 tests) |
+| 3 | Fix WebKit session loss | Complete | Product defect: `Secure` cookie chosen from `NODE_ENV` over plain HTTP → WebKit dropped the session (4 failing tests). New `lib/auth/secure-cookie.ts` derives the flag from `X-Forwarded-Proto`; regression test added; 4 tests now pass, full WebKit 26/26 |
+| 4 | README rewrite | Complete | Judge-ready, exact philosophy line, judge demo walkthrough, roles table, 8-migration table, fresh numbers, status table, all 20 links verified |
+| 5 | Docs refresh | Complete | `QA_REPORT.md` appended dated section (chronology preserved), `FINAL_RELEASE_REPORT.md` supersession note, `DEPLOYMENT.md` production facts, `.env.example` additive correction (2 missing sections) |
+| 6 | Fresh verification | Complete | typecheck/lint/unit 294/294/E2E 130/130 all green |
+| 7 | Commits + push | Pending at write time | Two commits, then `git push origin main`, verify SHA |
+| 8 | Final delivery report | Pending | 10 sections + three verdicts |
 
-## Files changed (uncommitted)
-- `app/layout.tsx` — touch targets (min-h-11, min-w-44, py-3) on skip link, nav links, buttons
-- `components/demo-experience.tsx` — skeleton min-height 1400px (CLS fix), touch targets on Back/Open links
-- `tests/demo.spec.ts` — `waitUntil: "networkidle"` in beforeEach (WebKit hydration fix)
-- `tests/onboarding.spec.ts` — NEW: four-step explainer assertion
-- `tests/accessibility.spec.ts` — NEW: axe audit on 5 routes
-- `playwright.config.ts` — NEW: desktop-firefox (3103), desktop-webkit (3104) projects
-- `package.json` / `package-lock.json` — lighthouse devDependency added
-- `docs/STATE.md` — this file (session tracking)
-- `lighthouse-*.json` — Lighthouse audit reports (untracked)
-- `dev.err` — pre-existing untracked log (not part of this session)
+## Root-cause fixes (tests were never weakened)
+1. Missing session secret in tests → set in test file + fail-closed regression.
+2. `AppUrlError MISSING_URL` (digest 2576661576) in demo E2E → URL resolution
+   fix with dev fallback; production still throws.
+3. WebKit cookie rejection → `Secure` follows the actual request scheme
+   (`http`/no header → not Secure; `https` → Secure), preserving security on
+   TLS deployments.
 
-## External blockers (unchanged, do not wait on)
-- Hosted PostgreSQL DATABASE_URL
-- PayPal sandbox credentials + public HTTPS webhook + PAYPAL_WEBHOOK_ID
-- GEMINI_API_KEY / GEMINI_MODEL
-- Object storage credentials
-- Vercel Deployment Protection / production deployment
+## Untracked — never commit
+`dev.err`, `lighthouse-*.json` (9), `scripts/verify-migrate-0008.mjs`,
+`scripts/verify-migration-0008.ps1`, `test-results/`.
+
+## External blockers (unchanged — do not wait on)
+- PayPal sandbox credentials + public HTTPS webhook + `PAYPAL_WEBHOOK_ID`
+  (sandbox lifecycle never executed here)
+- Live Gemini calls (key not available in this environment; fallback is
+  labelled and tested)
+- Hosted-PostgreSQL connectivity unverified from this environment
+- Object storage for evidence files (currently local disk)
+- Production env scope incomplete: missing `FAIRHOLD_SESSION_SECRET`,
+  `PAYPAL_*`, `NEXT_PUBLIC_APP_URL`, demo allowlists → login/payments fail
+  closed until an owner adds them (owner action; values never read here)
+- Vercel Deployment Protection (SSO) on direct URLs — left enabled by design
 
 ## Decisions (this session)
-- Fixed `runAxe` TypeScript types in `tests/accessibility.spec.ts` to satisfy `next build` typegen (page.evaluate returns unknown; cast explicitly)
-- Demo skeleton min-height raised to 1400px to eliminate CLS 0.622 (Lighthouse)
-- Touch targets raised to min-h-11 (44px+) for WCAG AA target-size compliance
+- Session cookie `Secure` derives from `X-Forwarded-Proto`, not `NODE_ENV`
+- Return/cancel URLs only built for non-demo providers (PayPal needs them,
+  demo does not)
+- `resolveAppUrl`: dev fallback `http://localhost:3000`; production without a
+  configured URL still throws `MISSING_URL`
+- `QA_REPORT.md` extended chronologically (append-only); historical report
+  numbers preserved with a supersession note in `FINAL_RELEASE_REPORT.md`
 
 ## Next action
-Commit all changes in meaningful units, then deliver final completion report. Do not push.
+Push both commits to `origin/main` (user-authorized), verify remote SHA,
+dispatch the independent reviewer on the final commits, then deliver the
+final report (10 sections; local-completion / sandbox-verification /
+production-readiness verdicts).

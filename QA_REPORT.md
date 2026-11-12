@@ -460,3 +460,52 @@ The remaining limitation is different from the first diagnosis: the dashboard
 body is streamed through `<Suspense>`, so a JavaScript-disabled client sees the
 shell and the skeleton. Recorded in `FINAL_RELEASE_REPORT.md` §13 and as the
 "JavaScript-disabled dashboard" row in `FINAL_REMAINING_WORK.md`.
+
+### Final delivery verification — 2026-11-12
+
+Every gate was re-run after the final fixes, on this day:
+
+- `npm run typecheck` — exit 0 (`next typegen` + `tsc --noEmit`).
+- `npm run lint` — exit 0.
+- `npm test` with `FAIRHOLD_TEST_DATABASE_URL` (isolated PostgreSQL 16 at
+  `127.0.0.1:55432/fairhold_test`): **294 tests, 294 passing, 0 failing,
+  0 skipped, exit 0** (293 prior tests + one new session-secret regression
+  test). Without a test database: 294 tests, 266 passing, 28 skipped, exit 0.
+- `npm run test:e2e` full matrix against a production build:
+  desktop-chromium 26/26, mobile-chromium 26/26, tablet-chromium 26/26,
+  desktop-firefox 26/26, desktop-webkit 26/26 — **130/130 passing**, all
+  steps exit 0.
+
+**WebKit session loss was a product defect, fixed at the root.** Before the
+fix, WebKit failed four tests (`deal-creation-repro.spec.ts:12` and
+`evidence-lifecycle.spec.ts:118/243/281`). A retained Playwright trace showed
+`POST /login → 200` setting `fairhold_session` with `Secure` over
+`http://localhost:3104`, and no later request carrying any cookie: WebKit
+silently rejects `Secure` cookies on non-secure origins (Chromium and Firefox
+treat localhost as trustworthy), so the session was dropped and every
+authorized page redirected to `/login`. `setDemoSession` chose the attribute
+from `NODE_ENV === "production"` — wrong for a production build served over
+plain HTTP. The flag now derives from the request's `X-Forwarded-Proto` in
+`lib/auth/secure-cookie.ts` (unit-tested: no header or `http` → not Secure;
+`https`, case-insensitive and first-segment-wins → Secure), so TLS
+deployments such as Vercel keep `Secure` while plain-HTTP serving works in
+strict browsers. No assertion was weakened; after the fix the full matrix
+above passes.
+
+**Vercel state recorded at delivery time.** Production deployment
+`dpl_6CkYub9fX7Ezf4NLPJmTbNPro2d5` (Ready, created 2026-11-12 02:19 IST by
+the Git integration) reports `githubCommitSha = cc60145…`, identical to
+`origin/main`. Direct deployment and preview URLs return 302 to Vercel SSO
+(Deployment Protection; never bypassed). The `fairhold-beta.vercel.app`
+alias serves `/`, `/login`, `/demo` and `/dashboard` with HTTP 200 and the
+correct page title. The production environment scope contains `DATABASE_URL`,
+`GEMINI_API_KEY` and `GEMINI_MODEL` but lacks `FAIRHOLD_SESSION_SECRET`,
+`PAYPAL_*` and the demo allowlists, so login and payment actions fail closed
+until an owner adds them.
+
+Still blocked, unchanged in substance: live PayPal sandbox (no credentials
+usable from this environment, no public HTTPS webhook, no verified
+`PAYPAL_WEBHOOK_ID` flow), live AI provider calls (key not available here),
+hosted-PostgreSQL connectivity verification, durable object-storage evidence,
+and authenticated access to the Vercel preview (Deployment Protection
+returns 302 to SSO).

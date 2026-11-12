@@ -9,6 +9,15 @@ Every claim below is paired with the command or file that proves it. Where a
 check could not be run, the item is marked **Unverified** or **Blocked** and is
 never counted as a pass.
 
+> **Superseded figures (2026-11-12):** test counts and the philosophy wording in
+> this dated report reflect the 2026-11-08 release gate. Current verified results
+> are **293 unit/integration tests (293 passing with a test database)** and
+> **78/78 Playwright journeys across desktop, mobile and tablet Chromium**, with
+> Firefox and WebKit projects configured — see [README.md](./README.md) and the
+> latest section of [QA_REPORT.md](./QA_REPORT.md). The canonical philosophy line
+> is: *AI proposes. Humans decide. Rules enforce. PayPal executes. The audit
+> trail records.*
+
 ---
 
 ## 1. Executive summary

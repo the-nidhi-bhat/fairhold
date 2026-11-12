@@ -48,9 +48,19 @@ The build must complete before any deployment attempt; a failing build is not a 
   not publicly reachable: Vercel Deployment Protection
   (`all_except_custom_domains`) returns a 302 to Vercel SSO for anonymous
   requests.
-- **No production deployment has been created.** The production environment
-  scope is empty. The project's very first (broken) deployment still owns the
-  `fairhold-beta.vercel.app` alias; replacing or deleting it is an owner action.
+- **A production deployment exists (verified 2026-11-12).** The Vercel Git
+  integration deployed `main` automatically: deployment
+  `dpl_6CkYub9fX7Ezf4NLPJmTbNPro2d5` (Ready) reports
+  `githubCommitSha = cc6014561e2ff776f74c70c7860c394018a419c2`, identical to
+  `origin/main`. Direct deployment URLs also return 302 to Vercel SSO (never
+  bypassed). The `fairhold-beta.vercel.app` alias — excluded from protection
+  as a custom domain — serves the app anonymously: `/`, `/login`, `/demo` and
+  `/dashboard` all return 200 with the correct page title.
+- **Production environment scope is incomplete.** It contains `DATABASE_URL`,
+  `GEMINI_API_KEY` and `GEMINI_MODEL`, but lacks `FAIRHOLD_SESSION_SECRET`,
+  `PAYPAL_*`, `NEXT_PUBLIC_APP_URL` and the demo allowlists — so session
+  login and payment actions **fail closed** at runtime until an owner adds
+  them (values were never read or printed from this environment).
 - Deployment protection was deliberately left enabled. Removing an access
   control to make a demo public is not an acceptable trade.
 
