@@ -38,6 +38,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       data-scroll-behavior="smooth"
     >
+      <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+      </head>
       <body className="site-shell flex min-h-full flex-col bg-background text-foreground">
         <a
           href="#main"
@@ -52,13 +55,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               className="group flex items-center gap-2.5"
               aria-label="FairHold home"
             >
-              <span
+              <svg
+                className="h-7 w-7 fill-current"
+                viewBox="0 0 400 100"
+                width="28"
+                height="28"
                 aria-hidden="true"
-                className="relative flex h-7 w-7 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--accent)_60%,transparent)]"
               >
-                <span className="h-2 w-2 rounded-full bg-[var(--accent)]" />
-                <span className="absolute inset-0 rounded-full shadow-[0_0_18px_var(--accent-glow)]" />
-              </span>
+                <use href="/shield-wordmark.svg" />
+              </svg>
               <span className="text-[17px] font-semibold tracking-[-0.045em] text-[var(--foreground)]">
                 FairHold
               </span>

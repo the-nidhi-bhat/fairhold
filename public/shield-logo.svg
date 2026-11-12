@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200" fill="currentColor">
+  <path d="M50 180 L150 180 L150 20 L50 20 Z" fill="#FF0000"/>
+  <path d="M50 20 L100 80 L150 20" fill="#FF0000"/>
+  <path d="M50 20 L50 80 L100 140 L150 80 L150 20" fill="#FF0000"/>
+  <path d="M75 80 L75 140" stroke="#FF0000" stroke-width="8" stroke-linecap="round"/>
+  <path d="M75 80 L25 20 L75 20" fill="#FF0000"/>
+  <circle cx="100" cy="100" r="70" fill="#000000" opacity="0.8"/>
+  <path d="M100 30 L100 70 M30 50 L70 50 M130 50 L170 50 M30 130 L70 130 M130 130 L170 130 M30 170 L70 170 M130 170 L170 170" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <line x1="38" y1="52" x2="62" y2="52" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <line x1="138" y1="52" x2="162" y2="52" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <line x1="38" y1="148" x2="62" y2="148" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+  <line x1="138" y1="148" x2="162" y2="148" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/>
+</svg>
