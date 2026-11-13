@@ -1,4 +1,4 @@
-# FairHold — release state (2026-11-12)
+# FairHold — release state (2026-11-13)
 
 ## Branch
 `main` — identical to `origin/main`.
@@ -6,17 +6,20 @@
 History for this release (no force-push, no history rewrite, no `--reset --hard`):
 
 ```
-<release>   fix(auth): sign out through a native POST route instead of a server action
+d6a08d4    release: harden sign-out, correct release documentation, ship the re-rendered film   <- origin/main
+0c92be3    docs(release): record the 3-minute product film in the release report
+f603cb8    feat(video): add the 3-minute FairHold product film
 d36a257    fix(data): honour the explicit JSON pin in production only when no database is configured
 05c4274    release: curate repository, add reviewer role, publish final report
 3838590    chore: integrate final branding and release preparation
 186147d    feat: premium shield logo branding
-92a0615    chore(deps): sync package-lock.json for CI npm ci validation   <- previous origin/main
+92a0615    chore(deps): sync package-lock.json for CI npm ci validation   <- origin/main before this release
 ```
 
 `feat/sprint-functional-completion` is preserved locally and remotely. The repository has no
-branch protection requiring a pull request, so the release was published with
-`git merge --ff-only` + `git push origin main`.
+branch protection requiring a pull request, so releases are published with a fast-forward
+`git push origin main`. This release was pushed as `d36a257..d6a08d4` with no force, no
+`reset --hard` and no history rewrite.
 
 ## Verified this release (evidence)
 - `npm ci` → clean install completed (8 vulnerabilities: 7 moderate, 1 high — advisory only)
@@ -30,13 +33,13 @@ branch protection requiring a pull request, so the release was published with
   expected result with an isolated PostgreSQL 16; it has not been observed in this release.)
 - `npm run build` → exit 0, Next.js 16.4.3 Turbopack, 11 routes (including the new
   `POST /logout`)
-- `npm run test:e2e` → 93/93 across the three default Playwright Chromium projects (31 tests each)
-  (desktop, mobile, tablet), 29 each, exit 0
+- `npm run test:e2e` → **93/93** across the three default Playwright Chromium projects
+  (desktop, mobile, tablet), 31 tests each, exit 0
 - `node scripts/run-e2e.mjs --project=desktop-firefox` → 31/31, exit 0
-- `node scripts/run-e2e.mjs --project=desktop-webkit` → 31/31, exit 0, clean first pass.
-  One earlier WebKit run showed a single flake — `tests/evidence-lifecycle.spec.ts:376`, a
-  10 s `expect` timeout on a client-side RSC navigation under load. It did not reproduce on
-  either subsequent run. Recorded as a flake, not as a clean first pass.
+- `node scripts/run-e2e.mjs --project=desktop-webkit` → **31/31**, exit 0, clean first pass
+  on the release run. An earlier pre-release WebKit run showed a single flake —
+  `tests/evidence-lifecycle.spec.ts:376`, a 10 s `expect` timeout on a client-side RSC
+  navigation under load — which did not reproduce.
 - `scripts/run-e2e.mjs:34` hardcodes `PROJECTS = ["desktop-chromium", "mobile-chromium",
   "tablet-chromium"]`, so **Firefox and WebKit are opt-in by name and are not part of
   `npm run test:e2e`**. Each needs its own `--project=…` invocation.

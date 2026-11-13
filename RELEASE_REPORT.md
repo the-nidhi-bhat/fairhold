@@ -1,11 +1,11 @@
 # FairHold Release Report
 
 **Release Date:** November 12, 2026
-**Release commit:** `d36a257` — [view on GitHub](https://github.com/the-nidhi-bhat/fairhold/commit/d36a257d45dcc7122f2b395e2366df830459d70) — full SHA `d36a257d45dcc7122f2b395e2366df830459d70`
+**Release commit:** `d6a08d4` — [view on GitHub](https://github.com/the-nidhi-bhat/fairhold/commit/d6a08d481ddc68c57c9a1aafe375f39a3794949a) — full SHA `d6a08d481ddc68c57c9a1aafe375f39a3794949a`
 **GitHub PR:** None — the repository has no branch protection requiring a PR, so the release was published with a **fast-forward merge** (`git merge --ff-only`) from `feat/sprint-functional-completion` and a normal `git push origin main`. No force-push, no history rewrite, no `reset --hard`.
 **Public judge URL:** https://fairhold-beta.vercel.app
-**Vercel Deployment ID:** `dpl_9RmzvhGRMSg9PGCcU1hAFWVGp429`
-**Deployment commit SHA:** `d36a257d45dcc7122f2b395e2366df830459d70` (identical to `origin/main`)
+**Vercel Deployment ID:** `dpl_76Z9Mbwhzv9B7KRJF7r4ec5XoRNT`
+**Deployment commit SHA:** `d6a08d481ddc68c57c9a1aafe375f39a3794949a` (identical to `origin/main`)
 
 ---
 
@@ -238,7 +238,7 @@ Two real defects were found by the release gates during this sprint and fixed at
 
 | # | Criterion | State |
 | --- | --- | --- |
-| 1 | Verified finished project on GitHub `main` | ✅ `d36a257` |
+| 1 | Verified finished project on GitHub `main` | ✅ `d6a08d4` |
 | 2 | Vercel production deployment accessible | ✅ https://fairhold-beta.vercel.app |
 | 3 | A fresh user can enter the application | ✅ Landing page, `/demo` and `/login` are public |
 | 4 | Buyer, seller and reviewer workflows function | ✅ Verified against the public URL |
