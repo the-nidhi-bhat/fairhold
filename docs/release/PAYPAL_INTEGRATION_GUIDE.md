@@ -153,7 +153,7 @@ The demo provider makes **no PayPal requests**. A Playwright regression test fai
 
 - Partial capture / remaining authorization handling — not modeled.
 - Refunds — not implemented (void is not a refund).
-- Real sandbox transaction — **NOT VERIFIED** (no sandbox credentials, no public webhook, no `PAYPAL_WEBHOOK_ID`).
+- Real sandbox transaction — **NOT VERIFIED**. Corrected 2026-11-13: sandbox credentials *are* configured in the Production scope, so the signed-in workspace uses the sandbox provider and an authorization there creates a real order in the PayPal sandbox. No such order has been approved or captured from this environment, and no public webhook / `PAYPAL_WEBHOOK_ID` is confirmed.
 - Webhook rate limiting — not implemented (design-level limit).
 - Webhook payload retention/TTL — not implemented (design-level limit).
 - Ambiguous-capture reconciliation automation — product decision needed (retry vs. reconcile).
@@ -166,6 +166,14 @@ The demo provider makes **no PayPal requests**. A Playwright regression test fai
 4. Register a public HTTPS webhook URL and set `PAYPAL_WEBHOOK_ID`.
 5. Run `FAIRHOLD_ALLOW_SIMULATED_PAYMENTS` unset (or not `true`) so production uses the real adapter.
 6. Verify: sandbox OAuth → order create → buyer approval → capture → webhook → ledger accounting.
+
+> **Status as of 2026-11-13:** steps 1-3 are done in the Production scope — `PAYPAL_ENV=sandbox` with
+> non-placeholder credentials and `DATABASE_URL` are configured there (names only are ever recorded).
+> The live deal page therefore renders "Create PayPal sandbox authorization" and an authorization
+> creates a **real order in the PayPal sandbox** (sandbox funds only; no live money, and Live is
+> refused by configuration). Steps 4-6 are still outstanding: no public webhook is registered,
+> `PAYPAL_WEBHOOK_ID` is not confirmed, and no sandbox order has been approved, captured or
+> reconciled.
 
 Until credentials are provided, the sandbox integration status is **IMPLEMENTED (code), NOT VERIFIED (live)**.
 

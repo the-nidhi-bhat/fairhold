@@ -13,7 +13,23 @@ reproduced.
 
 Both tracks ship with the `brag` skill (`assets/music/`) and were copied here so the film can be re-cut
 without the skill installed. Track 9 carries the opening and the body of the mix; track 12 cross-fades in
-from 2:12 to carry the closing. Per-track beat and cue metadata is available in the skill's `cues/` folder.
+from about **1:51.9** — the acrossfade starts at 113.6 s minus its 2 s overlapping half, i.e. at 111.9 s
+(in earlier drafts of this note that point was written as "2:12", which was wrong). Per-track beat and cue
+metadata is available in the skill's `cues/` folder.
+
+### Licence grant — not verified
+
+**Caveat, read before relying on this file.** The skill's bundled
+`assets/music/README.md` names the source as `ende.app`'s "Happy Beats / Business Moves" series and nothing
+else. It does **not** state the licence grant, and I did **not** independently fetch or confirm ende.app's
+terms of use. I am not going to invent a licence (CC0, royalty-free, Creative Commons, etc.) that has not
+been verified.
+
+Until ende.app's terms are checked and recorded here, treat these tracks as usable only in ways the
+ende.app terms plainly allow, or replace them with audio whose licence you have confirmed (an equivalent
+royalty-free bed, or a licensed track). Because the film is published on YouTube, verify the terms before
+relying on this file in a monetised or commercial context. The SFX cues come from the same skill bundle and
+carry the same caveat.
 
 ## Sound effects
 

@@ -9,17 +9,22 @@ A deployment that has neither is a demo deployment: it works for browsing, and e
 
 ## What a deployment needs
 
-| Requirement | Why | State in this build |
+| Requirement | Why | State in the Production scope |
 | --- | --- | --- |
-| Hosted PostgreSQL | Persistence, webhook processing, payment ledger | Not provisioned |
-| `DATABASE_URL` | Selects the PostgreSQL backend | Not set |
-| `FAIRHOLD_SESSION_SECRET` | Required in production, throws when missing | Not set |
-| `FAIRHOLD_DEMO_BUYERS` / `_SELLERS` / `_REVIEWERS` | Login allowlists | Not set |
-| `FAIRHOLD_REVIEWER_DEALS` | Per-deal reviewer grants | Not set |
-| `PAYPAL_ENV=sandbox` + id + secret + webhook id | Real sandbox payments and webhook verification | Not set |
-| `GEMINI_API_KEY` + `GEMINI_MODEL` | Live advisory | Not set |
+| Hosted PostgreSQL | Persistence, webhook processing, payment ledger | Provisioned (Neon) |
+| `DATABASE_URL` | Selects the PostgreSQL backend | Set — secret, value never read or printed |
+| `FAIRHOLD_SESSION_SECRET` | Required in production, throws when missing | Set — secret, value never read or printed |
+| `FAIRHOLD_DEMO_BUYERS` / `_SELLERS` / `_REVIEWERS` | Login allowlists | Set |
+| `FAIRHOLD_REVIEWER_DEALS` | Per-deal reviewer grants | Set |
+| `PAYPAL_ENV=sandbox` + `PAYPAL_CLIENT_ID` + `PAYPAL_CLIENT_SECRET` | Real **sandbox** payments | Set — team-level inherited variables; names only are recorded |
+| `PAYPAL_WEBHOOK_ID` | Webhook verification | Not confirmed from this environment |
+| `GEMINI_API_KEY` + `GEMINI_MODEL` | Live advisory | Set — secret, value never read or printed |
 | Public HTTPS URL registered as a PayPal webhook listener | Webhook delivery | Not configured |
 | Evidence storage | Files are written to local disk today | Not addressed |
+
+PayPal **Live** is not an option on this table and never will be: `readPayPalConfig()` returns
+`null` unless `PAYPAL_ENV` is exactly `sandbox`, so a live adapter cannot be constructed even if
+a live credential were somehow present.
 
 Because the evidence store is local-disk, a PostgreSQL-only deployment still loses uploaded files on redeploy. Treat storage as a known gap, listed in [RELEASE_CHECKLIST.md](./docs/archive/RELEASE_CHECKLIST.md).
 
@@ -56,11 +61,19 @@ The build must complete before any deployment attempt; a failing build is not a 
   bypassed). The `fairhold-beta.vercel.app` alias — excluded from protection
   as a custom domain — serves the app anonymously: `/`, `/login`, `/demo` and
   `/dashboard` all return 200 with the correct page title.
-- **Production environment scope is incomplete.** It contains `DATABASE_URL`,
-  `GEMINI_API_KEY` and `GEMINI_MODEL`, but lacks `FAIRHOLD_SESSION_SECRET`,
-  `PAYPAL_*`, `NEXT_PUBLIC_APP_URL` and the demo allowlists — so session
-  login and payment actions **fail closed** at runtime until an owner adds
-  them (values were never read or printed from this environment).
+- **The Production environment scope is configured** (verified 2026-11-13). It contains
+  `DATABASE_URL`, `FAIRHOLD_SESSION_SECRET`, `NEXT_PUBLIC_APP_URL`, the three demo allowlists,
+  `FAIRHOLD_REVIEWER_DEALS`, `FAIRHOLD_ALLOW_SIMULATED_PAYMENTS=true`, `GEMINI_API_KEY`,
+  `GEMINI_MODEL` **and** the PayPal **sandbox** credential set (`PAYPAL_ENV`,
+  `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`). Sign-in works and a signed-in buyer sees the
+  **PayPal sandbox** authorization button on a deal page; the guided `/demo` stays simulated and
+  says so. PayPal **Live** is refused by configuration. Values were never read or printed from
+  this environment.
+- **`vercel env ls` does not list the `PAYPAL_*` variables for the Production scope, and that
+  omission is not evidence of absence.** They are inherited at **team** level, and a
+  project-scoped listing omits inherited variables. Only the Preview scope shows them
+  explicitly. Treat a project-scoped listing as incomplete, not as proof that a variable is
+  unset.
 - Deployment protection was deliberately left enabled. Removing an access
   control to make a demo public is not an acceptable trade.
 
@@ -96,7 +109,8 @@ For a hackathon submission where production infrastructure is incomplete, a prev
 | Payment copy | Still says simulated when the demo adapter is active |
 | `/api/paypal/webhook` | Returns `503 webhook not configured` when no webhook id is set — that is correct, not a bug |
 
-Serverless note: because `DATABASE_URL` is unset, any write attempt on Vercel will fail at the filesystem. Read-only browsing of the landing page and login works; creating a deal does not. Do not present that as a working deployment of the product.
+Serverless note: `DATABASE_URL` **is** set in the Production scope, so writes — including evidence
+bytes (`migrations/0007_evidence_files.sql`) — go to PostgreSQL and survive a redeploy.
 
 ## Environment configuration for a real deployment
 

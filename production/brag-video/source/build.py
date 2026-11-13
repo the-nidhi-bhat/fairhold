@@ -48,8 +48,8 @@ SEGMENTS = [
     ("s03b", "clips/02-landing-story.webm", "clip", 48.4, 0.0, 0),
     ("s04a", "clips/06-signin.webm", "clip", 60.0, 0.8, 0),
     ("s04b", "clips/07-deal-structure.webm", "clip", 66.4, 0.0, 0),
-    ("s05a", "clips/08-seller-evidence.webm", "clip", 80.0, 2.6, 0),
-    ("s06a", "clips/14-buyer-review-approve.webm", "clip", 95.0, 6.0, 0),
+    ("s05a", "clips/16-seller-evidence-v2.webm", "clip", 80.0, 14.0, 0),
+    ("s06a", "clips/17-buyer-review-v2.webm", "clip", 95.0, 0.0, 1.6),
     ("s06b", "clips/05-demo-approve.webm", "clip", 117.5, 0.0, 0),
     ("s07a", "clips/05-demo-approve.webm", "clip", 126.0, 10.5, 1.39),
     ("s08a", "cards/card-philosophy-1.png", "card", 135.0, 0, 0),
@@ -95,9 +95,9 @@ for (name, src, kind, tstart, trim, hold), length in zip(SEGMENTS, lengths):
                 fh.write("SIMULATED PAYMENT  \u00b7  DEMO ONLY")
             vf += (r",drawtext=fontfile='C\:/Windows/Fonts/ARIALNB.TTF':"
                    r"textfile=build/sim-label.txt:"
-                   r"fontcolor=0xDC263C:fontsize=62:borderw=3:bordercolor=0x101012:"
-                   r"shadowcolor=0x000000@0.65:shadowx=2:shadowy=3:"
-                   r"x=(w-text_w)/2:y=862:enable='between(t,0.7,8.0)'")
+                   r"fontcolor=0xDC263C:fontsize=36:borderw=2:bordercolor=0x000000:"
+                   r"shadowcolor=0x000000@0.6:shadowx=1:shadowy=2:box=1:boxcolor=0x0B0B0E@0.94:boxborderw=18:"
+                   r"x=1118:y=560:enable='between(t,0.7,8.0)'")
         if hold > 0:
             vf += f",tpad=stop_mode=clone:stop_duration={hold}"
         vf += ",format=yuv420p"
@@ -105,7 +105,13 @@ for (name, src, kind, tstart, trim, hold), length in zip(SEGMENTS, lengths):
              "-vf", vf, "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "17",
              "-pix_fmt", "yuv420p", out], "clip " + name)
     built.append((name, out, length))
-    print(f"  {name}: {dur(out):.2f}s (planned start {tstart})")
+    actual = dur(out)
+    print(f"  {name}: {actual:.2f}s (planned start {tstart})")
+    if actual < length - 0.1:
+        print(f"ERROR: segment {name} encoded at {actual:.2f}s but its slot is {length:.2f}s. "
+              f"The source is shorter than the planned trim/hold — refusing to ship a video whose picture "
+              f"silently stops earlier than the audio.")
+        sys.exit(1)
 
 # ---------------------------------------------------------------- chain with cross-dissolves
 inputs = []
@@ -197,7 +203,8 @@ mix_inputs = ["-i", bgm, "-i", vo]
 if sfx:
     mix_inputs += ["-i", sfx]
     mix_parts.append("[2:a]volume=1.0[sfx]")
-mix_parts.append("[bg][voxside]sidechaincompress=threshold=0.05:ratio=9:attack=12:release=380:makeup=1[ducked]")
+mix_parts.append("[voxside]apad=whole_dur=" + str(TARGET) + ",asetpts=N/SR/TB[voxpad]")
+mix_parts.append("[bg][voxpad]sidechaincompress=threshold=0.05:ratio=9:attack=12:release=380:makeup=1[ducked]")
 mix_parts.append("[ducked][voxmain]" + ("[sfx]" if sfx else "") + "amix=inputs=" +
                  ("3" if sfx else "2") + ":normalize=0:dropout_transition=0[mix]")
 mix_parts.append("[mix]apad,atrim=0:" + str(TARGET) + ",loudnorm=I=-14:TP=-1.5:LRA=11[final]")
@@ -216,4 +223,8 @@ run(["ffmpeg", "-y", "-v", "error",
      "-r", str(FPS), "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-movflags", "+faststart",
      "-t", str(TARGET), master], "master")
 print("MASTER:", dur(master), "s")
-print("BUILD DONE")
+master_duration = dur(master)
+if abs(master_duration - TARGET) > 0.5:
+    print(f"ERROR: final master is {master_duration:.3f}s, not {TARGET}s — refusing to ship a truncated film.")
+    sys.exit(1)
+print("BUILD DONE — master duration verified:", master_duration, "s")

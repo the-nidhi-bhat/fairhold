@@ -35,8 +35,8 @@ export const DEMO_IDENTITIES: Record<DemoRole, DemoIdentity> = {
     responsibility: "Delivers the work and submits evidence for each milestone.",
   },
   reviewer: {
-    name: "Sam Reviewer",
-    actor: "reviewer:Sam Reviewer",
+    name: "Morgan Reviewer",
+    actor: "reviewer:Morgan Reviewer",
     responsibility: "Reads the advisory notes. Never approves or moves money.",
   },
 };

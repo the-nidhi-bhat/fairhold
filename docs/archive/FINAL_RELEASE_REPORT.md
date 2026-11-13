@@ -1,5 +1,22 @@
 # FairHold — final release report
 
+> **Superseded (2026-11-13) — PayPal sandbox credentials.** The statements in this file that
+> report no PayPal sandbox credentials in Production — including "no credentials, no public
+> webhook, no `PAYPAL_WEBHOOK_ID`. The adapter is simulated in this build" and the owner action to
+> provide `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET` — are **incorrect** as to the credentials.
+> PayPal **sandbox** credentials (`PAYPAL_ENV`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`) **are**
+> configured in the Production scope: they are inherited at **team** level, which is why a
+> project-scoped `vercel env ls` does not list them for Production. The signed-in workspace
+> therefore uses the **PayPal sandbox** provider — authorizing a deal there creates a **real order
+> in the PayPal sandbox** that the buyer must approve in a PayPal sandbox account. PayPal **Live**
+> remains architecturally impossible: `readPayPalConfig()` returns `null` unless `PAYPAL_ENV` is
+> exactly `sandbox`, so no live adapter can be built and no live money can move. The guided `/demo`
+> page is a separate, browser-only path that uses the in-app **simulated** provider and says so on
+> screen. The *public webhook* and `PAYPAL_WEBHOOK_ID` remain outstanding, and no sandbox order has
+> been approved, captured or reconciled. See
+> [RELEASE_REPORT.md](../../RELEASE_REPORT.md) §2 and §8. The original text is retained below for
+> history.
+
 **Date:** 2026-11-08 · **Branch:** `feat/deal-milestone-foundation` ·
 **Repository:** `the-nidhi-bhat/fairhold` ·
 **Philosophy under test:** *AI proposes. Rules decide. Humans approve. PayPal

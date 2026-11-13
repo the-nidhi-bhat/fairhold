@@ -1,5 +1,18 @@
 # Development status
 
+> **Superseded (2026-11-13).** This document is a phase-level snapshot (Phase 0 closure + Phase
+> 5) and several statements in it are no longer the current state — in particular the claims that
+> there is no production deployment and no access control. The current state is in
+> [RELEASE_REPORT.md](../RELEASE_REPORT.md) and [docs/STATE.md](./STATE.md). On PayPal specifically:
+> sandbox credentials (`PAYPAL_ENV`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`) **are** now
+> configured in the Production scope, so the signed-in workspace uses the **PayPal sandbox**
+> provider and an authorization there creates a **real order in the PayPal sandbox**. PayPal **Live**
+> remains architecturally refused — `readPayPalConfig()` returns `null` unless `PAYPAL_ENV` is
+> exactly `sandbox`. The statement below that the app adapter "has never made a real call" remains
+> true: no authorization has been executed from this environment. The guided `/demo` page is a
+> separate, browser-only path that uses the in-app **simulated** provider and says so on screen.
+> The original text is retained below for history.
+
 Last updated: Phase 0 closure (sandbox partial-capture-and-void lifecycle run) + Phase 5 (PayPal webhook endpoint + durable reconciliation).
 
 ## What exists

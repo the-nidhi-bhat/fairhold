@@ -1,6 +1,27 @@
 # FairHold — Demo Recording Guide
 
-This guide documents the complete buyer → seller → reviewer multi-milestone demo journey for recording a professional project video. All workflows use the local development environment with simulated (demo) payments — no real PayPal transactions occur.
+This guide documents the complete buyer → seller → reviewer multi-milestone demo journey for recording a professional project video. In the **local** development environment every workflow uses the simulated (demo) payment provider, so no real PayPal transaction occurs. On the **live deployment** the signed-in workspace uses the PayPal **sandbox** provider instead — see [Payments in production](#payments-in-production) below.
+
+## Where to record: local or the live deployment
+
+Both work. Pick one and stay in it for the whole recording.
+
+| Target | URL | Use it when |
+|---|---|---|
+| **Live production** (recommended for a judge-facing video) | https://fairhold-beta.vercel.app | You want the recording to show the real deployed app with the real PostgreSQL database and the public URL on screen. Sign in with the same three demo identities — the production scope is configured with the same allowlists. |
+| **Local development** | http://localhost:3000 | You want to reset demo data between takes, or you need to debug something before recording. Requires `npm run dev` running first. |
+
+Both targets run the same code and the same seeded demo identities. The **payment provider differs**: the local environment has no PayPal credentials and uses the simulated provider, while the Production scope holds PayPal **sandbox** credentials and uses the sandbox provider. The deployed site is the one a judge will open, so it is the better choice for a final take.
+
+> **Payments in production** — three separate things, deliberately not conflated:
+>
+> | Path | Provider | Money |
+> |---|---|---|
+> | PayPal **Live** | none — refused by configuration (`PAYPAL_ENV` must be exactly `sandbox`) | No live money can move. |
+> | Guided `/demo` (browser-only, no server writes, no provider calls) | in-app **simulated** provider | None. No provider request is made. |
+> | Signed-in workspace (`/login` → a deal) | **PayPal sandbox** provider — the button reads "Create PayPal sandbox authorization" | Sandbox funds only. An authorization creates a **real order in the PayPal sandbox** that the buyer must approve in a PayPal sandbox account. |
+>
+> No PayPal Live account is configured and no real money moves in either target.
 
 ## 1. Recording Preparation
 
@@ -56,12 +77,12 @@ Three allowlisted demo identities exist on the server (controlled by `FAIRHOLD_D
 - Any `Pending` payment states that might confuse the viewer — simulated payments are labeled "SIMULATED AUTHORIZATION" / "SIMULATED CAPTURE"
 - The `No deals yet` empty state if you've already created deals
 
-### Confirm All Payments Are Simulated
+### Confirm the payment provider matches the target you are recording
 
 **Verify before recording:**
-- On any deal page, the payment status shows `Simulated authorized` or similar "simulated" label
-- Payment badges have `Simulated` text
-- The sidebar on deal pages says "PayPal sandbox credentials are configured, but real payment actions require PostgreSQL-backed accounting. This session uses the simulated provider — no PayPal request is made and no money moves."
+
+- **Local development** — on any deal page the payment status shows `Simulated authorized` or a similar "simulated" label, and payment badges carry `Simulated` text. The sidebar reads: "PayPal sandbox credentials are configured, but real payment actions require PostgreSQL-backed accounting. This session uses the simulated provider — no PayPal request is made and no money moves." (On a local machine with no PayPal credentials at all, the provider is simply the simulated one.)
+- **Live production** — the deal page's payment panel shows the button **"Create PayPal sandbox authorization"** with the caption "Creates a real order in the PayPal sandbox (no live money). The buyer must approve it, then confirm; this is an authorization hold, not a capture or settlement." The **guided `/demo`** page is still the simulated one and says "DEMO MODE — SIMULATED PAYMENTS".
 - **Never** should you see references to live PayPal, real money, or `$600 capture`
 
 ## 2. Exact Recording Sequence
@@ -252,17 +273,16 @@ Three allowlisted demo identities exist on the server (controlled by `FAIRHOLD_D
 
 ### No Real PayPal Transactions
 
-- **All payments are simulated** via `DemoPaymentProvider`
-- Payment status labels are clearly marked: `SIMULATED AUTHORIZATION`, `SIMULATED CAPTURE`, etc.
-- The UI explicitly states: "Simulated demo actions make no provider request" and "no funds are moved by demo actions"
-- **Never** make real PayPal API calls during recording
-- **Never** use PayPal Live credentials or test with real money
+- **No live PayPal transaction is ever possible.** PayPal **Live** is refused by configuration: `readPayPalConfig()` returns `null` unless `PAYPAL_ENV` is exactly `sandbox`, so a live adapter cannot be constructed even if a live credential were somehow present. **Never** use PayPal Live credentials or test with real money.
+- **Local development** — all payments are simulated via `DemoPaymentProvider`. Payment status labels are clearly marked: `SIMULATED AUTHORIZATION`, `SIMULATED CAPTURE`, etc. The UI explicitly states: "Simulated demo actions make no provider request" and "no funds are moved by demo actions". No PayPal API call is made at all.
+- **Live production** — the signed-in workspace uses the **PayPal sandbox** provider. An authorization there creates a **real order in the PayPal sandbox** (sandbox funds only), and the buyer must approve it in a PayPal sandbox account. The guided `/demo` remains the simulated provider and says so on screen.
+- If you are recording the sandbox path, **do not complete a sandbox approval** — leave the deal at "waiting for buyer approval" so no sandbox capture is recorded.
 
-### No PayPal Live, No Real Money
+### Which Provider Is In Use
 
-- The demo uses sandbox-configured or simulated provider only
-- If PayPal sandbox credentials are not fully configured, the app falls back to `DemoPaymentProvider`
-- All payment operations are explicitly labeled as simulated
+- The provider is the simulated one whenever PayPal sandbox credentials are absent, or present without PostgreSQL-backed accounting; the app then says so on the deal page
+- The provider is the **PayPal sandbox** one only when `PAYPAL_ENV=sandbox` with non-placeholder credentials **and** PostgreSQL is configured
+- The UI labels the two paths differently, so the label on screen is the source of truth
 
 ### No Real Customer Information
 
@@ -346,14 +366,14 @@ Three allowlisted demo identities exist on the server (controlled by `FAIRHOLD_D
   - [ ] Alex Buyer identity allowlisted
   - [ ] Jamie Seller identity allowlisted
   - [ ] Morgan Reviewer identity allowlisted
-- [ ] **Payments simulated:** Payment badges show "SIMULATED" label, no real provider calls
+- [ ] **Provider confirmed:** the payment label on screen matches the target — "SIMULATED" on a local run, "Create PayPal sandbox authorization" on the live deployment (sandbox funds only; no live money)
 - [ ] **No errors:** No `actionError` visible on any page; no invalid login messages
 - [ ] **Branding consistent:** Red-and-black visual identity throughout; no old logo references
 - [ ] **Browser clean:** Only FairHold tab open; no dev tools console visible; no extra extensions active
 - [ ] **Viewport set:** 1440x1024 or 1920x1080; zoom at 100%
 - [ ] **Test journey completed:** Run through steps 1-11 above once to verify all workflows work
 - [ ] **Audit trail verified:** Activity timeline shows complete event history from deal creation through evidence approvals
-- [ ] **Payment labels verified:** All payment statuses clearly say "Simulated" or "SIMULATED"
+- [ ] **Payment labels verified:** the payment status matches the provider in use — "Simulated" / "SIMULATED" on a local run, the PayPal **sandbox** authorization button on the live deployment
 - [ ] **No production changes:** `.env.local` not modified; no production deployment; no git commits/pushes
 
 ### If Something Fails During Recording
@@ -365,7 +385,7 @@ Three allowlisted demo identities exist on the server (controlled by `FAIRHOLD_D
 | Milestone creation blocked | Ensure deal status allows milestones (`!Completed`, `!Disputed`, `!Cancelled`, `!authorization`) |
 | Evidence submission blocked | Ensure milestone status is not `Completed` or `Cancelled`; check canSubmit flag |
 | Reviewer can't access deal | Ensure reviewer has explicit deal grant; may need buyer to grant access |
-| Payment not showing "Simulated" | Verify deal uses demo provider; check `paymentRuntime()` returns demo mode |
+| Payment label does not match the target | Check `paymentRuntime()`: it returns the sandbox provider only when `PAYPAL_ENV=sandbox` with non-placeholder credentials **and** PostgreSQL is configured; otherwise the simulated provider is used |
 | UI shows old logo | Verify `fairhold-shield.svg` is in `public/` and referenced in `layout.tsx` |
 
 ---

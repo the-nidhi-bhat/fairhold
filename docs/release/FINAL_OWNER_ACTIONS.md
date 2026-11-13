@@ -138,17 +138,17 @@ Do NOT silently add a license without owner approval — licensing changes owner
 
 | Capability | Status | Blocker |
 |---|---|---|
-| PayPal meaningful integration | NOT VERIFIED | Real sandbox adapter code exists (`lib/payments/paypal.ts`) but live sandbox unverified |
-| PayPal sandbox transaction | BLOCKED BY CONFIGURATION | No sandbox client ID/secret, no public HTTPS webhook, no `PAYPAL_WEBHOOK_ID` |
+| PayPal meaningful integration | NOT VERIFIED | Real sandbox adapter code exists (`lib/payments/paypal.ts`) but the live sandbox lifecycle is unverified (corrected 2026-11-13: the sandbox credentials are configured in Production, so the signed-in workspace uses the sandbox provider — no order has been approved or captured) |
+| PayPal sandbox transaction | BLOCKED BY CONFIGURATION | Corrected 2026-11-13: the sandbox client ID/secret are configured in Production; what is still missing is a public HTTPS webhook, `PAYPAL_WEBHOOK_ID`, and an approved + captured sandbox order |
 | AI meaningful integration | NOT VERIFIED | Advisory layer live (deterministic fallback), but live provider unverified |
 | AI + PayPal together | NOT VERIFIED | Cross-workflow path mock-tested, not exercised live |
 | Live AI provider | NOT VERIFIED | No `GEMINI_API_KEY` / `GEMINI_MODEL` configured |
 
 **To resolve (owner actions, in order):**
-1. Create PayPal sandbox app at developer.paypal.com → get `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`
-2. Set `PAYPAL_ENV=sandbox` + credentials in Vercel Preview env
+1. ~~Create PayPal sandbox app at developer.paypal.com → get `PAYPAL_CLIENT_ID` / `PAYPAL_CLIENT_SECRET`~~ — done, the sandbox credentials are configured in Production (corrected 2026-11-13)
+2. ~~Set `PAYPAL_ENV=sandbox` + credentials in Vercel Preview env~~ — done for Production and Preview (corrected 2026-11-13)
 3. Create public HTTPS webhook endpoint → get `PAYPAL_WEBHOOK_ID`
-4. Configure `DATABASE_URL` (hosted PostgreSQL) for real payment operations
+4. Configure `DATABASE_URL` (hosted PostgreSQL) for real payment operations — done in Production (corrected 2026-11-13)
 5. Configure `GEMINI_API_KEY` + `GEMINI_MODEL` for live AI advisory
 6. Run sandbox verification: order creation → buyer approval → capture → webhook → ledger accounting
 

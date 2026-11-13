@@ -62,7 +62,37 @@ Participantship is derived from the deal itself: a buyer session matches `deal.c
 
 ### CSRF
 
-Mutations use Next.js server actions, which are same-origin and do not accept cross-origin form posts from other sites. The session cookie is `sameSite=lax`, so it is not sent on cross-site `POST`. There is no separately exposed cookie-authenticated REST mutation endpoint.
+Mutations use Next.js server actions, which are same-origin and do not accept cross-origin form posts from other sites. The session cookie is `sameSite=lax`, so it is not sent on cross-site `POST`. **`POST /logout` is the one separately exposed cookie-authenticated HTTP mutation endpoint** — it is a native route handler, not a server action, so it does not inherit the server-action origin check and carries its own instead. See [The `POST /logout` endpoint](#the-post-logout-endpoint) below.
+
+### The `POST /logout` endpoint
+
+`app/logout/route.ts` is the only route handler that mutates state, and it is the only
+cookie-authenticated HTTP mutation endpoint in the application. It is deliberately small and
+deliberately not a server action.
+
+| Aspect | Implementation |
+| --- | --- |
+| Methods | `POST` only. `GET` returns `405 Method not allowed` — Next.js answers an unsupported method on a route handler with `405` (`node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md`, "Supported HTTP Methods"). A GET logout would let any third-party page sign a user out with a plain link or an image tag. |
+| Effect | Clears the `fairhold_session` cookie (`httpOnly`, `sameSite=lax`, `path=/`) by deleting it. No other state is touched and no database write occurs. |
+| Response | `303 See Other` with a `Location` of `/`. The browser follows up with a `GET`, so the landing page is fetched rather than re-posted. The same `303` is returned when there was no session to clear. |
+| Refusal | A cross-site request is refused with a plain-text `403` and the session cookie is left untouched. The refusal is **not** a redirect, so it cannot carry the user to an attacker-chosen URL. |
+| Origin check | `Sec-Fetch-Site: cross-site` is decisive. Otherwise the `Origin` header is compared **by host** against the request URL's host, `X-Forwarded-Host`, `Host`, and the configured application URL (`resolveAppUrl`). A missing `Origin` proves nothing, so the request is accepted rather than failing closed on a legitimate non-browser client; `Origin: null` is refused. |
+| Auth | No session is required. The route clears whatever session exists; refusing an unauthenticated request would leak whether a session was present. |
+
+The full API contract, including the `405` behaviour, is in [API_REFERENCE.md](./API_REFERENCE.md).
+
+### Sign-out cross-site request rejection
+
+`POST /logout` is a native form target (`app/logout/route.ts`), not a server action, so it does not inherit the server-action origin check. It carries its own, in two layers:
+
+- **POST only.** A GET logout would be reachable from any third-party page with a plain link or an `<img src="/logout">`.
+- **`Sec-Fetch-Site` / `Origin` check.** A request that states it came from another site — `Sec-Fetch-Site: cross-site`, an `Origin` that does not name this host, or `Origin: null` (an opaque or sandboxed origin) — is refused with `403`, and the session cookie is left untouched. The refusal is a plain-text `403`, not a redirect, so a refused request cannot carry the user to an attacker-chosen URL.
+
+`sameSite=lax` alone does not close this. It withholds the cookie from the cross-site *request*, but the browser still applies a `Set-Cookie` deletion arriving on the cross-site *response*, so a third-party auto-submitting form could force a signed-in user out. The impact of that is a forced sign-out only: the attacker never receives the session, and there is no privilege escalation, no data loss and no information disclosure.
+
+Requests that carry neither header are accepted, because they cannot be a browser cross-site form post and refusing them would break handcrafted and server-to-server clients. A request whose own origin cannot be determined is accepted for the same reason.
+
+This is **not** a full CSRF token scheme. A per-session synchroniser token rendered into the form and compared on submit is the strongest option; this check stops the browser cross-site form, and it would remain a useful second layer if a token were ever added.
 
 ### Payment safety
 

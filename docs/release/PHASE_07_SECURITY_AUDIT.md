@@ -23,7 +23,7 @@
 |---|---|---|---|
 | `requireDealAccessOrRedirect` before state checks in `changeMilestoneStatusAction` / `changeDealStatusAction` | Major | FIXED | `app/deals/actions.ts` — access check moved first |
 | `canAccessDeal` server-side on deal page; no client role spoofing | — | PASS | `lib/auth/session.ts` + `app/deals/[id]/page.tsx` |
-| Sign-out invalidates session; malformed/expired sessions fail safely | — | PASS | `logoutAction` clears session then redirects |
+| Sign-out invalidates session; malformed/expired sessions fail safely | — | PASS | `POST /logout` (`app/logout/route.ts`) clears the session cookie then redirects. POST only — a GET logout would be CSRF-able. |
 
 ## C. PayPal & financial integrity findings
 
@@ -135,7 +135,7 @@ No application code changed in Phase 7.
 ## M. Owner-only actions
 
 1. Scope Vercel Deployment Protection for the demo preview (or accept blocked public demo).
-2. Provide `DATABASE_URL`, hosted object storage, PayPal sandbox credentials + webhook, `GEMINI_API_KEY`/`GEMINI_MODEL`.
+2. Provide hosted object storage, the PayPal **sandbox** webhook configuration (`PAYPAL_WEBHOOK_ID` + a public HTTPS webhook URL), and `GEMINI_API_KEY`/`GEMINI_MODEL`. (Corrected 2026-11-13: `DATABASE_URL` and the PayPal sandbox credentials are configured in the Production scope already.)
 3. Human review of video frames (cannot view images).
 4. License decision (MIT recommended; LICENSE file missing).
 

@@ -1,6 +1,16 @@
 # API reference
 
-FairHold has two HTTP routes. Every other mutation is a Next.js **server action**, callable only from the application's own forms and always re-authenticated server-side.
+FairHold has **five** HTTP route handlers. Every other mutation is a Next.js **server action**, callable only from the application's own forms and always re-authenticated server-side.
+
+| Route | Methods | Purpose |
+| --- | --- | --- |
+| `/api/evidence/{dealId}/{evidenceId}` | `GET` | Streams a stored evidence file to a participant of the deal. |
+| `/api/paypal/webhook` | `POST`, `GET` | Receives PayPal sandbox notifications. `GET` returns `405`. |
+| `/logout` | `POST` | Clears the signed session cookie. `GET` returns `405`. |
+| `/deals/{id}/payment-return` | `GET` | PayPal approval return URL. |
+| `/deals/{id}/payment-cancel` | `GET` | PayPal cancellation return URL. |
+
+Five route handlers, six exported method handlers (`/api/paypal/webhook` exports both `POST` and `GET`). Verified by grepping `export async function (GET|POST|PUT|PATCH|DELETE|HEAD)` under `app/` — exactly five `route.ts` files exist: `app/api/evidence/[dealId]/[evidenceId]/route.ts`, `app/api/paypal/webhook/route.ts`, `app/deals/[id]/payment-return/route.ts`, `app/deals/[id]/payment-cancel/route.ts` and `app/logout/route.ts`.
 
 Authenticated requests are identified by the `fairhold_session` cookie (HMAC-signed; see [SECURITY.md](./SECURITY.md)).
 
@@ -72,6 +82,54 @@ Processing outcomes:
 
 ---
 
+## `POST /logout`
+
+Clears the signed session cookie and returns to the landing page.
+
+**Why a route and not a server action:** the sign-out control is a plain HTML form. A server-action form is inert until React has hydrated and taken the form over, and a click landing inside that takeover window was swallowed — the user stayed signed in. This was reproduced in WebKit. A native POST has no takeover window, and it keeps sign-out working when client JavaScript is unavailable.
+
+**Method:** POST only. `GET` returns `405 Method not allowed` — a GET logout would let any third-party page sign a user out with a plain link or image, which is a CSRF vector.
+
+**Verified against the production build** (`next start`, observed 2026-11-13):
+
+| Request | Observed response |
+| --- | --- |
+| `GET /logout` | `405 Method Not Allowed`, and **no `Set-Cookie`** — the session is left untouched |
+| `POST /logout` | `303 See Other`, `Location: <origin>/` (absolute, resolved from the request URL), `Set-Cookie: fairhold_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT` |
+
+| Outcome | Status | Location |
+| --- | --- | --- |
+| Success, or no session to clear | `303` | `/` |
+
+**Cross-site refusal.** A request that states it came from another site is refused with a plain-text `403` and the session cookie is left untouched. The refusal is not a redirect. Full detail: [SECURITY.md](./SECURITY.md) → *The `POST /logout` endpoint*.
+
+---
+
+## `GET /deals/{id}/payment-return`
+
+The PayPal approval return URL. PayPal redirects the buyer here after they approve the order in PayPal.
+
+**This route only renders a landing page.** It never treats a browser redirect or a query parameter as proof of authorization: the authorization is confirmed server-side by `confirmAuthorizationAction`, which calls PayPal's authorize endpoint itself.
+
+| Condition | Outcome |
+| --- | --- |
+| No session, no deal, not a participant | `404` `Not found` |
+| The deal has no pending authorization | `400` `No pending authorization found for this deal.` |
+| Success | Redirect to `/deals/{id}?paymentReturn=1` |
+
+---
+
+## `GET /deals/{id}/payment-cancel`
+
+The PayPal cancellation return URL, used when the buyer abandons the approval flow in PayPal.
+
+| Condition | Outcome |
+| --- | --- |
+| No session, no deal, not a participant | `404` `Not found` |
+| Success | Redirect to `/deals/{id}?paymentCancel=1` |
+
+---
+
 ## Server actions
 
 All actions live in `app/deals/actions.ts`, `app/deals/advisory-actions.ts`, and `app/login/actions.ts`. They run on the server, read the session cookie themselves, and re-check role and deal access on every call. Two response styles exist:
@@ -134,7 +192,7 @@ These live in `app/deals/advisory-actions.ts`. All four require a session and re
 | Action | Form fields | Behaviour |
 | --- | --- | --- |
 | `loginAction` | `name`, `role` | Trims the name (≤ 100), requires `buyer \| seller \| reviewer`, requires an allowlist match; on failure redirects to `/login?error=invalid`; on success sets the signed cookie and redirects to `/dashboard`. |
-| `logoutAction` | — | Clears the cookie and redirects to `/`. |
+| Sign-out | — | Not a server action. The header posts a plain form to `POST /logout`, which clears the cookie and redirects to `/`. |
 
 ### Validation error keys
 

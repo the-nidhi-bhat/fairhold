@@ -1,8 +1,8 @@
 // Round 2 (final): move the deal to Ready for Authorization, place the simulated hold,
 // then record the genuine end-to-end workflow.
-const fs = require('fs');
-const path = require('path');
-const { chromium } = require('C:/Users/theni/OneDrive/Desktop/projects main/PPH/node_modules/@playwright/test');
+import fs from 'node:fs';
+import path from 'node:path';
+import { chromium } from '@playwright/test';
 
 const BASE = 'https://fairhold-beta.vercel.app';
 const WORK = 'C:/Users/theni/AppData/Local/Temp/opencode/brag';
@@ -13,7 +13,6 @@ const DEAL = fs.readFileSync(path.join(WORK, 'deal-url.txt'), 'utf8').trim();
 const BUYER = 'Alex Buyer';
 const SELLER = 'Jamie Seller';
 const MS1 = 'Discovery and scope';
-const MS2 = 'Responsive build and handoff';
 const NOTE1 = 'Discovery workshop complete. Scope covers 375, 768 and 1440 breakpoints with a written handoff checklist.';
 
 const errs = [];

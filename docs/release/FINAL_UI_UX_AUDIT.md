@@ -264,7 +264,7 @@ Nothing was weakened, skipped, mocked, or omitted.
 | `fairhold-beta.vercel.app` alias | OWNER ACTION REQUIRED | Stale alias owned by broken first deploy; owner decision to replace/remove |
 | `LICENSE` file | OWNER ACTION REQUIRED | Missing; MIT recommended |
 | YouTube video upload | OWNER ACTION REQUIRED | Assets ready (100s master + 30s cut + captions + thumbnail); not uploaded |
-| PayPal sandbox verification | BLOCKED | No sandbox credentials, no public webhook, no `PAYPAL_WEBHOOK_ID` |
+| PayPal sandbox verification | BLOCKED | Corrected 2026-11-13: sandbox credentials are configured in the Production scope (the live deal page renders "Create PayPal sandbox authorization"), but no public webhook and no `PAYPAL_WEBHOOK_ID` are confirmed, and no sandbox order has been approved or captured |
 | AI provider verification | BLOCKED | No `GEMINI_API_KEY` / `GEMINI_MODEL` |
 | `DATABASE_URL` / hosted storage | BLOCKED | Production env scope empty |
 | Visual defect inspection | NOT VERIFIED | Model cannot view images; screenshots in `audit-shots/` for human review |

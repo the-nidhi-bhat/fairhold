@@ -26,6 +26,7 @@ They are **not** the current state of the project. For the live release record u
 | `RELEASE_CHECKLIST.md` | Release acceptance checklist. |
 | `FAIRHOLD_STATE.md` | Compact project state snapshot. |
 | `DEMO.md` | Superseded short demo note; use [../DEMO_GUIDE.md](../DEMO_GUIDE.md) instead. |
+| [`launch-video-source/`](./launch-video-source/) | HyperFrames authoring source for the **first** (100 s, silent) launch film. Its rendered MP4s were removed when the film was superseded by the three-minute product film in [`production/brag-video/`](../../production/brag-video/) and its [YouTube release](https://www.youtube.com/watch?v=DvCpRhXJ6VQ). |
 
 Figures inside these documents reflect the sprint in which they were written and are not
 guaranteed to match the current build.

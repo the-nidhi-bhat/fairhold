@@ -13,7 +13,7 @@
 
 FairHold's PayPal sandbox adapter and AI advisory layer are fully implemented as server-side code with comprehensive mock-based test coverage. Both are **advisory/execution-separated by design**: AI proposes, deterministic rules decide, humans approve, PayPal executes.
 
-**PayPal status:** PARTIAL — real sandbox adapter code exists and is thoroughly unit-tested with a mocked transport, but **live sandbox integration is NOT VERIFIED** because no sandbox credentials, public webhook URL, or `PAYPAL_WEBHOOK_ID` are configured.
+**PayPal status:** PARTIAL — real sandbox adapter code exists and is thoroughly unit-tested with a mocked transport, but **live sandbox integration is NOT VERIFIED**. At the time of this report no sandbox credentials, public webhook URL, or `PAYPAL_WEBHOOK_ID` were configured. **Corrected 2026-11-13:** sandbox credentials are now configured in the Production scope, so the signed-in workspace uses the sandbox provider (the live deal page renders "Create PayPal sandbox authorization"), but no sandbox order has been approved or captured and the webhook path is still unverified.
 
 **AI status:** PARTIAL — advisory layer implemented with structured output validation and a live deterministic fallback, but **live AI integration is NOT VERIFIED** because no `GEMINI_API_KEY`/`GEMINI_MODEL` are configured.
 
@@ -68,7 +68,7 @@ Full gate after this phase: typecheck exit 0, lint exit 0, unit **199/199 pass**
 | Ambiguous failure handling | IMPLEMENTED | PENDING on timeout; never blind retry |
 | Void | IMPLEMENTED (mock-tested) | `voidAuthorization`; not a refund |
 | Refunds | MISSING | Not implemented |
-| Real sandbox transaction | NOT VERIFIED | No sandbox credentials, no public webhook, no `PAYPAL_WEBHOOK_ID` |
+| Real sandbox transaction | NOT VERIFIED | Corrected 2026-11-13: sandbox credentials are configured in the Production scope, but no public webhook / `PAYPAL_WEBHOOK_ID` is confirmed and no sandbox order has been approved or captured |
 
 **Safety guarantees (all preserved, all tested):**
 - Amounts server-derived; `FormData` never supplies an amount.
@@ -174,7 +174,7 @@ All changes are uncommitted at the time of this report. Head is `4144090` (synce
 
 ## J. Owner actions
 
-1. **Provide PayPal sandbox credentials** (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`) + public HTTPS webhook URL + `PAYPAL_WEBHOOK_ID` to enable live sandbox verification.
+1. **Provide PayPal sandbox webhook configuration** — public HTTPS webhook URL + `PAYPAL_WEBHOOK_ID` — to enable live sandbox verification. (Corrected 2026-11-13: the sandbox credentials `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` are configured in the Production scope already.)
 2. **Provide `GEMINI_API_KEY`/`GEMINI_MODEL`** to enable live AI verification.
 3. **Provision `DATABASE_URL`** (PostgreSQL) for real payment operations.
 4. **Review and commit** the Phase 2 changes (this report, new tests, new docs).
@@ -185,10 +185,10 @@ All changes are uncommitted at the time of this report. Head is `4144090` (synce
 
 | Requirement | Verdict | Basis |
 |---|---|---|
-| Meaningful PayPal usage | NOT VERIFIED | Real sandbox adapter code exists + mock-tested, but no live sandbox transaction (no credentials/webhook) |
+| Meaningful PayPal usage | NOT VERIFIED | Real sandbox adapter code exists + mock-tested, but no live sandbox transaction has been approved and captured (corrected 2026-11-13: sandbox credentials are configured in Production; the webhook id is still not confirmed) |
 | Meaningful AI usage | NOT VERIFIED | Advisory layer implemented + mock-tested + deterministic fallback live, but no live AI provider call (no key) |
 | Both used meaningfully together | NOT VERIFIED | Cross-workflow path implemented + mock-tested, but not exercised with live providers |
-| Sandbox transaction | BLOCKED BY CONFIGURATION | No sandbox credentials, no public webhook, no `PAYPAL_WEBHOOK_ID` |
+| Sandbox transaction | BLOCKED BY CONFIGURATION | Corrected 2026-11-13: sandbox credentials are configured in Production; what is still missing is the public webhook, `PAYPAL_WEBHOOK_ID`, and an approved + captured sandbox order |
 | Demo safety | VERIFIED | `/demo` uses simulated payments, no PayPal calls (Playwright guard fails if any PayPal URL requested) |
 
 **Phase 2 verdict: COMPLETE** — all safe local work is done, verified, and documented. Live verification of PayPal and AI remains blocked by missing owner-provided credentials.
@@ -197,7 +197,7 @@ All changes are uncommitted at the time of this report. Head is `4144090` (synce
 
 ## L. Remaining blockers (ranked by submission impact)
 
-1. **PayPal sandbox credentials** — HIGH — required to verify meaningful PayPal usage and run a real sandbox transaction.
+1. **PayPal sandbox webhook configuration** — HIGH — required to verify meaningful PayPal usage and run a real sandbox transaction. (Corrected 2026-11-13: the sandbox credentials themselves are configured in Production already.)
 2. **AI API key + model** — HIGH — required to verify meaningful AI usage and live AI + PayPal connection.
 3. **PostgreSQL `DATABASE_URL`** — MEDIUM — required for real payment operations (sandbox adapter requires durable accounting).
 4. **Public webhook URL + `PAYPAL_WEBHOOK_ID`** — MEDIUM — required for webhook verification in production.

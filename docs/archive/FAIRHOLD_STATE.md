@@ -2,6 +2,20 @@
 
 Updated 2026-11-04.
 
+> **Superseded (2026-11-13) — PayPal sandbox credentials.** The statements in this file that
+> report no PayPal sandbox credentials in Production, and therefore that the app "runs the demo
+> provider" there, are **incorrect**. PayPal **sandbox** credentials (`PAYPAL_ENV`,
+> `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`) **are** configured in the Production scope: they are
+> inherited at **team** level, which is why a project-scoped `vercel env ls` does not list them for
+> Production. The signed-in workspace therefore uses the **PayPal sandbox** provider — authorizing a
+> deal there creates a **real order in the PayPal sandbox** that the buyer must approve in a PayPal
+> sandbox account. PayPal **Live** remains architecturally impossible: `readPayPalConfig()` returns
+> `null` unless `PAYPAL_ENV` is exactly `sandbox`, so no live adapter can be built and no live
+> money can move. The guided `/demo` page is a separate, browser-only path that uses the in-app
+> **simulated** provider and says so on screen. See
+> [RELEASE_REPORT.md](../../RELEASE_REPORT.md) §2 and §8. The original text is retained below for
+> history.
+
 ## Implemented and verified
 
 - App Router UI: landing, demo login, dashboard, deal creation, deal detail,

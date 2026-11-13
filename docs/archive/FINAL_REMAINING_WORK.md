@@ -1,5 +1,22 @@
 # FairHold — remaining work
 
+> **Superseded (2026-11-13) — PayPal sandbox credentials.** The rows and owner actions in this
+> file that report no PayPal sandbox credentials in Production — "Needs sandbox client id/secret,
+> a public HTTPS webhook and `PAYPAL_WEBHOOK_ID`", "the provider adapter is simulated in this
+> build", and the credential request in the owner actions — are **incorrect** as to the
+> credentials. PayPal **sandbox** credentials (`PAYPAL_ENV`, `PAYPAL_CLIENT_ID`,
+> `PAYPAL_CLIENT_SECRET`) **are** configured in the Production scope: they are inherited at
+> **team** level, which is why a project-scoped `vercel env ls` does not list them for Production.
+> The signed-in workspace therefore uses the **PayPal sandbox** provider — authorizing a deal there
+> creates a **real order in the PayPal sandbox** that the buyer must approve in a PayPal sandbox
+> account. PayPal **Live** remains architecturally impossible: `readPayPalConfig()` returns `null`
+> unless `PAYPAL_ENV` is exactly `sandbox`, so no live adapter can be built and no live money can
+> move. The guided `/demo` page is a separate, browser-only path that uses the in-app **simulated**
+> provider and says so on screen. The *public webhook*, `PAYPAL_WEBHOOK_ID` and an approved +
+> captured sandbox order remain outstanding. See
+> [RELEASE_REPORT.md](../../RELEASE_REPORT.md) §2 and §8. The original text is retained below for
+> history.
+
 Gap matrix as of 2026-11-08, branch `feat/deal-milestone-foundation`.
 Statuses are evidence-based: a row is DONE only where a command or assertion in
 this repository proves it. Nothing here is aspirational.

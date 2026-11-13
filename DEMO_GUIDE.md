@@ -2,6 +2,8 @@
 
 A repeatable run-through for judges and reviewers. Everything here works with no PayPal credentials and no AI key, and every payment step is labelled **simulated** because no provider request is made.
 
+> This guide runs FairHold **locally**, with no `PAYPAL_*` variables set — so the app selects the in-app **simulated** provider and every payment step is labelled as simulated. The Production deployment is different: it holds PayPal **sandbox** credentials, so a signed-in buyer there sees "Create PayPal sandbox authorization" (sandbox funds only — no live money, and PayPal Live is refused by configuration). See [Payments in production](./README.md#payments-in-production).
+
 ## Before you start
 
 ```bash

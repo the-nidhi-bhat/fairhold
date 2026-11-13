@@ -1,3 +1,16 @@
+> **Archived — superseded (2026-11-13).**
+> This is the authoring source for the **first** FairHold launch film: a 100-second,
+> 12-scene, **silent** HyperFrames composition. Its rendered MP4s have been **removed
+> from the repository** (`renders/`), because that film has been superseded by the
+> three-minute product film in [`production/brag-video/`](../../production/brag-video/),
+> which was built from real recordings of the live deployment and carries narration,
+> music, sound design and burned-in captions.
+>
+> The composition source is kept here for history and reuse. It is **not** the shipped
+> product film. The film judges will see is published on YouTube:
+> **[FairHold — Milestone-Based Payments Built on Trust, Evidence & Accountability](https://www.youtube.com/watch?v=DvCpRhXJ6VQ)**.
+> The full history of the removed renders remains in the Git log.
+
 # FairHold launch video
 
 HyperFrames source for the product video. The composition is one standalone

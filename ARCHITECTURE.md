@@ -1,6 +1,6 @@
 # Architecture
 
-FairHold is a single Next.js application. Server components read state, server actions mutate it, and two HTTP routes exist for machine-to-machine traffic (evidence download and the PayPal webhook).
+FairHold is a single Next.js application. Server components read state, server actions mutate it, and **five HTTP route handlers** exist under `app/`: the evidence download, the PayPal webhook, the native `POST /logout`, and the two PayPal return URLs (`/deals/[id]/payment-return` and `/deals/[id]/payment-cancel`). Everything else that mutates is a server action.
 
 ## Layering
 
@@ -50,12 +50,15 @@ The dependency rule is one-directional: domain modules import only domain types;
 | Path | Contents |
 | --- | --- |
 | `app/page.tsx` | Landing page: positioning, workflow, boundaries. |
-| `app/login/` | Demo sign-in page and `loginAction` / `logoutAction`. |
+| `app/login/` | Demo sign-in page and `loginAction`. |
+| `app/logout/route.ts` | Native `POST /logout` — clears the session cookie. A route, not a server action, so sign-out never waits for hydration. |
 | `app/dashboard/` | Role-framed workspace with Suspense skeleton, error and loading boundaries. |
 | `app/deals/new/` | Deal creation form and action. |
 | `app/deals/[id]/` | Deal detail: timeline, evidence, approvals, payment status. |
 | `app/api/evidence/[dealId]/[evidenceId]/route.ts` | Authorised evidence download. |
 | `app/api/paypal/webhook/route.ts` | Webhook entry point. |
+| `app/deals/[id]/payment-return/route.ts` | PayPal approval return URL. |
+| `app/deals/[id]/payment-cancel/route.ts` | PayPal cancellation return URL. |
 | `app/deals/actions.ts` | Every deal mutation (651 lines, ten exported actions). |
 | `lib/domain/` | State machines, rules, approval gate, evidence validation, formatting, dashboard summaries. |
 | `lib/data/` | `index.ts` facade, `deals.ts` + `store.ts` (JSON), `postgres/` (SQL), `payment-operations.ts`, `storage.ts`. |
@@ -63,7 +66,7 @@ The dependency rule is one-directional: domain modules import only domain types;
 | `lib/ai/advisory.ts` | Advisory calls, schema validation, deterministic fallbacks. |
 | `lib/auth/` | `session-token.ts` (HMAC), `session.ts` (cookie), `deal-access.ts` (`canAccessDeal`, re-exported by `session.ts`), `demo-allowlist.ts`. |
 | `migrations/` | `0001_initial.sql` … `0004_payment_operations.sql`. |
-| `tests/` | Five Playwright specs (20 tests) run across three device profiles: desktop, mobile, tablet. |
+| `tests/` | Seven Playwright specs (31 tests per project) run across three device profiles: desktop, mobile, tablet. Firefox and WebKit are opt-in by name. |
 | `scripts/` | `run-e2e.mjs` (build + per-project E2E runner), `reset-test-data.mjs` (per-project fixture), `demo-reset.mjs`, `db-migrate.mjs`, `db-import-json.mjs`. |
 
 ## Request flows
@@ -137,7 +140,7 @@ The reservation exists so two concurrent approvals, or one double-submitted form
 | Ambiguity is `PENDING`, not failure | A timeout is not evidence that money did not move. | Some captures stay unresolved until an operator checks the provider. |
 | Money in integer cents | No floating point anywhere in the payment path. | Formatting must happen at the edges (`lib/domain/format.ts`). |
 | CSS-only motion | No animation runtime, no hydration cost, trivial reduced-motion support. | No timeline-driven choreography; scroll effects are CSS-only. |
-| Server actions instead of a REST API for mutations | Fewer moving parts, no client-side auth duplication. | Not consumable by third-party clients; the API surface is the two routes below. |
+| Server actions instead of a REST API for mutations | Fewer moving parts, no client-side auth duplication. | Not consumable by third-party clients; the API surface is the five route handlers listed above. |
 | Webhook quarantines commit and return 200 | Retrying an event that can never match would loop forever. | A quarantined event needs an operator to read the reason and act. |
 
 ## Runtime modes
@@ -147,9 +150,11 @@ The reservation exists so two concurrent approvals, or one double-submitted form
 | Local demo | `DATABASE_URL` unset, `PAYPAL_ENV` not `sandbox` | `DemoPaymentProvider` | `.data/fairhold.json` |
 | Local sandbox | `PAYPAL_ENV=sandbox` with credentials, `DATABASE_URL` set | `PayPalSandboxProvider` | PostgreSQL |
 | Degraded | PayPal credentials present, `DATABASE_URL` unset | `DemoPaymentProvider`, with `sandboxRequiresPostgres` reported | JSON |
-| Production | `DATABASE_URL` + `FAIRHOLD_SESSION_SECRET` + allowlists | As configured | PostgreSQL |
+| Production | `DATABASE_URL` + `FAIRHOLD_SESSION_SECRET` + allowlists | `PayPalSandboxProvider` when `PAYPAL_ENV=sandbox` with non-placeholder credentials **and** PostgreSQL is configured; otherwise `DemoPaymentProvider` | PostgreSQL |
 
 The degraded mode is deliberate: real provider calls require durable accounting, so credentials without a database never silently produce real-money operations.
+
+PayPal **Live** is not a row in this table and never will be: `readPayPalConfig()` returns `null` unless `PAYPAL_ENV` is exactly `sandbox`, so a live adapter cannot be constructed. In the Production scope the sandbox credentials are present, so the signed-in workspace runs the **sandbox** provider and the guided `/demo` runs the simulated one — see [README.md → Payments in production](./README.md#payments-in-production).
 
 ## Evidence storage
 

@@ -27,7 +27,7 @@ Scope: `Preview` only. Production scope is empty.
 | `FAIRHOLD_DEMO_SELLERS` | Config | Preview |
 | `FAIRHOLD_DEMO_BUYERS` | Config | Preview |
 
-No `DATABASE_URL`, `PAYPAL_*`, or `AI_*` variables are configured in either scope — consistent with demo-only operation.
+No `DATABASE_URL`, `PAYPAL_*`, or `AI_*` variables were configured in either scope **at the time of this audit** — consistent with demo-only operation. **Corrected 2026-11-13:** the Production scope now carries `DATABASE_URL`, the `AI_*` variables and the PayPal **sandbox** credential set, so the signed-in workspace uses the PayPal sandbox provider. A project-scoped `vercel env ls` still lists no `PAYPAL_*` for Production, because those variables are inherited at team level and the listing omits inherited entries.
 
 ## Anonymous access test
 

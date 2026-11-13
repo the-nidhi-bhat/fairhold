@@ -151,7 +151,11 @@ Every capture event must match an existing human approval, the expected amount a
 
 ## Sandbox verification status
 
-**Not verified in this environment.** No PayPal sandbox credentials or webhook id were configured, so no live authorization, capture, void or webhook was executed. What *is* verified:
+**Not verified in this environment.** PayPal **sandbox** credentials *are* configured in the Production scope — the live deal page renders the button "Create PayPal sandbox authorization", which is produced only when `provider.mode === "sandbox"` — so a signed-in authorization there creates a **real order in the PayPal sandbox**. But no such order was approved, captured, voided or reconciled from this session, and `PAYPAL_WEBHOOK_ID` is not confirmed there, so **no live authorization, capture, void or webhook has been executed or observed here**.
+
+PayPal **Live** remains architecturally impossible: `readPayPalConfig` returns `null` for any `PAYPAL_ENV` other than exactly `sandbox`, so no live adapter can ever be constructed and no live money can move.
+
+What *is* verified:
 
 - The full lifecycle through the demo adapter, asserted by the Playwright journey (authorize → capture → duplicate-payment attempt blocked).
 - Unit and integration coverage of the adapter logic, capture planning, reservation arithmetic, webhook signature decision table and quarantine reasons.

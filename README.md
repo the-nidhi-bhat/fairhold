@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./public/fairhold-shield.svg" alt="FairHold — work moves forward, payments move with proof" width="100%" />
+<img src="./public/fairhold-banner.png" alt="FairHold — milestone payments, built on trust. AI proposes. Humans decide. Rules govern." width="100%" />
 
 # FairHold
 
@@ -12,8 +12,8 @@ Work moves forward. Payments move with proof.
 [![React](https://img.shields.io/badge/React-19.3-000000?style=flat-square)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square)](https://www.typescriptlang.org)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169e1?style=flat-square)](https://www.postgresql.org)
-[![Unit tests](https://img.shields.io/badge/unit-296%20passing-2f6f4f?style=flat-square)](#development-and-testing)
-[![E2E](https://img.shields.io/badge/E2E-78%2F78-2f6f4f?style=flat-square)](#development-and-testing)
+[![Unit tests](https://img.shields.io/badge/unit-268%20passed%20%C2%B7%2028%20skipped-2f6f4f?style=flat-square)](#development-and-testing)
+[![E2E](https://img.shields.io/badge/E2E-93%2F93-2f6f4f?style=flat-square)](#development-and-testing)
 [![PayPal](https://img.shields.io/badge/PayPal-sandbox%20only-0070ba?style=flat-square)](#milestone-and-payment-lifecycle)
 
 </div>
@@ -26,12 +26,20 @@ Work moves forward. Payments move with proof.
 landing page, a signed-in deal with its milestones, a seller submitting evidence, a buyer reviewing and
 approving it, and the guided demo's clearly-labelled simulated capture. Narrated, scored and captioned.
 
-[![FairHold — trust, backed by accountability](production/brag-video/thumbnail.png)](production/brag-video/final-master.mp4)
+[![FairHold — FairHold — Milestone-Based Payments Built on Trust, Evidence & Accountability](https://i.ytimg.com/vi/DvCpRhXJ6VQ/hqdefault.jpg)](https://www.youtube.com/watch?v=DvCpRhXJ6VQ)
 
-<video controls poster="production/brag-video/thumbnail.png" width="100%">
-  <source src="production/brag-video/final-master.mp4" type="video/mp4">
-  Your browser cannot play this file. <a href="production/brag-video/final-master.mp4">Download the master (26.8 MB, 1920×1080)</a>.
-</video>
+**[▶ Watch on YouTube](https://www.youtube.com/watch?v=DvCpRhXJ6VQ)** ·
+[embed](https://www.youtube.com/embed/DvCpRhXJ6VQ) ·
+[open in the YouTube app](https://youtu.be/DvCpRhXJ6VQ)
+
+<iframe width="100%" height="400" src="https://www.youtube.com/embed/DvCpRhXJ6VQ"
+  title="FairHold — Milestone-Based Payments Built on Trust, Evidence &amp; Accountability"
+  frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+  referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+
+### The high-resolution master
+
+The master cut lives in this repository so the film is downloadable and auditable without leaving GitHub.
 
 | | |
 | --- | --- |
@@ -57,7 +65,26 @@ No account, no install, no API key. Two ways in:
 | **Guided demo** — [`/demo`](https://fairhold-beta.vercel.app/demo) | The full lifecycle against a fixed scenario, running in your browser with simulated payments. No server writes, no provider calls. |
 | **Full roles** — [`/login`](https://fairhold-beta.vercel.app/login) | Sign in as `Alex Buyer`, `Jamie Seller` or `Morgan Reviewer` and drive real server-side actions. |
 
-> **Payments are simulated.** No PayPal Live account is configured and no real money moves. Every payment control in the interface is labelled `SIMULATED`, and the provider is the in-app demo adapter — not PayPal. See [What FairHold is not](#what-fairhold-is-not).
+> **No PayPal Live account is configured and no real money moves.** PayPal **Live** is refused by
+> configuration, so no live adapter can ever be constructed. The guided demo and the signed-in
+> workspace do **not** use the same provider, and the interface labels them differently — see
+> [Payments in production](#payments-in-production). See also
+> [What FairHold is not](#what-fairhold-is-not).
+
+### Payments in production
+
+Three separate things, deliberately not conflated:
+
+| Path | Provider | What actually happens | Money |
+| --- | --- | --- | --- |
+| **PayPal Live** | none — refused | **Impossible by construction.** `readPayPalConfig()` returns `null` unless `PAYPAL_ENV` is exactly `sandbox`, so no live adapter can be built and no live credential is ever read. | No live money can move. |
+| **Guided demo** — [`/demo`](https://fairhold-beta.vercel.app/demo) | in-app **simulated** provider | Browser-only. The same deterministic rules run in your browser against a fixed scenario: no server writes, no provider calls. On screen it says `DEMO MODE — SIMULATED PAYMENTS` and `Simulated action — no PayPal request was made.` | None. No provider request is made. |
+| **Signed-in workspace** — [`/login`](https://fairhold-beta.vercel.app/login) → a deal | **PayPal sandbox** provider | The button reads **"Create PayPal sandbox authorization"**. Authorizing creates a **real order in the PayPal sandbox**, and the buyer must approve that order in a PayPal sandbox account before the hold completes; the app confirms the authorization server-side. | **No live money.** Sandbox funds only. |
+
+PayPal **sandbox** credentials are configured in the Production scope, together with the PostgreSQL
+database that the durable payment accounting requires. Only variable *names* are ever recorded —
+never a value. The practical consequence is that a signed-in buyer sees a sandbox authorization
+button, not a simulated one, while `/demo` stays simulated and says so.
 
 **The five-minute judge path** is written out in [DEMO_GUIDE.md](./DEMO_GUIDE.md), and the full twelve-step buyer → seller → reviewer journey is in [DEMO_RECORDING_GUIDE.md](./DEMO_RECORDING_GUIDE.md).
 
@@ -116,7 +143,7 @@ FairHold makes the milestone itself the unit of coordination:
 - **Exact money** — every amount is an integer number of cents; typed amounts are parsed straight to cents, so no float rounding can reach the ledger.
 - **Search, filters and honest empty states** — the dashboard narrows by text or status, says how many records match, and offers a clear path when nothing matches.
 - **Fee transparency** — the deal page states that no FairHold platform fee is implemented in this build and that provider merchant fees sit outside the ledger.
-- **Launch video** — a 100-second HyperFrames composition (source, storyboard, captions and MP4) in [`videos/fairhold-launch/`](./videos/fairhold-launch/).
+- **Product film** - a three-minute film built from real recordings of the deployed app, published on [YouTube](https://www.youtube.com/watch?v=DvCpRhXJ6VQ). The high-resolution master, the vertical cut and the production report are in [`production/brag-video/`](./production/brag-video/). The first (100-second, silent) HyperFrames film's authoring source is kept in [`docs/archive/launch-video-source/`](./docs/archive/launch-video-source/); its renders were removed when it was superseded.
 
 ---
 
@@ -165,7 +192,9 @@ Deal states follow the same shape, with one deliberate exception: `Authorized` c
 
 ## Judge demo walkthrough
 
-The fastest way to evaluate FairHold — two paths, both using only simulated payments:
+The fastest way to evaluate FairHold — two paths. Run locally, both use only the **simulated** provider
+(no `PAYPAL_ENV=sandbox` means no real adapter is ever built); against the Production deployment,
+Path B uses the PayPal **sandbox** — see [Payments in production](#payments-in-production):
 
 **Path A — no sign-in (2 minutes).** Start the app, open [`/demo`](./DEMO_GUIDE.md), and walk the fixed scenario end to end: agreement, evidence, revision, acceptance, approval, simulated capture. The money summary updates as the deterministic rules fire. Every simulated action is labelled as simulated in the UI.
 
@@ -174,7 +203,7 @@ The fastest way to evaluate FairHold — two paths, both using only simulated pa
 1. Sign in as `Jamie Seller` on `/login`, submit evidence against a milestone.
 2. Sign out, sign in as `Alex Buyer`, open the deal, request a revision with notes.
 3. Switch back to the seller, resubmit; back to the buyer, accept.
-4. Read the deterministic recommendation, approve it, and watch the capture operation move through `RESERVED → COMPLETED` (simulated).
+4. Read the deterministic recommendation, approve it, and watch the capture operation move through `RESERVED → COMPLETED` (simulated on a local run; a PayPal **sandbox** capture against Production).
 5. Inspect the **audit trail** on the deal page — every step above appears as an append-only event with actor and timestamp.
 
 **What to inspect in the code:**
@@ -472,9 +501,9 @@ npm run build
 ```
 
 - **Without a test database:** the PostgreSQL integration suites skip rather than fail — `npm test` reports 296 tests, 268 passing, 28 skipped, exit 0.
-- **With `FAIRHOLD_TEST_DATABASE_URL`** pointing at an isolated PostgreSQL 16 database: **296 tests, 296 passing, 0 failing, exit 0.**
-- `npm run test:e2e` builds the app once, then runs each Playwright project against its own server, its own data directory under the OS temp dir, and its own reset fixture. By default it fans out over the three Chromium projects — desktop, mobile and tablet — **26 tests each: 78/78 passing.** Firefox and WebKit are opt-in by name: `node scripts/run-e2e.mjs --project=desktop-firefox` (or `--project=desktop-webkit`).
-- `npm test` never touches the demo database file and never contacts PayPal. `npm run test:e2e` never contacts PayPal either — the provider adapter is simulated in this build.
+- **With `FAIRHOLD_TEST_DATABASE_URL`** pointing at an isolated PostgreSQL 16 database: **296 tests, 296 passing, 0 failing, exit 0.** That figure has **not** been observed in this release — no isolated instance was available in the verification environment, so the PostgreSQL-backed suites are unverified here.
+- `npm run test:e2e` builds the app once, then runs each Playwright project against its own server, its own data directory under the OS temp dir, and its own reset fixture. By default it fans out over the three Chromium projects - desktop, mobile and tablet - **31 tests each: 93/93 passing.** Firefox and WebKit are opt-in by name: `node scripts/run-e2e.mjs --project=desktop-firefox` (or `--project=desktop-webkit`).
+- `npm test` never touches the demo database file and never contacts PayPal. `npm run test:e2e` never contacts PayPal either — the harness does not set `PAYPAL_ENV`, so the provider adapter is simulated in this build.
 
 Verified results and the exact configuration used: [TESTING.md](./TESTING.md) and [QA_REPORT.md](./docs/archive/QA_REPORT.md).
 
@@ -486,7 +515,7 @@ Verified results and the exact configuration used: [TESTING.md](./TESTING.md) an
 | --- | --- |
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Layers, request flows, decisions and trade-offs. |
 | [DATABASE.md](./DATABASE.md) | Tables, constraints, indexes, migrations and transactions. |
-| [API_REFERENCE.md](./API_REFERENCE.md) | The two HTTP routes and every server action. |
+| [API_REFERENCE.md](./API_REFERENCE.md) | The five HTTP route handlers and every server action. |
 | [PAYMENT_FLOW.md](./PAYMENT_FLOW.md) | Authorization, capture, void, idempotency, ambiguity and webhooks. |
 | [AI_DESIGN.md](./AI_DESIGN.md) | Prompts, schema validation, fallbacks and the authority boundary. |
 | [SECURITY.md](./SECURITY.md) | Threat model, controls and known limitations. |
@@ -499,8 +528,8 @@ Verified results and the exact configuration used: [TESTING.md](./TESTING.md) an
 | [DEMO_SCRIPT_3MIN.md](./DEMO_SCRIPT_3MIN.md) | Spoken three-minute demo script, with timing beats and what not to claim. |
 | [RELEASE_REPORT.md](./RELEASE_REPORT.md) | **Current release report** — commit, deployment, test results and remaining manual actions. |
 | [CHANGELOG.md](./CHANGELOG.md) | Implementation history. |
-| [videos/fairhold-launch/](./videos/fairhold-launch/) | Launch video source, storyboard, captions and renders. |
-| [production/brag-video/](./production/brag-video/) | **The 3-minute product film** — master, vertical cut, thumbnail, subtitles, source scripts and the production report. |
+| [production/brag-video/](./production/brag-video/) | **The 3-minute product film** — master, vertical cut, thumbnail, subtitles, source scripts and the production report. Published on [YouTube](https://www.youtube.com/watch?v=DvCpRhXJ6VQ). |
+| [docs/archive/launch-video-source/](./docs/archive/launch-video-source/) | Archived authoring source for the superseded first (100 s, silent) launch film. |
 
 Historical reports, prior release verdicts and the superseded gap matrix are kept for provenance under [`docs/archive/`](./docs/archive/) and [`docs/release/`](./docs/release/). The canonical current report is [RELEASE_REPORT.md](./RELEASE_REPORT.md); the archived ones record earlier sprints.
 
@@ -514,19 +543,20 @@ Without `DATABASE_URL`, the JSON store lives on the local filesystem, which is r
 
 | Area | Status |
 | --- | --- |
-| Local implementation, typecheck, lint, build | ✅ Verified passing |
-| Unit + integration tests | ✅ 296/296 with test database |
-| E2E (desktop/mobile/tablet Chromium) | ✅ 78/78 (26 per project, three default projects; Firefox and WebKit opt-in by name) |
+| Local implementation, typecheck, build | ✅ Verified passing |
+| `npm run lint` | ✅ Exit **0** (verified 2026-11-13) — `production/brag-video/source/*.cjs` were converted to `.mjs`, and the whole repository lints clean |
+| Unit + integration tests | ✅ 296 tests — **268 passed, 0 failed, 28 skipped** (the 28 PostgreSQL-requiring suites skip without `FAIRHOLD_TEST_DATABASE_URL`; they are **unverified** in this release) |
+| E2E (desktop/mobile/tablet Chromium) | ✅ 93/93 (31 per project, three default projects; Firefox and WebKit opt-in by name) |
 | Vercel preview deployment | ✅ Built and Ready — **protected by Vercel Deployment Protection** (anonymous visitors are redirected to Vercel SSO; deliberately not bypassed) |
-| Vercel production deployment | ✅ Deployed from verified main commit `3838590`. **Public judge URL: https://fairhold-beta.vercel.app** — open it, no account needed. Deployment ID `dpl_EdWck3xKW1vTeRCUPgfJuHfdPtgw`. The per-deployment URLs (`fairhold-dk6j0fd1i-…`) are behind Vercel Deployment Protection (SSO) and are not the judge entry point. The production scope is configured with `FAIRHOLD_SESSION_SECRET`, the three demo allowlists and `FAIRHOLD_ALLOW_SIMULATED_PAYMENTS=true`, so sign-in works and every payment action stays clearly labelled as simulated ([DEPLOYMENT.md](./DEPLOYMENT.md)) |
-| Hosted PostgreSQL (`DATABASE_URL`) | ⚠️ Set in Vercel's Production and Preview scopes, but connectivity could not be verified from this environment; all verification here used an isolated local PostgreSQL 16 |
-| PayPal Sandbox end-to-end (live credentials) | ⛔ Blocked — no sandbox credentials, public webhook URL or `PAYPAL_WEBHOOK_ID` available here; the adapter and webhook path are implemented and unit-tested, but a real Sandbox lifecycle has **not** been executed |
+| Vercel production deployment | ✅ Deployed from verified main commit `3838590`. **Public judge URL: https://fairhold-beta.vercel.app** — open it, no account needed. Deployment ID `dpl_EdWck3xKW1vTeRCUPgfJuHfdPtgw`. The per-deployment URLs (`fairhold-dk6j0fd1i-…`) are behind Vercel Deployment Protection (SSO) and are not the judge entry point. The production scope is configured with `FAIRHOLD_SESSION_SECRET`, the three demo allowlists, `FAIRHOLD_ALLOW_SIMULATED_PAYMENTS=true` **and** the PayPal **sandbox** credential set (`PAYPAL_ENV`, `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` — names only, never values), so sign-in works and a signed-in buyer sees a **PayPal sandbox** authorization button rather than a simulated one ([DEPLOYMENT.md](./DEPLOYMENT.md)) |
+| Hosted PostgreSQL (`DATABASE_URL`) | ⚠️ Set in Vercel's Production and Preview scopes, but connectivity could not be verified from this environment. No isolated PostgreSQL 16 instance was available either, so the PostgreSQL-backed unit suites skipped rather than ran |
+| PayPal Sandbox end-to-end | ⚠️ Sandbox credentials **are** configured in the Production scope, and the live deal page renders the button "Create PayPal sandbox authorization" — so an authorization there creates a **real order in the PayPal sandbox**. What has **not** been executed from this environment is a complete Sandbox lifecycle (buyer approval → capture → webhook round trip): `PAYPAL_WEBHOOK_ID` is not confirmed from here and no sandbox order was placed from this session. PayPal **Live** remains refused by configuration |
 | Gemini live advisory calls | ⛔ Unverified — `GEMINI_API_KEY` exists in Vercel's scopes but is not available in this local environment; live calls were never executed here, and the deterministic fallback runs and is labelled in the UI |
 
 ### Limitations
 
 - Demo authentication only — signed names, not verified identities.
-- PayPal **sandbox** only; live credentials are refused by design. Live sandbox verification is not claimed (no credentials were configured in this environment).
+- PayPal **sandbox** only; live credentials are refused by design. Sandbox credentials are configured in Production, so a signed-in buyer authorizes against the real PayPal sandbox — no live money moves, and the buyer must approve the order in a PayPal sandbox account. A complete sandbox lifecycle (approval → capture → webhook) has not been executed and verified from this environment.
 - No refunds, no partial refunds, no dispute arbitration, no multi-currency (USD only).
 - No email or push notifications; the activity trail is the record.
 - The JSON store is single-process and not safe for concurrent multi-user writes.

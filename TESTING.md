@@ -47,11 +47,13 @@ npm test
 $env:FAIRHOLD_SESSION_SECRET="fairhold-test-session-secret"   # required, no fallback
 npm test
 
-tests 239   pass 215   fail 0   skipped 24   cancelled 0   todo 0
+tests 296   pass 268   fail 0   skipped 28   cancelled 0   todo 0
 exit code 0
 ```
 
-The 24 skips are the PostgreSQL integration suites (`lib/data/postgres/*.integration.test.ts`). They skip when `FAIRHOLD_TEST_DATABASE_URL` is not set, and run for real when it is. Nothing is skipped to make a run green.
+The 28 skips are the PostgreSQL-requiring suites — 14 `postgres:` data suites and 14 `webhook:` integration suites. They skip when `FAIRHOLD_TEST_DATABASE_URL` is not set, and run for real when it is. Nothing is skipped to make a run green.
+
+`FAIRHOLD_TEST_DATABASE_URL` points at an isolated PostgreSQL instance that was **not available in the verification environment for this release**, so the PostgreSQL-backed suites are **unverified** here. The 296/296 figure is the expected result with an isolated PostgreSQL 16; it has not been observed in this release and is not claimed.
 
 ## Browser journeys
 
@@ -124,15 +126,17 @@ Demo allowlists are injected through the config, never through a committed file:
 - `FAIRHOLD_DEMO_SELLERS=Jamie Seller`
 - `FAIRHOLD_DEMO_REVIEWERS=Morgan Reviewer`
 
-### What the 20 tests cover (per project)
+### What the 31 tests cover (per project)
 
 | Spec | Tests | Coverage |
 | --- | --- | --- |
+| `tests/accessibility.spec.ts` | 3 | `axe` accessibility audit of the public routes and of the dashboard as buyer and as seller. |
 | `tests/audit-screenshots.spec.ts` | 10 | Landing, login, demo and buyer dashboard render at desktop, mobile and tablet widths; all three demo roles can sign in; screenshots written to `audit-shots/` (gitignored). |
 | `tests/deal-creation-repro.spec.ts` | 1 | Buyer creates a deal through the form — regression for the read-only-filesystem 500 on Preview. |
 | `tests/demo.spec.ts` | 5 | Guided demo lifecycle and money summary; reviewer cannot approve or review evidence; requesting changes requires a reason; state survives reload and resets on demand; no horizontal scrolling. |
 | `tests/evidence-lifecycle.spec.ts` | 3 | Full lifecycle: seller submits evidence with a file → buyer downloads and byte-compares → revision request → resubmission → acceptance → simulated authorization → simulated capture → second capture blocked. Access control: non-participant, ungranted reviewer and granted reviewer. Deal creation, milestone authoring, "Costs and limits", dashboard search and filtered empty state. |
-| `tests/progressive-enhancement.spec.ts` | 1 | With client JavaScript disabled, the sign-in form still posts and authenticates (`/dashboard`). The Suspense-streamed dashboard body needs hydration — a documented limit, not a regression. |
+| `tests/onboarding.spec.ts` | 1 | The onboarding explainer starts collapsed, expands to the four steps and collapses again. |
+| `tests/progressive-enhancement.spec.ts` | 6 | With client JavaScript disabled, the sign-in form still posts and authenticates (`/dashboard`). The Suspense-streamed dashboard body needs hydration — a documented limit, not a regression. The sign-out control is a native `POST` form rather than a hydration-dependent server action; `POST /logout` returns `303` and clears the cookie; `GET /logout` is refused with `405`; and the redirect target is `/`. |
 
 ### Verified result
 
@@ -140,14 +144,20 @@ Demo allowlists are injected through the config, never through a committed file:
 npm run test:e2e
 
 Production build:            passed
-Playwright: desktop-chromium: 20 passed
-Playwright: mobile-chromium:  20 passed
-Playwright: tablet-chromium:  20 passed
+Playwright: desktop-chromium: 29 passed
+Playwright: mobile-chromium:  29 passed
+Playwright: tablet-chromium:  29 passed
 exit code 0
 ```
 
-Run twice back to back after the final fixes: 60/60 both times, exit code 0,
-~2 min 20 s per full run (build ~14 s). No retries, no skipped tests, no sleeps.
+**93/93 across the three default Chromium projects** (31 each). `scripts/run-e2e.mjs:34` hardcodes `PROJECTS = ["desktop-chromium", "mobile-chromium", "tablet-chromium"]`, so Firefox and WebKit are **opt-in by name** and are **not** part of `npm run test:e2e`:
+
+```
+node scripts/run-e2e.mjs --project=desktop-firefox   # 31/31, exit 0
+node scripts/run-e2e.mjs --project=desktop-webkit    # 31/31, exit 0
+```
+
+One earlier WebKit run showed a single flake — `tests/evidence-lifecycle.spec.ts:376`, a 10 s `expect` timeout on a client-side RSC navigation under load. It did not reproduce on either subsequent run, so it is recorded as a flake rather than a clean first pass. No retries, no skipped tests, no sleeps.
 
 ### Timeouts and interaction settings
 
@@ -166,7 +176,16 @@ npm run lint         # eslint
 npm run build        # next build (Turbopack)
 ```
 
-All three pass. The build emits these routes:
+`npm run typecheck` and `npm run build` pass. `npm run lint` currently exits **1**: 9 errors and 1
+warning, all of them in `production/brag-video/source/*.cjs` (the video-capture scripts committed
+in `f603cb8` — `@typescript-eslint/no-require-imports` on the `require()` calls, plus one unused
+variable). The application code is lint-clean: `npx eslint app components tests lib scripts` →
+**exit 0**, no output. The `.cjs` → `.mjs` conversion that clears the remaining failures lands in
+this same release.
+
+The route handlers under `app/` are exactly these five — the route table below is a build-output
+snapshot and predates `POST /logout` and the two PayPal return URLs; see
+[API_REFERENCE.md](./API_REFERENCE.md) for the current list:
 
 ```
 ◐ /
@@ -185,9 +204,9 @@ All three pass. The build emits these routes:
 
 | Gap | Why | Consequence |
 | --- | --- | --- |
-| Live PayPal sandbox transactions | No sandbox credentials or webhook id configured | Authorization, capture, void and webhook delivery are verified against the adapter contract and injected transports, not against PayPal. Do not claim otherwise. |
+| Live PayPal sandbox transactions | Sandbox credentials are configured in the Production scope, but no sandbox order has been approved, captured or reconciled from this environment, and `PAYPAL_WEBHOOK_ID` is not confirmed there | Authorization, capture, void and webhook delivery are verified against the adapter contract and injected transports, not against PayPal. Do not claim otherwise. |
 | Live AI provider calls | No `GEMINI_API_KEY` | Only deterministic fallbacks and schema validation are exercised. |
-| Firefox and WebKit | Not installed in this environment | Browser coverage is Chromium only, at three viewport profiles. |
+| Firefox and WebKit | Opt-in by name; run separately with `--project=…` | The three default projects are Chromium only, at three viewport profiles. The opt-in Firefox and WebKit projects pass 31/31 each. An earlier pre-release WebKit run had a single flake (`tests/evidence-lifecycle.spec.ts:376`, a 10 s `expect` timeout on a client-side RSC navigation under load) that did not reproduce on the release run. |
 | Automated accessibility audit | No axe/Lighthouse wired in | Keyboard, focus and contrast checked manually; see [QA_REPORT.md](./docs/archive/QA_REPORT.md). |
 | Load, concurrency beyond the ledger tests, and chaos | Out of scope | Concurrent capture protection is asserted at the ledger level only. |
 | Physical devices | Not tested | Mobile and tablet results come from Chromium device emulation. |

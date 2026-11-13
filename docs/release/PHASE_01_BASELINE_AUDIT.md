@@ -17,7 +17,7 @@ FairHold is a milestone-based payment coordination platform for buyers and selle
 
 **Core principle:** "AI proposes. Rules decide. Humans approve. PayPal executes. The audit trail records everything."
 
-**Actual state:** The product implements a complete demo-capable milestone workflow: deal creation, milestone definition, evidence submission/review/revision, human approval, authorization holds, and simulated capture. The PayPal sandbox adapter exists as real code but is **unverified live** (no sandbox credentials, no public webhook endpoint, no `PAYPAL_WEBHOOK_ID`). The AI advisory layer exists with structured output validation but runs as a **deterministic fallback** (no `GEMINI_API_KEY`/`GEMINI_MODEL` configured). The deployed preview is **not publicly accessible** (Vercel Deployment Protection returns 302 to SSO for anonymous visitors).
+**Actual state:** The product implements a complete demo-capable milestone workflow: deal creation, milestone definition, evidence submission/review/revision, human approval, authorization holds, and simulated capture. The PayPal sandbox adapter exists as real code. At the time of this baseline audit it was **unverified live** — no sandbox credentials were configured, there was no public webhook endpoint and no `PAYPAL_WEBHOOK_ID`. **Corrected 2026-11-13:** PayPal **sandbox** credentials are now configured in the Production scope, so the signed-in workspace uses the sandbox provider (the live deal page renders "Create PayPal sandbox authorization"). The live sandbox *lifecycle* — order → buyer approval → capture → webhook — is still unverified, and `PAYPAL_WEBHOOK_ID` is still not confirmed. The AI advisory layer exists with structured output validation but runs as a **deterministic fallback** (no `GEMINI_API_KEY`/`GEMINI_MODEL` configured). The deployed preview is **not publicly accessible** (Vercel Deployment Protection returns 302 to SSO for anonymous visitors).
 
 **Gate results (verified, current tree):**
 - `npm run typecheck`: exit 0
@@ -106,7 +106,7 @@ FairHold is a milestone-based payment coordination platform for buyers and selle
 | Ambiguous failure handling | IMPLEMENTED | PENDING on timeout; never blind retry |
 | Void | IMPLEMENTED (code) | `voidAuthorization` |
 | Refunds | MISSING | Not implemented |
-| Real sandbox transaction | NOT VERIFIED | No sandbox credentials, no public webhook URL, no `PAYPAL_WEBHOOK_ID` |
+| Real sandbox transaction | NOT VERIFIED | Corrected 2026-11-13: sandbox credentials are configured in the Production scope, but no sandbox order has been approved or captured, and no public webhook URL / `PAYPAL_WEBHOOK_ID` is confirmed |
 
 **Safety guarantees preserved:**
 - Amounts always server-derived from stored milestones/authorization; `FormData` never supplies an amount.
@@ -116,7 +116,7 @@ FairHold is a milestone-based payment coordination platform for buyers and selle
 - No secrets reach browser, logs, or responses.
 - Demo provider (`lib/payments/demo.ts`) makes NO network calls; all results `simulated:true`.
 
-**Blocker:** No sandbox credentials (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`), no public HTTPS webhook endpoint, no `PAYPAL_WEBHOOK_ID`. Cannot run a real sandbox transaction without owner-provided credentials.
+**Blocker (corrected 2026-11-13):** the sandbox credentials (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`) are now configured in the Production scope. What still blocks a *verified* live sandbox transaction is the missing public HTTPS webhook endpoint and `PAYPAL_WEBHOOK_ID`, together with a sandbox order that has actually been approved and captured.
 
 ---
 
@@ -136,7 +136,7 @@ FairHold is a milestone-based payment coordination platform for buyers and selle
 | Cannot approve evidence | VERIFIED | No code path lets AI set review decision |
 | Cannot authorize/capture payment | VERIFIED | AI never touches payment state |
 | Human approval preserved | VERIFIED | Deterministic rules + human `CAPTURE` approval required |
-| Live AI + PayPal workflow | NOT VERIFIED | No AI key; no PayPal credentials |
+| Live AI + PayPal workflow | NOT VERIFIED | No AI key; the PayPal sandbox lifecycle is still unverified (corrected 2026-11-13: sandbox credentials are configured in Production, but no order has been approved or captured) |
 
 **Blocker:** No `GEMINI_API_KEY`/`GEMINI_MODEL`. Cannot verify live AI behavior or demonstrate AI + PayPal together in a real workflow.
 
@@ -247,8 +247,8 @@ No test mocked, skipped, or weakened to get green. Playwright timeouts raised (9
 | Public GitHub repository | VERIFIED | `https://github.com/the-nidhi-bhat/fairhold.git` (fetch+push confirmed) |
 | README | PARTIAL | Exists; deployment/docs need refresh for current state |
 | Open-source license | MISSING | No `LICENSE`/`LICENSE.md`/`LICENSE.txt`/`UNLICENSE` tracked — owner decision |
-| PayPal meaningful integration | PARTIAL | Real sandbox adapter code exists; live sandbox unverified (no credentials/webhook) |
-| PayPal sandbox transaction | NOT VERIFIED | No sandbox credentials, no public webhook, no `PAYPAL_WEBHOOK_ID` |
+| PayPal meaningful integration | PARTIAL | Real sandbox adapter code exists; live sandbox lifecycle still unverified (corrected 2026-11-13: sandbox credentials are configured in Production, but no order has been approved or captured, and no webhook id is confirmed) |
+| PayPal sandbox transaction | NOT VERIFIED | Sandbox credentials are configured in Production (corrected 2026-11-13), but no public webhook and no `PAYPAL_WEBHOOK_ID` are confirmed, and no sandbox order has been approved or captured |
 | AI meaningful integration | PARTIAL | Advisory layer implemented; deterministic fallback live (no AI key) |
 | AI + PayPal project relationship | NOT VERIFIED | No live AI + no live PayPal; connection not demonstrably exercised |
 | Public judge demo | BLOCKED | Deployment Protection 302s anonymous visitors to SSO |
@@ -266,7 +266,7 @@ No test mocked, skipped, or weakened to get green. Playwright timeouts raised (9
 | Rank | Risk | Severity | Mitigation |
 |---|---|---|---|
 | 1 | Public demo blocked by Deployment Protection | HIGH | Owner-side scoped protection change or share link |
-| 2 | PayPal sandbox unverified | HIGH | Owner provide sandbox credentials + public webhook + `PAYPAL_WEBHOOK_ID` |
+| 2 | PayPal sandbox unverified | HIGH | Owner provide public webhook + `PAYPAL_WEBHOOK_ID`, then approve and capture one sandbox order (corrected 2026-11-13: the sandbox credentials are configured in Production already) |
 | 3 | AI unverified | MEDIUM | Owner provide `GEMINI_API_KEY`/`GEMINI_MODEL` |
 | 4 | Missing LICENSE | MEDIUM | Owner license decision (MIT recommended) |
 | 5 | Demo identity strength | MEDIUM | Name-only allowlist; not production auth |
@@ -281,7 +281,7 @@ No test mocked, skipped, or weakened to get green. Playwright timeouts raised (9
 1. **Commit** `FINAL_RELEASE_REPORT.md` (routine; no behavior change) — Phase 1 completion.
 2. **Scope Deployment Protection** to allow anonymous access to the dedicated demo deployment (or issue a share link). Do not weaken globally.
 3. **Decide** on stale `fairhold-beta.vercel.app` alias (replace/remove/leave).
-4. **Provide** `DATABASE_URL`, hosted object storage, PayPal sandbox credentials (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`), public HTTPS webhook URL, `PAYPAL_WEBHOOK_ID`.
+4. **Provide** `DATABASE_URL`, hosted object storage, public HTTPS webhook URL, `PAYPAL_WEBHOOK_ID` (corrected 2026-11-13: the PayPal sandbox credentials `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` are configured in Production already).
 5. **Provide** `GEMINI_API_KEY`/`GEMINI_MODEL` for live AI verification.
 6. **Choose** open-source license (MIT recommended) — do not silently add.
 7. **Upload** video to YouTube (public, <3 min) — do not upload without authorization.

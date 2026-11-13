@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { getDemoSession } from "@/lib/auth/session";
-import { logoutAction } from "@/app/login/actions";
 
 export async function SessionNavigation() {
   const session = await getDemoSession();
@@ -24,8 +23,14 @@ export async function SessionNavigation() {
   }
 
   return (
-    <form action={logoutAction}>
-      <button className="max-w-[180px] truncate text-sm font-medium text-muted hover:text-[var(--foreground)] sm:max-w-none">
+    // A plain POST form, not a server action: the browser submits it natively
+    // and never waits for React to hydrate, so a click can no longer be
+    // swallowed inside the hydration takeover window.
+    <form method="post" action="/logout">
+      <button
+        type="submit"
+        className="max-w-[180px] truncate text-sm font-medium text-muted hover:text-[var(--foreground)] sm:max-w-none"
+      >
         {session.name} · {session.role} · Sign out
       </button>
     </form>

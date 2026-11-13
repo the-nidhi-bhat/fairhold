@@ -120,6 +120,16 @@ Notable changes, newest first. Grouped by milestone rather than by commit; the f
 
 ## Known limitations at this release
 
+> **Superseded (2026-11-13).** These limitations are the ones recorded for the *foundation*
+> release and are retained for history. The current state is in
+> [RELEASE_REPORT.md](./RELEASE_REPORT.md): PayPal **sandbox** credentials are now configured in
+> the Production scope (inherited at team level, so a project-scoped `vercel env ls` does not list
+> them), so the signed-in workspace uses the PayPal **sandbox** provider and an authorization there
+> creates a real order in the PayPal sandbox. PayPal **Live** remains architecturally refused —
+> `readPayPalConfig()` returns `null` unless `PAYPAL_ENV` is exactly `sandbox`, so no live adapter
+> can be built and no live money can move. The guided `/demo` page is a separate, browser-only path
+> that uses the in-app **simulated** provider and says so on screen.
+
 - Demo authentication only; not production identity verification.
 - PayPal sandbox transactions not verified: no credentials or webhook id configured.
 - Live AI provider calls not verified: no API key configured.

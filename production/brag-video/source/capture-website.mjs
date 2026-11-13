@@ -1,8 +1,8 @@
 // Capture REAL FairHold footage from the live deployment.
 // Every clip is a Playwright screen recording of the actual site at 1920x1080.
-const fs = require('fs');
-const path = require('path');
-const { chromium } = require('C:/Users/theni/OneDrive/Desktop/projects main/PPH/node_modules/@playwright/test');
+import fs from 'node:fs';
+import path from 'node:path';
+import { chromium } from '@playwright/test';
 
 const BASE = 'https://fairhold-beta.vercel.app';
 const WORK = 'C:/Users/theni/AppData/Local/Temp/opencode/brag';

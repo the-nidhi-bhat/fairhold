@@ -236,7 +236,7 @@ This is UI-only — no authentication logic, backend, environment variable, or e
 |---|---|---|---|
 | 1 | Vercel env var values base64-encoded (demo login rejected) | HIGH | Owner replaces env var values with plain text names in Vercel Dashboard Preview scope |
 | 2 | Public demo blocked by Vercel Deployment Protection (302 SSO) | HIGH | Owner scopes Deployment Protection for demo preview via Vercel Dashboard |
-| 3 | PayPal sandbox transaction NOT VERIFIED | HIGH | Owner provides `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, webhook URL + `PAYPAL_WEBHOOK_ID` |
+| 3 | PayPal sandbox transaction NOT VERIFIED | HIGH | Owner provides the webhook URL + `PAYPAL_WEBHOOK_ID` (corrected 2026-11-13: the sandbox client id/secret are configured in Production already), then approves and captures one sandbox order |
 | 4 | LICENSE missing | MEDIUM | Owner decides license (MIT recommended) and adds LICENSE file |
 | 5 | YouTube video NOT uploaded | MEDIUM | Owner uploads MP4 to YouTube (PUBLIC) with thumbnail + SRT |
 

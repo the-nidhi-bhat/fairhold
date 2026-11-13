@@ -57,7 +57,7 @@ test.describe("guided demo", () => {
 
   test("a reviewer cannot approve or review evidence", async ({ page }) => {
     const firstCard = page.locator("li.milestone-card").first();
-    await page.getByRole("button", { name: /Sam Reviewer/ }).click();
+    await page.getByRole("button", { name: /Morgan Reviewer/ }).click();
     await expect(firstCard.getByText(/cannot act on it/i)).toBeVisible();
     await expect(
       firstCard.getByRole("button", { name: "Accept evidence" }),

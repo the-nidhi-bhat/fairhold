@@ -175,4 +175,4 @@ No application code changed since Phase 2 closeout.
 | RESPONSIVE UX | PASS |
 | OVERALL PHASE 4 | PASS |
 
-**All user journeys verified, all tests green, no critical defects.** The only remaining items are configuration blockers (sandbox credentials, AI key, DATABASE_URL) and the Deployment Protection owner action for public demo access.
+**All user journeys verified, all tests green, no critical defects.** The only remaining items are configuration blockers (sandbox webhook configuration, AI key) and the Deployment Protection owner action for public demo access. (Corrected 2026-11-13: the sandbox credentials and `DATABASE_URL` are configured in the Production scope now, so the signed-in workspace uses the PayPal sandbox provider.)
