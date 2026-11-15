@@ -32,11 +32,23 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  // Determine initial theme from prefers-color-scheme for system mode,
+  // default to light for explicit theme selection.
+  // This runs at request time (SSR), so the initial data-theme matches
+  // the user's OS preference without a flash.
+  const prefersDark = typeof window !== "undefined"
+    ? window.matchMedia("(prefers-color-scheme: dark)").matches
+    : false;
+
+  const theme = prefersDark ? "system" : "light";
+
   return (
     <html
       lang="en"
+      data-theme={theme}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       data-scroll-behavior="smooth"
+      color-scheme="light dark"
     >
       <head>
         <link rel="icon" href="/fairhold-shield.svg" type="image/svg+xml" />

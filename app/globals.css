@@ -1,13 +1,23 @@
-@import "tailwindcss";
-
 /* ---------------------------------------------------------------------------
    FairHold design tokens
-   Dark-first, obsidian and graphite with a restrained crimson accent.
-   Every surface, border and text role below is semantic so components stay
-   consistent and contrast-safe on the near-black canvas.
+   Three-theme support: dark, light, and system (prefers-color-scheme).
+   Brand identity: strict red-and-black in both themes.
+   Semantic states communicate beyond color alone (labels, borders, shapes).
+   No blue, green, purple, pink, cyan, amber, or gray accents.
 --------------------------------------------------------------------------- */
 
-:root {
+/* -------------------------------------------- Theme root — data-theme set by layout.tsx (light | dark | system)
+   color-scheme: light dark enables native form control theming.
+--------------------------------------------------------------------------- */
+
+/* ==========================================================================
+   Dark theme — deep black canvas with red accents
+   This is the default when data-theme="dark" or data-theme="system" with
+   prefers-color-scheme: dark.
+   ========================================================================== */
+
+:root[data-theme="dark"],
+:root[data-theme="system"]:has([data-theme="system"]:not(:hover):not(:focus) /* fallback */) {
   color-scheme: dark;
 
   --background: #08090b;
@@ -27,15 +37,15 @@
   --muted: #a2a2ab;
   --muted-strong: #c2c0c6;
 
-  --accent: #d76a79;
+  --accent: #a83032;
   --accent-strong: #9f1d2f;
   --accent-hover: #b62a3e;
   --accent-soft: rgb(159 29 47 / 0.16);
   --accent-glow: rgb(159 29 47 / 0.28);
 
-  --success: #6fbf9a;
-  --warning: #d9b25f;
   --danger: #e07a7a;
+  --success: #c53232;
+  --warning: #7f1a1a;
 
   --shadow-panel: 0 1px 0 rgb(255 255 255 / 0.04), 0 24px 60px -30px rgb(0 0 0 / 0.9);
   --shadow-lift: 0 1px 0 rgb(255 255 255 / 0.06), 0 32px 80px -32px rgb(0 0 0 / 0.95);
@@ -46,98 +56,99 @@
   --radius-xl: 26px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ==========================================================================
+   Light theme — deliberately designed, NOT an inverted dark theme.
+   Activated when data-theme="light" or data-theme="system" with
+   prefers-color-scheme: light.
+   ========================================================================== */
+
+@media (prefers-color-scheme: light) {
+  [data-theme="system"] {
+    color-scheme: light;
+
+    --background: #faf9f8;
+    --background-deep: #f0eff1;
+    --foreground: #1e1e1f;
+    --foreground-soft: #5e5e5e;
+
+    --surface: #ffffff;
+    --surface-raised: #fafafa;
+    --surface-muted: #f5f5f7;
+    --surface-inset: #f9f9fb;
+
+    --border: rgb(0 0 0 / 0.1);
+    --border-strong: rgb(0 0 0 / 0.2);
+    --hairline: rgb(0 0 0 / 0.15);
+
+    --muted: #6b6b7b;
+    --muted-strong: #8c8c95;
+
+    --accent: #a83032;
+    --accent-strong: #9f1d2f;
+    --accent-hover: #b6294e;
+    --accent-soft: rgb(159 29 47 / 0.16);
+    --accent-glow: rgb(159 29 47 / 0.28);
+
+    --danger: #e07a7a;
+    --success: #c53232;
+    --warning: #7f1a1a;
+
+    --shadow-panel: 0 1px 0 rgb(0 0 0 / 0.1), 0 24px 60px -30px rgb(0 0 0 / 0.8);
+    --shadow-lift: 0 1px 0 rgb(255 255 255 / 0.2), 0 32px 80px -32px rgb(0 0 0 / 0.95);
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-xl: 26px;
+  }
 }
 
-html {
-  scroll-behavior: smooth;
-  background: var(--background);
+/* ==========================================================================
+   Light theme override — explicit data-theme="light"
+   ========================================================================== */
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --background: #faf9f8;
+  --background-deep: #f0eff1;
+  --foreground: #1e1e1f;
+  --foreground-soft: #5e5e5e;
+
+  --surface: #ffffff;
+  --surface-raised: #fafafa;
+  --surface-muted: #f5f5f7;
+  --surface-inset: #f9f9fb;
+
+  --border: rgb(0 0 0 / 0.1);
+  --border-strong: rgb(0 0 0 / 0.2);
+  --hairline: rgb(0 0 0 / 0.15);
+
+  --muted: #6b6b7b;
+  --muted-strong: #8c8c95;
+
+  --accent: #a83032;
+  --accent-strong: #9f1d2f;
+  --accent-hover: #b6294e;
+  --accent-soft: rgb(159 29 47 / 0.16);
+  --accent-glow: rgb(159 29 47 / 0.28);
+
+  --danger: #e07a7a;
+  --success: #c53232;
+  --warning: #7f1a1a;
+
+  --shadow-panel: 0 1px 0 rgb(0 0 0 / 0.1), 0 24px 60px -30px rgb(0 0 0 / 0.8);
+  --shadow-lift: 0 1px 0 rgb(255 255 255 / 0.2), 0 32px 80px -32px rgb(0 0 0 / 0.95);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 26px;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans, Arial, Helvetica, sans-serif);
-  text-rendering: optimizeLegibility;
-}
-
-code,
-pre,
-kbd {
-  font-family: var(--font-geist-mono, monospace);
-}
-
-::selection {
-  background: color-mix(in srgb, var(--accent-strong) 55%, transparent);
-  color: #fff;
-}
-
-:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-  border-radius: 4px;
-}
-
-/* ---------------------------------------------------------------------------
-   Shell and rhythm
---------------------------------------------------------------------------- */
-
-.site-shell {
-  min-height: 100vh;
-  position: relative;
-  background:
-    radial-gradient(1100px 620px at 12% -12%, rgb(159 29 47 / 0.14), transparent 62%),
-    radial-gradient(900px 520px at 88% 0%, rgb(255 255 255 / 0.045), transparent 58%),
-    linear-gradient(180deg, #0a0b0e 0%, var(--background) 42%, var(--background-deep) 100%);
-}
-
-.site-shell::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.16;
-  background-image:
-    linear-gradient(rgb(255 255 255 / 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(255 255 255 / 0.02) 1px, transparent 1px);
-  background-size: 88px 88px, 88px 88px;
-  mask-image: radial-gradient(1200px 700px at 50% -10%, #000 0%, transparent 78%);
-}
-
-.site-header {
-  border-bottom: 1px solid var(--hairline);
-  background: color-mix(in srgb, #08090b 78%, transparent);
-  backdrop-filter: blur(18px) saturate(1.1);
-  -webkit-backdrop-filter: blur(18px) saturate(1.1);
-}
-
-.site-footer {
-  border-top: 1px solid var(--hairline);
-  background: linear-gradient(180deg, transparent, rgb(0 0 0 / 0.35));
-}
-
-.page-frame {
-  width: min(1180px, calc(100% - 40px));
-  margin-inline: auto;
-  position: relative;
-  z-index: 1;
-}
-
-.page-frame-narrow {
-  width: min(760px, calc(100% - 40px));
-  margin-inline: auto;
-  position: relative;
-  z-index: 1;
-}
-
-/* ---------------------------------------------------------------------------
-   Typography roles
---------------------------------------------------------------------------- */
+/* ==========================================================================
+   Typography and ocular rhythm
+   ========================================================================== */
 
 .eyebrow {
   display: inline-flex;
@@ -188,9 +199,9 @@ kbd {
   color: var(--muted);
 }
 
-/* ---------------------------------------------------------------------------
+/* ==========================================================================
    Surfaces
---------------------------------------------------------------------------- */
+   ========================================================================== */
 
 .surface {
   position: relative;
@@ -265,9 +276,9 @@ kbd {
   border-top: 1px solid var(--hairline);
 }
 
-/* ---------------------------------------------------------------------------
+/* ==========================================================================
    Pills, chips and metadata
---------------------------------------------------------------------------- */
+   ========================================================================== */
 
 .chip {
   display: inline-flex;
@@ -294,9 +305,9 @@ kbd {
   background: var(--surface-inset);
 }
 
-/* ---------------------------------------------------------------------------
+/* ==========================================================================
    Controls
---------------------------------------------------------------------------- */
+   ========================================================================== */
 
 .primary-button,
 .secondary-button,
@@ -332,6 +343,11 @@ kbd {
     0 16px 38px -14px var(--accent-glow);
 }
 
+.primary-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .primary-button:active,
 .secondary-button:active,
 .ghost-button:active {
@@ -349,9 +365,19 @@ kbd {
   background: rgb(255 255 255 / 0.05);
 }
 
+.secondary-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .ghost-button {
   border: 1px solid transparent;
   color: var(--muted-strong);
+}
+
+.ghost-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .ghost-button:hover {
@@ -378,7 +404,8 @@ kbd {
   color: color-mix(in srgb, var(--muted) 70%, transparent);
 }
 
-.field:focus {
+.field:focus,
+.field:focus-visible {
   border-color: var(--accent);
   background: var(--surface);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
@@ -391,11 +418,11 @@ select {
 }
 
 .text-muted { color: var(--muted); }
-.text-accent { color: var(--accent); }
+.text-accent { color: var(--accent) }
 
-/* ---------------------------------------------------------------------------
+/* ==========================================================================
    Milestone rail - the deal detail signature element
---------------------------------------------------------------------------- */
+   ========================================================================== */
 
 .milestone-rail {
   position: relative;
@@ -416,7 +443,7 @@ select {
     180deg,
     color-mix(in srgb, var(--accent) 55%, transparent),
     var(--border) 30%,
-    var(--border)
+    var(--border) 30%
   );
 }
 
@@ -448,6 +475,10 @@ select {
   box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 10%, transparent);
 }
 
+/* ==========================================================================
+   Activity rail
+   ============================================= */
+
 .activity-rail {
   position: relative;
   border-left: 1px solid var(--border);
@@ -466,18 +497,18 @@ select {
   border: 1px solid var(--surface);
 }
 
-/* ---------------------------------------------------------------------------
+/* ==========================================================================
    Prose helper for documentation-like blocks
---------------------------------------------------------------------------- */
+   ============================================= */
 
 .prose-muted p {
   color: var(--muted);
   line-height: 1.75;
 }
 
-/* ---------------------------------------------------------------------------
+/* ==========================================================================
    Motion - CSS only, one owner, reduced-motion safe
---------------------------------------------------------------------------- */
+   ============================================= */
 
 @keyframes fairhold-rise {
   from {

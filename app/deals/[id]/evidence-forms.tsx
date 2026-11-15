@@ -31,7 +31,7 @@ const inputClass =
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="mt-1 text-xs text-[var(--danger)]">
+    <p role="alert" className="mt-1 text-xs text-[var(--success)]">
       {message}
     </p>
   );
@@ -324,7 +324,7 @@ export function ReviewEvidenceForm({
           name="decision"
           value="accepted"
           disabled={pending}
-          className="rounded-md bg-[var(--success)] px-3 py-1.5 text-sm font-semibold text-[#06120c] hover:brightness-105 disabled:opacity-60"
+          className="rounded-md bg-[var(--success)] px-3 py-1.5 text-sm font-semibold text-[var(--foreground)] hover:brightness-105 disabled:opacity-60"
         >
           Accept evidence
         </button>

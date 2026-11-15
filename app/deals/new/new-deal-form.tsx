@@ -9,7 +9,7 @@ const initialState: FormState = { ok: false, errors: {} };
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p role="alert" className="mt-1 text-sm text-[var(--danger)]">
+    <p role="alert" className="mt-1 text-sm text-[var(--success)]">
       {message}
     </p>
   );
@@ -135,7 +135,7 @@ export function NewDealForm() {
       </div>
 
       {state.errors._form ? (
-        <p role="alert" className="text-sm text-[var(--danger)]">
+        <p role="alert" className="text-sm text-[var(--success)]">
           {state.errors._form}
         </p>
       ) : null}
@@ -144,9 +144,21 @@ export function NewDealForm() {
         <button
           type="submit"
           disabled={pending}
-          className="primary-button disabled:cursor-not-allowed disabled:opacity-60"
+          className={`primary-button disabled:cursor-not-allowed disabled:opacity-60 transition-transform ${pending ? "animate-spin" : ""}`}
         >
-          {pending ? "Creating…" : "Create deal"}
+          {pending ? (
+            <>
+              <svg
+                className="h-4 w-4 text-white"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M12 15l-2-2l2-2l4.96 4.96a5.986 5.986 0 0 1 0 8.45L12 21l-4.96-4.96a5.986 5.986 0 0 1-8.45 0L3 15l7.97-7.97a5.986 5.986 0 0 1 8.45 0l4.96 4.96l-2 2Z" />
+              </svg>
+              Creating…
+            </>
+          ) : "Create deal"}
         </button>
       </div>
     </form>
