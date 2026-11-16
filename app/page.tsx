@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FairHoldHero3D } from "@/components/FairHoldHero3D";
 
 const FLOW = [
   {
@@ -71,10 +72,20 @@ export default function Home() {
   return (
     <div className="pb-24">
       {/* Hero */}
-      <section className="page-frame grid items-center gap-12 pb-16 pt-14 md:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)] md:pb-24 md:pt-20">
-        <div>
+      <section className="page-frame relative grid items-center gap-12 pb-16 pt-14 overflow-hidden md:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)] md:pb-24 md:pt-20">
+        <div className="absolute inset-0 z-0 pointer-events-none">
+          <FairHoldHero3D height={440} />
+        </div>
+        <div className="relative z-10">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[min(92vw,560px)] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,rgb(168,48,50,0.22),transparent)] blur-[30px]"
+          />
+          <div className="relative">
           <p className="eyebrow reveal">Proof-backed payment workflow</p>
-          <h1 className="display reveal reveal-1 mt-6 max-w-[16ch] text-[clamp(2.75rem,7vw,5.25rem)] text-[var(--foreground)]">
+          <h1
+            className="display reveal reveal-1 mt-6 max-w-[16ch] text-[clamp(2.75rem,7vw,5.25rem)] text-[var(--foreground)]"
+          >
             Work moves forward.
             <span className="mt-1 block text-[var(--accent)]">
               Payments move with proof.
@@ -84,7 +95,9 @@ export default function Home() {
             Coordinate milestones, review evidence and manage payment progress
             with clarity at every step.
           </p>
-          <div className="reveal reveal-3 mt-9 flex flex-wrap items-center gap-3">
+          <div
+            className="reveal reveal-3 mt-9 flex flex-wrap items-center gap-3"
+          >
             <Link href="/demo" className="primary-button px-5">
               Open the guided demo
             </Link>
@@ -95,7 +108,10 @@ export default function Home() {
               Start a deal
             </Link>
           </div>
-          <ul className="reveal reveal-4 mt-9 flex flex-wrap gap-2" aria-label="Product boundaries">
+          <ul
+            className="reveal reveal-4 mt-9 flex flex-wrap gap-2"
+            aria-label="Product boundaries"
+          >
             <li className="chip">
               <span className="h-1.5 w-1.5 rounded-full bg-[var(--success)]" aria-hidden="true" />
               Human approval required
@@ -109,6 +125,7 @@ export default function Home() {
               AI is advisory only
             </li>
           </ul>
+          </div>
         </div>
 
         {/* Product preview: a real milestone sequence, no invented metrics */}
@@ -140,11 +157,7 @@ export default function Home() {
             </p>
 
             <ol className="mt-6 space-y-3">
-              {[
-                { title: "Discovery and scope", state: "Accepted", tone: "success" as const },
-                { title: "Responsive build", state: "Evidence in review", tone: "warning" as const },
-                { title: "Handoff and sign-off", state: "Not started", tone: "neutral" as const },
-              ].map((item, index) => (
+              {FLOW.map((item, index) => (
                 <li
                   key={item.title}
                   className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-black/20 px-3.5 py-3"
@@ -166,14 +179,14 @@ export default function Home() {
                   </span>
                   <span
                     className={`shrink-0 text-[11px] ${
-                      item.tone === "success"
+                      index === 0
                         ? "text-[var(--success)]"
-                        : item.tone === "warning"
-                          ? "text-[var(--warning)]"
-                          : "text-muted"
+                        : index === 1
+                        ? "text-[var(--warning)]"
+                        : "text-muted"
                     }`}
                   >
-                    {item.state}
+                    {item.title}
                   </span>
                 </li>
               ))}
@@ -202,47 +215,49 @@ export default function Home() {
           <div className="grid gap-6 md:grid-cols-[0.9fr_1.1fr] md:items-end">
             <div>
               <p className="section-label">One readable path</p>
-              <h2 className="headline mt-3 text-[clamp(1.9rem,3.4vw,2.75rem)]">
+              <h2
+                className="headline mt-3 text-[clamp(1.9rem,3.4vw,2.75rem)]"
+              >
                 From agreement to outcome, nothing hides in a chat thread.
               </h2>
-            </div>
-            <p className="lede max-w-[54ch] md:justify-self-end">
-              Each step produces a durable record. Evidence is attached to a
-              milestone, decisions carry a reason, and payment state is shown as
-              it actually is.
-            </p>
-          </div>
-
-          <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {FLOW.map((step, index) => (
-              <li
-                key={step.title}
-                className="panel panel-hover group p-5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[11px] tracking-[0.14em] text-[var(--accent)]">
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span
-                    aria-hidden="true"
-                    className="h-px w-10 bg-[linear-gradient(90deg,var(--border-strong),transparent)]"
-                  />
-                </div>
-                <h3 className="mt-4 text-base font-semibold tracking-[-0.015em]">
-                  {step.title}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-muted">{step.body}</p>
-              </li>
-            ))}
-            <li className="panel p-5 sm:col-span-2 lg:col-span-1">
-              <p className="section-label">Illustrative pricing</p>
-              <p className="mt-3 font-mono text-2xl tabular-nums">$0.00</p>
-              <p className="mt-2 text-sm leading-6 text-muted">
-                This workspace is a demonstration. No funds are moved by demo
-                actions, and no revenue or savings figures are claimed.
+              <p className="lede max-w-[54ch] md:justify-self-end">
+                Each step produces a durable record. Evidence is attached to a
+                milestone, decisions carry a reason, and payment state is shown as
+                it actually is.
               </p>
-            </li>
-          </ol>
+            </div>
+
+            <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {FLOW.map((step, index) => (
+                <li
+                  key={step.title}
+                  className="panel panel-hover group p-5"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] tracking-[0.14em] text-[var(--accent)]">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="h-px w-10 bg-[linear-gradient(90deg,var(--border-strong),transparent)]"
+                    />
+                  </div>
+                  <h3 className="mt-4 text-base font-semibold tracking-[-0.015em]">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-muted">{step.body}</p>
+                </li>
+              ))}
+              <li className="panel p-5 sm:col-span-2 lg:col-span-1">
+                <p className="section-label">Illustrative pricing</p>
+                <p className="mt-3 font-mono text-2xl tabular-nums">$0.00</p>
+                <p className="mt-2 text-sm leading-6 text-muted">
+                  This workspace is a demonstration. No funds are moved by demo
+                  actions, and no revenue or savings figures are claimed.
+                </p>
+              </li>
+            </ol>
+          </div>
         </div>
       </section>
 
@@ -250,9 +265,11 @@ export default function Home() {
       <section className="border-t border-[var(--hairline)]">
         <div className="page-frame py-16 md:py-20">
           <p className="section-label">Three roles, one record</p>
-          <h2 className="headline mt-3 max-w-[26ch] text-[clamp(1.9rem,3.4vw,2.75rem)]">
-            The buyer, the seller and an authorised reviewer each see the work that
-            belongs to them.
+          <h2
+            className="headline mt-3 max-w-[26ch] text-[clamp(1.9rem,3.4vw,2.75rem)]"
+          >
+            The buyer, the seller and an authorised reviewer each see the work
+            that belongs to them.
           </h2>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             <article className="panel p-6">
@@ -266,8 +283,14 @@ export default function Home() {
               </p>
               <ul className="mt-5 space-y-3">
                 {BUYER_POINTS.map((point) => (
-                  <li key={point} className="flex gap-3 text-sm text-[var(--foreground-soft)]">
-                    <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" />
+                  <li
+                    key={point}
+                    className="flex gap-3 text-sm text-[var(--foreground-soft)]"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]"
+                    />
                     {point}
                   </li>
                 ))}
@@ -284,8 +307,14 @@ export default function Home() {
               </p>
               <ul className="mt-5 space-y-3">
                 {SELLER_POINTS.map((point) => (
-                  <li key={point} className="flex gap-3 text-sm text-[var(--foreground-soft)]">
-                    <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" />
+                  <li
+                    key={point}
+                    className="flex gap-3 text-sm text-[var(--foreground-soft)]"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]"
+                    />
                     {point}
                   </li>
                 ))}
@@ -303,8 +332,14 @@ export default function Home() {
               </p>
               <ul className="mt-5 space-y-3">
                 {REVIEWER_POINTS.map((point) => (
-                  <li key={point} className="flex gap-3 text-sm text-[var(--foreground-soft)]">
-                    <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" />
+                  <li
+                    key={point}
+                    className="flex gap-3 text-sm text-[var(--foreground-soft)]"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]"
+                    />
                     {point}
                   </li>
                 ))}
@@ -320,7 +355,9 @@ export default function Home() {
           <div className="grid gap-8 md:grid-cols-[0.85fr_1.15fr]">
             <div>
               <p className="section-label">Separation of responsibilities</p>
-              <h2 className="headline mt-3 text-[clamp(1.9rem,3.4vw,2.75rem)]">
+              <h2
+                className="headline mt-3 text-[clamp(1.9rem,3.4vw,2.75rem)]"
+              >
                 AI may read. People decide. Rules explain.
               </h2>
               <p className="lede mt-4 max-w-[46ch]">
@@ -333,8 +370,14 @@ export default function Home() {
                 <h3 className="text-sm font-semibold text-[var(--foreground)]">AI may</h3>
                 <ul className="mt-4 space-y-2.5">
                   {AI_MAY.map((item) => (
-                    <li key={item} className="flex gap-2.5 text-sm leading-6 text-muted">
-                      <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--success)]" />
+                    <li
+                      key={item}
+                      className="flex gap-2.5 text-sm leading-6 text-muted"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--success)]"
+                      />
                       {item}
                     </li>
                   ))}
@@ -344,8 +387,14 @@ export default function Home() {
                 <h3 className="text-sm font-semibold text-[var(--foreground)]">AI may never</h3>
                 <ul className="mt-4 space-y-2.5">
                   {AI_MAY_NOT.map((item) => (
-                    <li key={item} className="flex gap-2.5 text-sm leading-6 text-muted">
-                      <span aria-hidden="true" className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]" />
+                    <li
+                      key={item}
+                      className="flex gap-2.5 text-sm leading-6 text-muted"
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="mt-2 h-1 w-1 shrink-0 rounded-full bg-[var(--accent)]"
+                      />
                       {item}
                     </li>
                   ))}
@@ -377,7 +426,9 @@ export default function Home() {
           <div className="deal-hero grid gap-8 p-7 sm:p-10 md:grid-cols-[1.1fr_0.9fr] md:items-center">
             <div>
               <p className="section-label">Payment integrity</p>
-              <h2 className="headline mt-3 text-[clamp(1.8rem,3.2vw,2.5rem)]">
+              <h2
+                className="headline mt-3 text-[clamp(1.8rem,3.2vw,2.5rem)]"
+              >
                 A hold is a hold. It is never described as escrow.
               </h2>
               <p className="mt-4 max-w-[52ch] text-sm leading-6 text-muted">
@@ -387,19 +438,21 @@ export default function Home() {
               </p>
             </div>
             <div className="space-y-3">
-              {[
-                ["Authorization", "A provider hold, awaiting a later decision."],
-                ["Capture", "Only after a human approval and a recorded rule outcome."],
-                ["Void / refund", "A definite provider result — never inferred."],
-                ["Ambiguity", "Timeouts stay pending until reconciled, not reported as success."],
-              ].map(([label, body]) => (
-                <div key={label} className="rounded-xl border border-[var(--hairline)] bg-black/25 p-4">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--accent)]">
-                    {label}
-                  </p>
-                  <p className="mt-1.5 text-sm leading-6 text-[var(--foreground-soft)]">{body}</p>
-                </div>
-              ))}
+              {[["Authorization", "A provider hold, awaiting a later decision."], ["Capture", "Only after a human approval and a recorded rule outcome."], ["Void / refund", "A definite provider result — never inferred."], ["Ambiguity", "Timeouts stay pending until reconciled, not reported as success."]].map(
+                ([label, body]) => (
+                  <div
+                    key={label}
+                    className="rounded-xl border border-[var(--hairline)] bg-black/25 p-4"
+                  >
+                    <p
+                      className="font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--accent)]"
+                    >
+                      {label}
+                    </p>
+                    <p className="mt-1.5 text-sm leading-6 text-[var(--foreground-soft)]">{body}</p>
+                  </div>
+                ))
+              }
             </div>
           </div>
         </div>
@@ -409,7 +462,9 @@ export default function Home() {
       <section className="page-frame pb-8">
         <div className="panel flex flex-col items-start justify-between gap-6 p-7 sm:flex-row sm:items-center sm:p-9">
           <div>
-            <h2 className="headline text-2xl sm:text-3xl">
+            <h2
+              className="headline text-2xl sm:text-3xl"
+            >
               Read the record before you move the money.
             </h2>
             <p className="mt-2 text-sm text-muted">
