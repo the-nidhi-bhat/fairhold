@@ -15,7 +15,7 @@
     "db:import": "node --env-file-if-exists=.env scripts/db-import-json.mjs"
   },
   "dependencies": {
-    "next": "16.4.3",
+    "next": "16.4.6",
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
@@ -29,7 +29,7 @@
     "@types/react-dom": "^19",
     "axe-core": "^4.14.0",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
     "lighthouse": "^13.6.0",
     "tailwindcss": "^4",
     "typescript": "^5"
