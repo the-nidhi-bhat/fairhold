@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 test.describe("UI/UX audit screenshots", () => {
   test("landing page", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveTitle(/FairHold/);
+    await expect(page).toHaveTitle(/^Trust isn't a promise\. It's a process\.$/);
     await page.screenshot({ path: "audit-shots/landing-desktop.png", fullPage: true });
   });
 
