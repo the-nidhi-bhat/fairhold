@@ -785,7 +785,7 @@ export function DemoExperience() {
                 {[...state.deal.events].reverse().map((entry) => (
                   <li key={entry.id} className="relative text-xs">
                     <p className="text-[var(--foreground-soft)]">{entry.message}</p>
-                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.1em] text-muted">
+                    <p className="mt-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-muted">
                       {entry.actor} ·{" "}
                       <time dateTime={entry.createdAt}>
                         {entry.createdAt.slice(0, 16).replace("T", " ")} UTC

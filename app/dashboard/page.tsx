@@ -355,7 +355,7 @@ async function DashboardContent({
         <div className="min-w-0 flex-1">
           <label
             htmlFor="deal-search"
-            className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted"
+            className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted"
           >
             Search deals
           </label>
@@ -371,7 +371,7 @@ async function DashboardContent({
         <div>
           <label
             htmlFor="deal-status-filter"
-            className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted"
+            className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted"
           >
             Status
           </label>
@@ -487,7 +487,7 @@ async function DashboardContent({
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="surface-subtle p-4 sm:p-5">
-      <dt className="text-[11px] font-medium uppercase tracking-[0.1em] text-muted">
+      <dt className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted">
         {label}
       </dt>
       <dd className="mt-2 text-xl font-semibold tabular-nums tracking-[-0.02em] text-[var(--foreground)] sm:text-2xl">
