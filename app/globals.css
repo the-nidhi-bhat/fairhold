@@ -44,6 +44,15 @@
   --radius-md: 12px;
   --radius-lg: 18px;
   --radius-xl: 26px;
+
+  /* App typography — mirrors the landing's tight, uppercase display identity
+     so every application screen reads as the same design system. */
+  --type-display-weight: 600;
+  --type-display-tracking: -0.03em;
+  --type-display-leading: 1.08;
+  --type-section-weight: 550;
+  --type-section-tracking: -0.02em;
+  --type-section-leading: 1.25;
 }
 
 @theme inline {
@@ -167,9 +176,27 @@ kbd {
 }
 
 .headline {
-  font-weight: 550;
-  letter-spacing: -0.03em;
-  line-height: 1.08;
+  font-weight: var(--type-display-weight);
+  letter-spacing: var(--type-display-tracking);
+  line-height: var(--type-display-leading);
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+/* App subheads adopt the landing's display rhythm. Scoped to the app's
+   .font-semibold utility — the landing uses only .fl-* classes and is untouched. */
+:is(h1, h2).font-semibold {
+  font-weight: var(--type-display-weight);
+  letter-spacing: var(--type-display-tracking);
+  line-height: 1.1;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+:is(h3, h4).font-semibold {
+  font-weight: var(--type-section-weight);
+  letter-spacing: var(--type-section-tracking);
+  line-height: var(--type-section-leading);
   text-wrap: balance;
 }
 
