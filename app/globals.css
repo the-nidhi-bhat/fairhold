@@ -658,3 +658,498 @@ input[type="url"] {
     transform: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   FairHold cinematic landing — scoped to `.fl-*` classes only.
+   Palette discipline: pure black surfaces + crimson accents. Text colours are
+   the warm off-whites already defined by the design tokens (typography, not
+   decoration); every decorative element below is black or crimson.
+--------------------------------------------------------------------------- */
+
+.fl-page {
+  background: var(--background-deep);
+  /* Landing-scoped palette override: strict crimson (not rose) for accent
+     usage inside the landing page only. Shared tokens elsewhere are untouched. */
+  --accent: #cf3348;
+  --accent-soft: rgb(159 29 47 / 0.16);
+}
+
+/* ---- Chapter 01 · hero -------------------------------------------------- */
+
+.fl-hero {
+  position: relative;
+}
+
+.fl-track {
+  position: relative;
+  height: 320vh; /* scroll distance that drives the 143-frame desktop scrub */
+}
+
+.fl-sticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow: clip;
+  background: var(--background-deep);
+}
+
+.fl-canvas-wrap {
+  position: absolute;
+  inset: 0;
+  background-color: var(--background-deep);
+  background-size: cover;
+  background-position: center;
+}
+
+.fl-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.fl-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgb(0 0 0 / 0.6) 0%, rgb(0 0 0 / 0.16) 24%, transparent 44%),
+    linear-gradient(0deg, rgb(0 0 0 / 0.82) 0%, rgb(0 0 0 / 0.3) 28%, transparent 56%),
+    linear-gradient(90deg, rgb(0 0 0 / 0.45), transparent 40%);
+}
+
+.fl-copy {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 0 clamp(20px, 6vw, 84px) clamp(64px, 11vh, 128px);
+  will-change: opacity, transform;
+}
+
+.fl-title {
+  margin: 0;
+  font-size: clamp(2.4rem, 7vw, 6.75rem);
+  line-height: 0.96;
+  letter-spacing: -0.03em;
+  font-weight: 600;
+  text-transform: uppercase;
+  text-wrap: balance;
+  color: var(--foreground);
+  max-width: 16ch;
+  text-shadow: 0 2px 28px rgb(0 0 0 / 0.55);
+}
+
+.fl-title-accent {
+  display: block;
+  color: var(--accent);
+}
+
+.fl-lede {
+  margin: clamp(16px, 2.6vh, 28px) 0 0;
+  max-width: 54ch;
+  font-size: clamp(1rem, 1.25vw, 1.15rem);
+  line-height: 1.7;
+  color: var(--foreground-soft);
+  text-shadow: 0 1px 14px rgb(0 0 0 / 0.65);
+}
+
+.fl-cta-row {
+  margin-top: clamp(20px, 3.4vh, 36px);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.fl-cta {
+  text-shadow: none;
+  box-shadow: 0 12px 30px -12px rgb(0 0 0 / 0.8);
+}
+
+.fl-chips {
+  margin: clamp(18px, 3vh, 30px) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+}
+
+.fl-chips li {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 0.4rem 0.7rem;
+  background: rgb(0 0 0 / 0.4);
+}
+
+.fl-chips li::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent-strong);
+  display: inline-block;
+  margin-right: 0.45rem;
+}
+
+.fl-meter {
+  position: absolute;
+  right: clamp(16px, 3vw, 44px);
+  bottom: clamp(18px, 4vh, 42px);
+  margin: 0;
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(244 241 236 / 0.48);
+}
+
+/* Static fallback (reduced motion): the track collapses to a normal hero. */
+
+.fl-track.fl-static {
+  height: auto;
+}
+
+.fl-static .fl-sticky {
+  position: relative;
+  height: auto;
+}
+
+.fl-static .fl-canvas-wrap {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+}
+
+.fl-static .fl-meter {
+  display: none;
+}
+
+/* ---- Chapters 02–06 ------------------------------------------------------ */
+
+.fl-chapter {
+  padding-block: clamp(96px, 16vh, 200px);
+  border-top: 1px solid var(--hairline);
+  overflow-x: clip;
+}
+
+.fl-h2 {
+  margin: clamp(14px, 2vh, 24px) 0 0;
+  font-size: clamp(1.9rem, 4.4vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  font-weight: 600;
+  text-transform: uppercase;
+  text-wrap: balance;
+  max-width: 24ch;
+}
+
+.fl-chapter-copy {
+  margin: clamp(16px, 2.6vh, 28px) 0 0;
+  max-width: 62ch;
+  color: var(--muted);
+  line-height: 1.75;
+  font-size: 1.03rem;
+  text-wrap: pretty;
+}
+
+/* Editorial rows: Scope / Evidence / Payment and the solution definitions */
+
+.fl-rows {
+  margin-top: clamp(48px, 8vh, 96px);
+  display: grid;
+  gap: clamp(18px, 3vh, 28px);
+}
+
+.fl-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 230px) 1fr;
+  gap: clamp(16px, 3vw, 48px);
+  padding: clamp(20px, 3.4vh, 36px) clamp(18px, 2.6vw, 34px);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(180deg, rgb(159 29 47 / 0.05), transparent 55%),
+    var(--surface);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 220ms ease, transform 220ms ease, box-shadow 220ms ease;
+}
+
+.fl-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-strong);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fl-row:hover {
+  border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-panel);
+}
+
+.fl-row:hover::before {
+  transform: scaleY(1);
+}
+
+.fl-row-label {
+  margin: 0;
+  padding-top: 0.3rem;
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.fl-row-quote {
+  margin: 0;
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-weight: 550;
+  letter-spacing: -0.015em;
+  color: var(--foreground);
+  text-wrap: balance;
+}
+
+.fl-row-body {
+  margin: 10px 0 0;
+  max-width: 64ch;
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+/* Chapter 04 · five-step rail */
+
+.fl-steps {
+  margin: clamp(48px, 8vh, 96px) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: clamp(20px, 3.4vh, 34px);
+}
+
+.fl-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: clamp(18px, 3vw, 44px);
+  align-items: start;
+  border-top: 1px solid var(--hairline);
+  padding-top: clamp(20px, 3vh, 32px);
+}
+
+.fl-step-no {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 0.9;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--accent-strong);
+  transition: color 200ms ease;
+}
+
+.fl-step:hover .fl-step-no {
+  color: var(--accent-hover);
+}
+
+.fl-step h3 {
+  margin: 0;
+  font-size: clamp(1.2rem, 2.2vw, 1.7rem);
+  font-weight: 550;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+.fl-step p {
+  margin: 10px 0 0;
+  max-width: 66ch;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+/* Chapter 05 · clarity index */
+
+.fl-index {
+  margin: clamp(48px, 8vh, 96px) 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+}
+
+.fl-index-item {
+  display: grid;
+  grid-template-columns: clamp(2.2rem, 4vw, 4rem) minmax(150px, 0.55fr) 1fr;
+  gap: clamp(14px, 2.4vw, 40px);
+  align-items: baseline;
+  border-top: 1px solid var(--hairline);
+  padding-block: clamp(18px, 3vh, 30px);
+  transition: border-color 220ms ease;
+}
+
+.fl-index-item:hover {
+  border-top-color: color-mix(in srgb, var(--accent) 55%, var(--hairline));
+}
+
+.fl-index-no {
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  color: var(--accent-strong);
+}
+
+.fl-index-item h3 {
+  margin: 0;
+  font-size: clamp(1.1rem, 2vw, 1.55rem);
+  font-weight: 550;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+.fl-index-item p {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--muted);
+  line-height: 1.7;
+  font-size: 0.95rem;
+}
+
+.fl-note {
+  margin: clamp(40px, 7vh, 72px) 0 0;
+  max-width: 74ch;
+  padding-top: clamp(18px, 3vh, 28px);
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 0.75rem;
+  letter-spacing: 0.01em;
+  line-height: 1.8;
+  color: var(--muted);
+}
+
+/* Chapter 06 · final CTA */
+
+.fl-final {
+  padding-block: clamp(110px, 18vh, 230px);
+  border-top: 1px solid var(--hairline);
+  text-align: center;
+  overflow-x: clip;
+}
+
+.fl-eyebrow-center {
+  justify-content: center;
+}
+
+.fl-eyebrow-center::before {
+  display: none;
+}
+
+.fl-final-title {
+  margin: clamp(14px, 2vh, 26px) auto 0;
+  max-width: none;
+}
+
+.fl-final-lede {
+  margin-inline: auto;
+}
+
+.fl-cta-center {
+  justify-content: center;
+}
+
+.fl-boundaries {
+  margin: clamp(48px, 8vh, 84px) auto 0;
+  max-width: 76ch;
+  padding-top: clamp(20px, 3vh, 30px);
+  border-top: 1px solid var(--hairline);
+  font-family: var(--font-geist-mono, monospace);
+  font-size: 0.72rem;
+  line-height: 1.85;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
+/* ---- Reveal choreography (IntersectionObserver adds .fl-in) -------------- */
+
+.fl-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fl-reveal.fl-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* JavaScript disabled: content must never be hidden behind the reveal system. */
+
+@media (scripting: none) {
+  .fl-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- Mobile: a purpose-built 9:16 experience ----------------------------- */
+
+@media (max-width: 767px) {
+  .fl-track {
+    height: 320vh; /* 143 mobile frames over a longer travel for finer scrubbing */
+  }
+
+  .fl-copy {
+    padding: 0 20px 72px;
+  }
+
+  .fl-title {
+    font-size: clamp(2.1rem, 11.5vw, 3.4rem);
+    max-width: 100%;
+  }
+
+  .fl-lede {
+    font-size: 0.98rem;
+    max-width: 100%;
+  }
+
+  .fl-meter {
+    right: 14px;
+    bottom: 14px;
+  }
+
+  .fl-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .fl-index-item {
+    grid-template-columns: auto 1fr;
+  }
+
+  .fl-index-item p {
+    grid-column: 2;
+  }
+
+  .fl-final {
+    padding-block: clamp(88px, 14vh, 150px);
+  }
+}
