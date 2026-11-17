@@ -448,6 +448,53 @@ select:focus-visible {
   outline: none;
 }
 
+/* Disabled and read-only controls: no hover affordance, reduced presence. */
+.primary-button:disabled,
+.secondary-button:disabled,
+.ghost-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border);
+  background: rgb(255 255 255 / 0.04);
+  color: var(--muted);
+}
+
+.primary-button:disabled {
+  border-color: var(--border-strong);
+  background: rgb(255 255 255 / 0.04);
+}
+
+.field:disabled,
+.field[readonly] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Server-side validation feedback: fields flagged by the existing forms. */
+.field[aria-invalid="true"] {
+  border-color: color-mix(in srgb, var(--danger) 70%, var(--border-strong));
+}
+
+.field[aria-invalid="true"]:focus {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent);
+}
+
+/* Long-form inputs: comfortable editing height and predictable resize. */
+textarea.field {
+  min-height: 7rem;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+/* Native pickers inherit the dark surface instead of flashing light UI. */
+input[type="date"],
+input[type="url"] {
+  color-scheme: dark;
+}
+
 .text-muted { color: var(--muted); }
 .text-accent { color: var(--accent); }
 
