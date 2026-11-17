@@ -56,9 +56,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               aria-label="FairHold home"
             >
               <svg
-                className="h-7 w-7 fill-current"
-                viewBox="0 0 400 100"
-                width="28"
+                className="h-7 w-auto fill-current"
+                viewBox="0 0 741 918"
+                width="23"
                 height="28"
                 aria-hidden="true"
               >
